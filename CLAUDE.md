@@ -29,13 +29,12 @@ MCP server for Building a Second Brain (BASB) methodology running on Cloudflare 
 PLAN.md is a living document that you should actively update throughout development:
 - Update status after completing each phase/sub-task
 - Mark deliverables with checkboxes and completion dates
-- Add commit hashes for completed work
 - Note any blockers or issues that arise
 - Update version number and last updated timestamp
 - Add new tasks as they emerge during implementation
 - Remove or archive obsolete tasks that no longer matter
 - Reorganize sections as the project evolves
-- Commit PLAN.md updates separately with `docs: update PLAN.md with X progress`
+- **ALWAYS update PLAN.md BEFORE committing** - Include it in the same commit as the code changes
 
 **When to update PLAN.md:**
 - After completing any deliverable
@@ -57,8 +56,8 @@ PLAN.md is a living document that you should actively update throughout developm
 3. Implement feature
 4. Run `pnpm test` - must pass
 5. Run `pnpm run type-check` - must pass
-6. **Commit the change**
-7. **Update PLAN.md** - Mark task complete, add commit hash
+6. **Update PLAN.md** - Mark task complete, update status
+7. **Commit the change** - Include both code and PLAN.md update
 8. Deploy to dev: `pnpm run deploy:dev`
 9. Manual testing in dev environment
 10. Only then deploy to prod
