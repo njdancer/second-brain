@@ -226,14 +226,35 @@ describe('Worker Entry Point', () => {
   });
 
   describe('MCP endpoint OAuth validation', () => {
-    it('should reject requests without Authorization header', async () => {
+    it('should ALLOW initialize requests without Authorization header', async () => {
       const env = createMockEnv();
       const app = createApp(env);
 
       const req = new Request('http://localhost/mcp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jsonrpc: '2.0', method: 'initialize', id: 1 }),
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'initialize',
+          params: { protocolVersion: '2024-11-05', capabilities: {} },
+          id: 1
+        }),
+      });
+      const res = await app.fetch(req, env);
+
+      // Initialize should be allowed without auth
+      // It will fail for other reasons (no transport setup in test), but not 401
+      expect(res.status).not.toBe(401);
+    });
+
+    it('should reject NON-initialize requests without Authorization header', async () => {
+      const env = createMockEnv();
+      const app = createApp(env);
+
+      const req = new Request('http://localhost/mcp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', method: 'tools/list', id: 2 }),
       });
       const res = await app.fetch(req, env);
 

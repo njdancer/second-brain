@@ -58,7 +58,7 @@ export function createApp(env: Env): Hono {
     return c.json({
       status: 'ok',
       service: 'second-brain-mcp',
-      version: '1.1.0',
+      version: '1.2.0',
       timestamp: new Date().toISOString(),
     });
   });
@@ -107,65 +107,76 @@ export function createApp(env: Env): Hono {
   // Handles both GET (endpoint info) and POST (JSON-RPC messages)
   app.post('/mcp', async (c) => {
     try {
-      // Extract and validate OAuth token
+      // Get request body first to check if it's an initialize request
+      const body = await c.req.json();
+      const isInitialize = isInitializeRequest(body);
       const authHeader = c.req.header('Authorization');
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return c.json({
-          jsonrpc: '2.0',
-          error: {
-            code: -32001,
-            message: 'Missing or invalid Authorization header',
-          },
-          id: null,
-        }, 401);
+
+      // For initialize requests WITHOUT auth header, allow anonymous access
+      // For initialize requests WITH auth header, validate the auth
+      // For all other requests, require auth
+      let userId: string;
+
+      const requiresAuth = !isInitialize || (isInitialize && authHeader);
+
+      if (requiresAuth) {
+        // Extract and validate OAuth token
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+          return c.json({
+            jsonrpc: '2.0',
+            error: {
+              code: -32001,
+              message: 'Missing or invalid Authorization header',
+            },
+            id: body.id || null,
+          }, 401);
+        }
+
+        const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+
+        // Validate token and get user info
+        const oauthHandler = new OAuthHandler(
+          env.OAUTH_KV,
+          null,
+          env.GITHUB_CLIENT_ID,
+          env.GITHUB_CLIENT_SECRET,
+          env.GITHUB_ALLOWED_USER_ID,
+          env.COOKIE_ENCRYPTION_KEY
+        );
+
+        const userInfo = await oauthHandler.validateToken(token);
+        if (!userInfo) {
+          return c.json({
+            jsonrpc: '2.0',
+            error: {
+              code: -32002,
+              message: 'Invalid or expired token',
+            },
+            id: body.id || null,
+          }, 401);
+        }
+
+        // Check if user is authorized
+        if (!(await oauthHandler.isUserAuthorized(userInfo.userId))) {
+          return c.json({
+            jsonrpc: '2.0',
+            error: {
+              code: -32003,
+              message: 'User not authorized',
+            },
+            id: body.id || null,
+          }, 403);
+        }
+
+        userId = userInfo.userId;
+      } else {
+        // For initialize requests without auth, use anonymous
+        // The actual auth will happen after initialization
+        userId = 'anonymous';
       }
-
-      const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-
-      // Validate token and get user info
-      const oauthHandler = new OAuthHandler(
-        env.OAUTH_KV,
-        null,
-        env.GITHUB_CLIENT_ID,
-        env.GITHUB_CLIENT_SECRET,
-        env.GITHUB_ALLOWED_USER_ID,
-        env.COOKIE_ENCRYPTION_KEY
-      );
-
-      const userInfo = await oauthHandler.validateToken(token);
-      if (!userInfo) {
-        return c.json({
-          jsonrpc: '2.0',
-          error: {
-            code: -32002,
-            message: 'Invalid or expired token',
-          },
-          id: null,
-        }, 401);
-      }
-
-      // Check if user is authorized
-      if (!(await oauthHandler.isUserAuthorized(userInfo.userId))) {
-        return c.json({
-          jsonrpc: '2.0',
-          error: {
-            code: -32003,
-            message: 'User not authorized',
-          },
-          id: null,
-        }, 403);
-      }
-
-      const userId = userInfo.userId;
 
       // Extract session ID from headers
       const sessionId = c.req.header('mcp-session-id');
-
-      // Get request body
-      const body = await c.req.json();
-
-      // Check if this is an initialize request
-      const isInitialize = isInitializeRequest(body);
 
       // Get or create transport
       const transport = getOrCreateTransport(sessionId, isInitialize);
@@ -256,7 +267,7 @@ export function createApp(env: Env): Hono {
   app.get('/mcp', async (c) => {
     return c.json({
       name: 'second-brain-mcp',
-      version: '1.1.0',
+      version: '1.2.0',
       description: 'Model Context Protocol server for Building a Second Brain methodology',
       protocol: 'streamable-http',
       protocolVersion: '2025-03-26',
