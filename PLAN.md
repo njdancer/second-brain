@@ -1,9 +1,9 @@
 # Second Brain MCP Implementation Plan
 
-**Version:** 3.0
+**Version:** 3.1
 **Date:** October 8, 2025
-**Status:** 🚀 v1.2.2 DEPLOYED - OAuth discovery working! Server returns proper OAuth info for unauthenticated requests.
-**Last Updated:** 2025-10-08 19:00 UTC
+**Status:** 🚀 v1.2.3 DEPLOYING - Fixed MCP response handling for authenticated requests
+**Last Updated:** 2025-10-08 (UTC-7)
 
 ---
 
@@ -11,16 +11,17 @@
 
 This plan outlines the implementation of a Model Context Protocol (MCP) server that enables Claude to function as a personal knowledge management assistant using the Building a Second Brain (BASB) methodology. The server is deployed on Cloudflare Workers with R2 storage, providing file-like operations over a cloud-based second brain accessible from any Claude client (desktop, web, mobile).
 
-**Current Status (v1.2.2):**
+**Current Status (v1.2.3):**
 - ✅ MCP server with 5 core tools (read, write, edit, glob, grep) - **DEPLOYED**
 - ✅ Rate limiting and storage quotas - **IMPLEMENTED**
 - ✅ Bootstrap system for new users - **IMPLEMENTED**
 - ✅ Comprehensive test coverage (299 tests passing) - **COMPLETE**
-- ✅ OAuth authentication via GitHub - **DEPLOYED (v1.2.2)**
+- ✅ OAuth authentication via GitHub - **DEPLOYED**
 - ✅ OAuth discovery for unauthenticated clients - **FIXED (v1.2.2)**
+- ✅ MCP response handling fixed - **FIXED (v1.2.3)** - Tools now properly returned to authenticated clients
 - ⏳ Automated S3 backups - **PLANNED**
 
-**Current Step:** Test end-to-end connection from Claude.ai
+**Current Step:** Deploy v1.2.3 and test tool visibility from Claude desktop/mobile
 
 ---
 

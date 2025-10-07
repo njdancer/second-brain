@@ -58,7 +58,7 @@ export function createApp(env: Env): Hono {
     return c.json({
       status: 'ok',
       service: 'second-brain-mcp',
-      version: '1.2.0',
+      version: '1.2.3',
       timestamp: new Date().toISOString(),
     });
   });
@@ -234,33 +234,35 @@ After authentication, reconnect with your OAuth token in the Authorization heade
       const res = new Response();
 
       // Create a Node.js-compatible response wrapper
+      const responseChunks: string[] = [];
+      const responseHeaders = new Headers();
+      let responseStatus = 200;
+
       const nodeResponse = {
         statusCode: 200,
         setHeader: (name: string, value: string) => {
-          res.headers.set(name, value);
+          responseHeaders.set(name, value);
         },
         writeHead: (statusCode: number, headers?: Record<string, string>) => {
-          nodeResponse.statusCode = statusCode;
+          responseStatus = statusCode;
           if (headers) {
             Object.entries(headers).forEach(([key, value]) => {
-              res.headers.set(key, value);
+              responseHeaders.set(key, value);
             });
           }
         },
         write: (chunk: string) => {
-          // Handle SSE streaming (if needed)
-          console.log('SSE chunk:', chunk);
+          responseChunks.push(chunk);
+          return true;
         },
         end: (data?: string) => {
           if (data) {
-            return new Response(data, {
-              status: nodeResponse.statusCode,
-              headers: res.headers,
-            });
+            responseChunks.push(data);
           }
-          return new Response(null, {
-            status: nodeResponse.statusCode,
-            headers: res.headers,
+          const body = responseChunks.join('');
+          return new Response(body, {
+            status: responseStatus,
+            headers: responseHeaders,
           });
         },
       };
@@ -288,7 +290,7 @@ After authentication, reconnect with your OAuth token in the Authorization heade
   app.get('/mcp', async (c) => {
     return c.json({
       name: 'second-brain-mcp',
-      version: '1.2.0',
+      version: '1.2.3',
       description: 'Model Context Protocol server for Building a Second Brain methodology',
       protocol: 'streamable-http',
       protocolVersion: '2025-03-26',

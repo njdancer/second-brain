@@ -18,7 +18,9 @@
       "Bash(gh run watch:*)",
       "Bash(git tag:*)",
       "Bash(git push:*)",
-      "Bash(pnpm wrangler secret:*)"
+      "Bash(pnpm wrangler secret:*)",
+      "Bash(curl -s -X POST https://second-brain-mcp.nick-01a.workers.dev/mcp -H \"Content-Type: application/json\" -d '{\"\"\"\"jsonrpc\"\"\"\":\"\"\"\"2.0\"\"\"\",\"\"\"\"method\"\"\"\":\"\"\"\"initialize\"\"\"\",\"\"\"\"params\"\"\"\":{\"\"\"\"protocolVersion\"\"\"\":\"\"\"\"2024-11-05\"\"\"\",\"\"\"\"capabilities\"\"\"\":{}},\"\"\"\"id\"\"\"\":1}')",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []
