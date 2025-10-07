@@ -170,9 +170,30 @@ export function createApp(env: Env): Hono {
 
         userId = userInfo.userId;
       } else {
-        // For initialize requests without auth, use anonymous
-        // The actual auth will happen after initialization
-        userId = 'anonymous';
+        // For unauthenticated initialize requests, return OAuth information
+        // without creating a full session
+        return c.json({
+          jsonrpc: '2.0',
+          result: {
+            protocolVersion: '2024-11-05',
+            serverInfo: {
+              name: 'second-brain-mcp',
+              version: '1.2.1',
+            },
+            capabilities: {
+              tools: {},
+              prompts: {},
+              resources: {},
+            },
+            // Tell client that OAuth is required
+            instructions: `This server requires OAuth authentication.
+
+Please visit: ${new URL('/oauth/authorize', c.req.url).toString()}
+
+After authentication, reconnect with your OAuth token in the Authorization header.`,
+          },
+          id: body.id,
+        });
       }
 
       // Extract session ID from headers

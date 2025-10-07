@@ -226,7 +226,7 @@ describe('Worker Entry Point', () => {
   });
 
   describe('MCP endpoint OAuth validation', () => {
-    it('should ALLOW initialize requests without Authorization header', async () => {
+    it('should return OAuth info for initialize requests without Authorization header', async () => {
       const env = createMockEnv();
       const app = createApp(env);
 
@@ -242,9 +242,16 @@ describe('Worker Entry Point', () => {
       });
       const res = await app.fetch(req, env);
 
-      // Initialize should be allowed without auth
-      // It will fail for other reasons (no transport setup in test), but not 401
-      expect(res.status).not.toBe(401);
+      // Initialize should succeed with OAuth information
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body).toHaveProperty('result');
+      expect(body.result).toHaveProperty('serverInfo');
+      expect(body.result.serverInfo.name).toBe('second-brain-mcp');
+      expect(body.result).toHaveProperty('capabilities');
+      expect(body.result).toHaveProperty('instructions');
+      expect(body.result.instructions).toContain('OAuth');
+      expect(body.result.instructions).toContain('/oauth/authorize');
     });
 
     it('should reject NON-initialize requests without Authorization header', async () => {
