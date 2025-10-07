@@ -9,7 +9,7 @@
 - **Protocol**: Model Context Protocol (MCP) via `@modelcontextprotocol/sdk`
 - **OAuth**: `@cloudflare/workers-oauth-provider` (GitHub as identity provider)
 - **Storage**: Cloudflare R2 (single bucket, configured via wrangler)
-- **Transport**: Server-Sent Events (SSE) for remote MCP connection
+- **Transport**: Streamable HTTP (MCP protocol version 2025-03-26)
 
 ---
 
@@ -66,8 +66,9 @@ No enforced hierarchy - structure emerges from user's file paths.
 
 ### 1. Worker Entry Point (`src/index.ts`)
 - Hono app initialization
-- Route handling (SSE endpoint, OAuth callbacks)
+- Route handling (MCP endpoint for POST/GET, OAuth callbacks)
 - Request routing to handlers
+- Streamable HTTP transport implementation
 
 ### 2. OAuth Handler (`src/oauth-handler.ts`)
 - GitHub OAuth flow implementation

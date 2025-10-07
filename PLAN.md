@@ -678,45 +678,65 @@ Note: OAuth, SSE, and deployment-specific scenarios require actual deployment to
 
 ### Phase 8: MCP Protocol Implementation (URGENT - 4-6 hours)
 
-**Objective:** Implement SSE/MCP endpoint so Claude.ai can connect to the server
+**Objective:** Implement Streamable HTTP transport so Claude.ai can connect to the server
 
 **Current Issue:** The `/sse` endpoint is a placeholder returning 501. This is the **core functionality** that makes it an "MCP server".
 
 **What Claude.ai Needs:**
-- Remote MCP server URL endpoint
+- Remote MCP server URL endpoint (single endpoint supporting POST/GET)
 - OAuth support (already implemented: `/oauth/authorize` and `/oauth/callback`)
-- MCP protocol over SSE or HTTP
+- MCP protocol over Streamable HTTP (protocol version 2025-03-26)
+
+**Protocol Details:**
+- Streamable HTTP replaces the deprecated SSE transport (as of 2024-11-05)
+- Single endpoint handles both POST (JSON-RPC messages) and GET (connection info)
+- POST requests can return either JSON (application/json) or SSE stream (text/event-stream)
+- Supports both authless and OAuth-based authentication
+- Claude.ai supports both SSE and Streamable HTTP-based servers
 
 **Tasks:**
 
-#### 8.1 Implement SSE/MCP Endpoint
-- [ ] Research MCP-over-SSE protocol specification
-- [ ] Implement SSE streaming endpoint at `/sse`
-- [ ] Handle MCP JSON-RPC messages
-- [ ] Wire up tool calls to actual implementations (read, write, edit, glob, grep)
-- [ ] Handle authentication via Bearer token
-- [ ] Keep-alive mechanism for SSE connection
-- [ ] Error handling and graceful degradation
+#### 8.1 Implement Streamable HTTP MCP Endpoint
+- [ ] Implement POST handler for JSON-RPC messages at `/mcp`
+- [ ] Implement GET handler for endpoint metadata
+- [ ] Handle initialize request (server capabilities, protocol version)
+- [ ] Handle tools/list request (return registered tools)
+- [ ] Handle tools/call request (execute tool with params)
+- [ ] Handle prompts/list request (return registered prompts)
+- [ ] Handle prompts/get request (return prompt message)
+- [ ] Support both JSON and SSE response formats (based on Accept header)
 
 #### 8.2 Connect MCP Server to HTTP Layer
-- [ ] Create tool execution handler
+- [ ] Create tool execution handler with context (userId, storage, rate limiter)
+- [ ] Wire up tool calls to actual implementations (read, write, edit, glob, grep)
 - [ ] Map MCP tool requests to storage operations
 - [ ] Implement request/response flow
 - [ ] Add rate limiting to tool calls
 - [ ] Add monitoring for tool usage
+- [ ] Handle authentication via Bearer token
 
-#### 8.3 Testing
-- [ ] Test SSE connection establishment
-- [ ] Test tool call execution
+#### 8.3 Bootstrap Integration
+- [ ] Check for bootstrap on first tool call
+- [ ] Create initial PARA structure if needed
+- [ ] Handle bootstrap errors gracefully
+
+#### 8.4 Testing
+- [ ] Test POST endpoint with JSON-RPC messages
+- [ ] Test initialize flow
+- [ ] Test tool list and tool call
+- [ ] Test prompt list and prompt get
 - [ ] Test authentication flow
+- [ ] Test rate limiting
 - [ ] Test error scenarios
+- [ ] Test SSE streaming responses (optional)
 - [ ] Manual testing from Claude.ai
 
 **Deliverables:**
-- [ ] Working `/sse` endpoint
+- [ ] Working `/mcp` endpoint (POST and GET)
 - [ ] Tool calls execute successfully
 - [ ] Claude.ai can connect and use the Second Brain
 - [ ] Tests for MCP protocol handling
+- [ ] Bootstrap runs on first connection
 
 **Status:** ⏳ NOT STARTED - This is blocking Claude.ai integration
 
