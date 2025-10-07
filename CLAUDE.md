@@ -58,9 +58,29 @@ PLAN.md is a living document that you should actively update throughout developm
 5. Run `pnpm run type-check` - must pass
 6. **Update PLAN.md** - Mark task complete, update status
 7. **Commit the change** - Include both code and PLAN.md update
-8. Deploy to dev: `pnpm run deploy:dev`
-9. Manual testing in dev environment
-10. Only then deploy to prod
+8. **Push to GitHub** - `git push origin main`
+9. **Deploy via GitHub Actions** - CI/CD pipeline runs automatically on push
+10. Manual testing in deployed environment
+
+### Deployment Strategy
+**CRITICAL: ALWAYS deploy via GitHub Actions. NEVER use `pnpm deploy` directly.**
+
+Production deployments are triggered by pushing commits to the `main` branch:
+```bash
+# After committing changes with PLAN.md update
+git push origin main
+
+# GitHub Actions will:
+# 1. Run all tests
+# 2. Run type checking
+# 3. Deploy to production automatically
+```
+
+The development environment (`pnpm run deploy:dev`) can be used for quick testing, but all production deployments MUST go through GitHub Actions to ensure:
+- All tests pass before deployment
+- Type checking is successful
+- Deployment is tracked in CI/CD history
+- Rollback is possible via GitHub
 
 ## Essential Commands
 
@@ -77,8 +97,8 @@ pnpm run type-check         # TypeScript check (or: mise run build)
 pnpm run dev                # Local dev server (or: mise run dev)
 
 # Deployment
-pnpm run deploy:dev         # Deploy to development (or: mise run deploy:dev)
-pnpm deploy                 # Deploy to production (or: mise run deploy)
+pnpm run deploy:dev         # Deploy to development (for quick testing only)
+# NEVER use 'pnpm deploy' - always deploy via GitHub Actions (git push)
 
 # Running single test
 pnpm test -- path/to/test.test.ts
