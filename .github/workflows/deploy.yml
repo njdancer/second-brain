@@ -197,8 +197,8 @@ jobs:
           echo "Waiting 30 seconds for deployment to stabilize..."
           sleep 30
 
-          # Check health endpoint (update URL to your actual worker URL)
-          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://second-brain.your-subdomain.workers.dev/health || echo "000")
+          # Check health endpoint
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://second-brain-mcp.nick-01a.workers.dev/health || echo "000")
 
           if [ "$RESPONSE" == "200" ]; then
             echo "✅ Health check passed (HTTP $RESPONSE)"
