@@ -15,6 +15,10 @@ on:
           - production
         default: 'development'
 
+permissions:
+  contents: write
+  deployments: write
+
 jobs:
   test:
     name: Run Tests
@@ -142,29 +146,25 @@ jobs:
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
-        uses: actions/create-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref_name }}
-          release_name: Release ${{ steps.version.outputs.VERSION }}
-          body: |
-            ## Release ${{ steps.version.outputs.VERSION }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create ${{ github.ref_name }} \
+            --title "Release ${{ steps.version.outputs.VERSION }}" \
+            --notes "## Release ${{ steps.version.outputs.VERSION }}
 
-            **Deployed to production:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')
+          **Deployed to production:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')
 
-            See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for detailed release notes.
+          See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for detailed release notes.
 
-            ### Test Coverage
-            - Statement coverage: 95%+
-            - Function coverage: 95%+
-            - 265+ tests passing
+          ### Test Coverage
+          - Statement coverage: 95%+
+          - Function coverage: 95%+
+          - 265+ tests passing
 
-            ### Deployment
-            - Environment: Production
-            - Worker URL: https://second-brain.your-subdomain.workers.dev
-          draft: false
-          prerelease: false
+          ### Deployment
+          - Environment: Production
+          - Worker URL: https://second-brain-mcp.nick-01a.workers.dev"
 
       - name: Create deployment summary
         run: |
