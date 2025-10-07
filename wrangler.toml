@@ -1,0 +1,51 @@
+name = "second-brain-mcp"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# R2 bucket bindings
+[[r2_buckets]]
+binding = "SECOND_BRAIN_BUCKET"
+bucket_name = "second-brain-storage"
+
+# KV namespace bindings
+[[kv_namespaces]]
+binding = "OAUTH_KV"
+id = "OAUTH_KV_ID_PLACEHOLDER"
+
+[[kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "RATE_LIMIT_KV_ID_PLACEHOLDER"
+
+# Analytics Engine binding
+[analytics_engine_datasets]
+binding = "ANALYTICS"
+
+# Cron triggers for daily backup
+[triggers]
+crons = ["0 2 * * *"]
+
+# Environment variables (set via wrangler secret)
+# GITHUB_CLIENT_ID - GitHub OAuth app client ID
+# GITHUB_CLIENT_SECRET - GitHub OAuth app client secret
+# GITHUB_ALLOWED_USER_ID - Authorized GitHub user ID
+# COOKIE_ENCRYPTION_KEY - Encryption key for OAuth tokens
+# AWS_ACCESS_KEY_ID - AWS S3 backup access key
+# AWS_SECRET_ACCESS_KEY - AWS S3 backup secret key
+# AWS_REGION - AWS S3 region
+# AWS_S3_BACKUP_BUCKET - AWS S3 backup bucket name
+
+[env.development]
+name = "second-brain-mcp-dev"
+
+[[env.development.r2_buckets]]
+binding = "SECOND_BRAIN_BUCKET"
+bucket_name = "second-brain-storage-dev"
+
+[[env.development.kv_namespaces]]
+binding = "OAUTH_KV"
+id = "OAUTH_KV_DEV_ID_PLACEHOLDER"
+
+[[env.development.kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "RATE_LIMIT_KV_DEV_ID_PLACEHOLDER"
