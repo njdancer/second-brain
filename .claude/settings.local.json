@@ -7,7 +7,13 @@
       "Bash(git commit:*)",
       "Bash(pnpm test:*)",
       "Bash(pnpm run:*)",
-      "Read(//Users/nickdancer/Code/**)"
+      "Read(//Users/nickdancer/Code/**)",
+      "Bash(gh run view:*)",
+      "Bash(cd:*)",
+      "Bash(gh api:*)",
+      "Bash(pnpm wrangler secret put:*)",
+      "Bash(gh secret:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": []

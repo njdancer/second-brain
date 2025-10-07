@@ -7,6 +7,14 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { OAuthHandler } from './oauth-handler';
 import { createMCPServer, registerTools, registerPrompts } from './mcp-server';
+import {
+  createMCPServerInstance,
+  getOrCreateTransport,
+  storeSession,
+  isInitializeRequest,
+} from './mcp-transport';
+import { StorageService } from './storage';
+import { RateLimiter } from './rate-limiting';
 
 export interface Env {
   // R2 bucket bindings
@@ -95,14 +103,117 @@ export function createApp(env: Env): Hono {
     }
   });
 
-  // SSE endpoint for MCP connection
-  // This will be implemented in Phase 2.2 or later
-  app.get('/sse', async (c) => {
-    // Placeholder for SSE implementation
+  // MCP endpoint for Streamable HTTP transport
+  // Handles both GET (endpoint info) and POST (JSON-RPC messages)
+  app.post('/mcp', async (c) => {
+    try {
+      // Extract session ID from headers
+      const sessionId = c.req.header('mcp-session-id');
+
+      // Get request body
+      const body = await c.req.json();
+
+      // Check if this is an initialize request
+      const isInitialize = isInitializeRequest(body);
+
+      // Get or create transport
+      const transport = getOrCreateTransport(sessionId, isInitialize);
+
+      if (!transport) {
+        return c.json({
+          jsonrpc: '2.0',
+          error: {
+            code: -32600,
+            message: 'Invalid session or missing session ID',
+          },
+          id: body.id || null,
+        }, 400);
+      }
+
+      // TODO: Extract user ID from OAuth token
+      // For now, use a placeholder (will be implemented with OAuth integration)
+      const userId = 'user-placeholder';
+
+      // Create storage and rate limiter instances
+      const storage = new StorageService(env.SECOND_BRAIN_BUCKET);
+      const rateLimiter = new RateLimiter(env.RATE_LIMIT_KV);
+
+      // Create or retrieve MCP server instance
+      const server = createMCPServerInstance(storage, rateLimiter, env.ANALYTICS, userId);
+
+      // Store session if this is a new initialize request
+      if (isInitialize && transport.sessionId) {
+        storeSession(transport.sessionId, transport, server);
+      }
+
+      // Connect server to transport if not already connected
+      await server.connect(transport);
+
+      // Handle the request through the transport
+      // The transport will process the JSON-RPC message and send response
+      const req = c.req.raw;
+      const res = new Response();
+
+      // Create a Node.js-compatible response wrapper
+      const nodeResponse = {
+        statusCode: 200,
+        setHeader: (name: string, value: string) => {
+          res.headers.set(name, value);
+        },
+        writeHead: (statusCode: number, headers?: Record<string, string>) => {
+          nodeResponse.statusCode = statusCode;
+          if (headers) {
+            Object.entries(headers).forEach(([key, value]) => {
+              res.headers.set(key, value);
+            });
+          }
+        },
+        write: (chunk: string) => {
+          // Handle SSE streaming (if needed)
+          console.log('SSE chunk:', chunk);
+        },
+        end: (data?: string) => {
+          if (data) {
+            return new Response(data, {
+              status: nodeResponse.statusCode,
+              headers: res.headers,
+            });
+          }
+          return new Response(null, {
+            status: nodeResponse.statusCode,
+            headers: res.headers,
+          });
+        },
+      };
+
+      // Handle the request
+      await transport.handleRequest(req as any, nodeResponse as any, body);
+
+      // Return the response
+      return nodeResponse.end();
+
+    } catch (error) {
+      console.error('MCP endpoint error:', error);
+      return c.json({
+        jsonrpc: '2.0',
+        error: {
+          code: -32603,
+          message: 'Internal server error',
+        },
+        id: null,
+      }, 500);
+    }
+  });
+
+  // GET endpoint for MCP metadata (optional)
+  app.get('/mcp', async (c) => {
     return c.json({
-      error: 'SSE endpoint not yet implemented',
-      message: 'MCP over SSE will be available in a future update',
-    }, 501);
+      name: 'second-brain-mcp',
+      version: '1.0.0',
+      description: 'Model Context Protocol server for Building a Second Brain methodology',
+      protocol: 'streamable-http',
+      protocolVersion: '2025-03-26',
+    });
   });
 
   // Manual backup trigger endpoint

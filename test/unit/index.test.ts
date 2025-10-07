@@ -161,17 +161,18 @@ describe('Worker Entry Point', () => {
   });
 
   describe('placeholder endpoints', () => {
-    it('should return 501 for SSE endpoint', async () => {
+    it('should return metadata for GET /mcp endpoint', async () => {
       const env = createMockEnv();
       const app = createApp(env);
 
-      const req = new Request('http://localhost/sse');
+      const req = new Request('http://localhost/mcp');
       const res = await app.fetch(req, env);
 
-      expect(res.status).toBe(501);
+      expect(res.status).toBe(200);
       const body = await res.json();
-      expect(body).toHaveProperty('error');
-      expect(body).toHaveProperty('message');
+      expect(body).toHaveProperty('name', 'second-brain-mcp');
+      expect(body).toHaveProperty('version');
+      expect(body).toHaveProperty('protocol', 'streamable-http');
     });
 
     it('should return 501 for manual backup endpoint', async () => {
