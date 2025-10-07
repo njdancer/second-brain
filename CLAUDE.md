@@ -15,6 +15,14 @@ MCP server for Building a Second Brain (BASB) methodology running on Cloudflare 
 ### Package Manager
 **MUST use `pnpm` exclusively.** Never use `npm` or `yarn`. The project uses `"packageManager": "pnpm@9.0.0"` in package.json for corepack.
 
+### Git Commits
+**MUST commit after every atomic change.** Do not batch multiple features or changes into one commit.
+- Commit after completing each test file
+- Commit after implementing each module
+- Commit after each bug fix
+- Use conventional commit messages: `feat:`, `fix:`, `test:`, `docs:`, `refactor:`
+- Keep commits small and focused
+
 ### Testing Requirements
 - **95%+ code coverage** required (configured in jest.config.js)
 - 100% coverage for all tools, OAuth, rate limiting, storage, bootstrap, backup
@@ -26,9 +34,10 @@ MCP server for Building a Second Brain (BASB) methodology running on Cloudflare 
 2. Implement feature
 3. Run `pnpm test` - must pass
 4. Run `pnpm run type-check` - must pass
-5. Deploy to dev: `pnpm run deploy:dev`
-6. Manual testing in dev environment
-7. Only then deploy to prod
+5. **Commit the change**
+6. Deploy to dev: `pnpm run deploy:dev`
+7. Manual testing in dev environment
+8. Only then deploy to prod
 
 ## Essential Commands
 
