@@ -2,8 +2,8 @@
 
 A Model Context Protocol server that enables Claude to act as your personal knowledge management assistant using the Building a Second Brain (BASB) methodology.
 
-**Version:** 1.1
-**Status:** Draft
+**Version:** 1.0.0-rc1
+**Status:** Release Candidate - Phase 6 Complete (Testing & QA)
 **Platform:** Cloudflare Workers
 
 ---
@@ -226,12 +226,14 @@ See [Security](specs/security.md) for comprehensive security details.
 
 ## Roadmap
 
-### MVP (Current)
+### MVP (Current - v1.0.0-rc1)
 ✅ Core tools (read, write, edit, glob, grep)
 ✅ GitHub OAuth authentication
 ✅ Bootstrap files and PARA structure
 ✅ Rate limiting and storage quotas
 ✅ Automated S3 backups
+✅ Monitoring & analytics
+✅ 95%+ test coverage
 
 ### Phase 2 (3-6 months)
 - Multi-user support
@@ -259,13 +261,17 @@ See [Roadmap](specs/roadmap.md) for complete feature plan.
 pnpm test
 
 # Run with coverage
-pnpm run coverage
+pnpm run test:coverage
 
 # Watch mode
 pnpm run test:watch
 ```
 
-Target: 95%+ code coverage on all core modules.
+**Current Status:** ✅
+- **265 tests passing** (257 unit + 8 integration)
+- **95.13% statement coverage** (target met!)
+- **86.1% branch coverage**
+- **96.2% function coverage**
 
 ### Manual Testing
 
