@@ -1,23 +1,25 @@
 # Second Brain MCP Implementation Plan
 
-**Version:** 2.9
+**Version:** 3.0
 **Date:** October 8, 2025
-**Status:** ✅ MCP IMPLEMENTATION COMPLETE - All 265 tests passing. MCP endpoint implemented with Streamable HTTP transport. Ready for deployment and manual testing.
-**Last Updated:** 2025-10-08 16:45 UTC
+**Status:** 🚀 v1.1.0 DEPLOYED - MCP transport working, OAuth integration needed. Server live at https://second-brain-mcp.nick-01a.workers.dev but Claude.ai connection fails due to missing OAuth token handling.
+**Last Updated:** 2025-10-08 17:15 UTC
 
 ---
 
 ## Executive Summary
 
-This plan outlines the implementation of a Model Context Protocol (MCP) server that enables Claude to function as a personal knowledge management assistant using the Building a Second Brain (BASB) methodology. The server will be deployed on Cloudflare Workers with R2 storage, providing file-like operations over a cloud-based second brain accessible from any Claude client (desktop, web, mobile).
+This plan outlines the implementation of a Model Context Protocol (MCP) server that enables Claude to function as a personal knowledge management assistant using the Building a Second Brain (BASB) methodology. The server is deployed on Cloudflare Workers with R2 storage, providing file-like operations over a cloud-based second brain accessible from any Claude client (desktop, web, mobile).
 
-**Key Deliverables:**
-- Functional MCP server with 5 core tools (read, write, edit, glob, grep)
-- OAuth authentication via GitHub
-- Rate limiting and storage quotas
-- Automated S3 backups
-- Bootstrap system for new users
-- Comprehensive test coverage (>95%)
+**Current Status (v1.1.0):**
+- ✅ MCP server with 5 core tools (read, write, edit, glob, grep) - **DEPLOYED**
+- ✅ Rate limiting and storage quotas - **IMPLEMENTED**
+- ✅ Bootstrap system for new users - **IMPLEMENTED**
+- ✅ Comprehensive test coverage (294 tests passing) - **COMPLETE**
+- ⚠️ OAuth authentication via GitHub - **NEEDS INTEGRATION**
+- ⏳ Automated S3 backups - **PLANNED**
+
+**Blocker:** OAuth token handling not wired up in `/mcp` endpoint. Server is live but Claude.ai cannot connect without proper authentication flow.
 
 ---
 
@@ -738,7 +740,84 @@ Note: OAuth, SSE, and deployment-specific scenarios require actual deployment to
 - [x] Tests for MCP protocol handling (265/265 passing) (2025-10-08)
 - [x] Bootstrap runs on first connection (2025-10-08)
 
-**Status:** ✅ CORE IMPLEMENTATION COMPLETE - All unit tests passing (265/265). Ready for deployment testing. Authentication integration pending.
+**Status:** ✅ CORE IMPLEMENTATION COMPLETE - All unit tests passing (294/294). Deployed to production (v1.1.0). Authentication integration pending.
+
+---
+
+### Phase 9: OAuth Integration & End-to-End Testing (URGENT - 2-4 hours)
+
+**Objective:** Wire up OAuth authentication so Claude.ai can successfully connect to the MCP server
+
+**Current Issue:** The MCP endpoint is deployed and responding, but Claude.ai cannot connect because the OAuth flow is not properly integrated. The server has placeholder code: `const userId = 'user-placeholder';` instead of extracting the user ID from the OAuth token.
+
+**Error seen in Claude.ai:** "There was an error connecting to Second Brain MCP. Please check your server URL and make sure your server handles auth correctly."
+
+**What's Missing:**
+1. GitHub OAuth App creation and configuration
+2. OAuth token extraction in `/mcp` POST endpoint
+3. Token validation and user ID extraction
+4. End-to-end testing from Claude.ai client
+5. User authorization against allowlist
+
+**Tasks:**
+
+#### 9.1 GitHub OAuth App Setup
+- [ ] Create GitHub OAuth App at https://github.com/settings/developers
+- [ ] Set callback URL to `https://second-brain-mcp.nick-01a.workers.dev/oauth/callback`
+- [ ] Configure homepage URL and description
+- [ ] Get Client ID and Client Secret
+- [ ] Test OAuth flow manually via browser
+
+#### 9.2 Cloudflare Secrets Configuration
+- [ ] Set `GITHUB_CLIENT_ID` secret via `pnpm wrangler secret put`
+- [ ] Set `GITHUB_CLIENT_SECRET` secret
+- [ ] Set `GITHUB_ALLOWED_USER_ID` (your GitHub user ID)
+- [ ] Set `COOKIE_ENCRYPTION_KEY` (generate 32-byte hex string)
+- [ ] Verify secrets are accessible in worker
+
+#### 9.3 MCP Endpoint OAuth Integration
+- [ ] Update `/mcp` POST handler to extract Bearer token from Authorization header
+- [ ] Decrypt and validate OAuth token from KV store
+- [ ] Extract GitHub user ID from token
+- [ ] Verify user is in allowlist
+- [ ] Pass real user ID to MCP server instance (not placeholder)
+- [ ] Handle expired tokens gracefully
+- [ ] Return proper 401/403 errors for auth failures
+
+#### 9.4 End-to-End Testing
+- [ ] Connect from Claude.ai web interface
+- [ ] Verify OAuth redirect flow works
+- [ ] Confirm GitHub authorization prompt appears
+- [ ] Test successful connection and tool listing
+- [ ] Test each tool (read, write, edit, glob, grep) from Claude.ai
+- [ ] Test each prompt (capture-note, weekly-review, research-summary)
+- [ ] Verify rate limiting works across requests
+- [ ] Verify storage is isolated per user
+- [ ] Test with multiple users (if applicable)
+
+#### 9.5 Documentation
+- [ ] Update README.md with OAuth setup instructions
+- [ ] Document how to get GitHub user ID for allowlist
+- [ ] Add troubleshooting section for common connection issues
+- [ ] Document how to test OAuth flow manually
+- [ ] Add example Claude.ai connector configuration
+
+**Deliverables:**
+- [ ] Working OAuth flow end-to-end
+- [ ] Claude.ai successfully connects and lists tools
+- [ ] All 5 tools operational from Claude.ai
+- [ ] User isolation working (each user has own R2 namespace)
+- [ ] Documentation for other users to set up their own instance
+
+**Acceptance Criteria:**
+- Claude.ai connector dialog shows "Connected" status
+- Can execute all tools from Claude.ai chat interface
+- Can use all prompts from Claude.ai
+- Rate limits apply correctly
+- Storage quota checks work
+- Bootstrap runs on first connection for new users
+
+**Status:** 🔴 BLOCKED - Prevents Claude.ai from connecting to the deployed server
 
 ---
 
