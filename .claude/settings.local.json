@@ -5,7 +5,8 @@
       "Bash(pnpm add:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(pnpm test:*)"
+      "Bash(pnpm test:*)",
+      "Bash(pnpm run:*)"
     ],
     "deny": [],
     "ask": []
