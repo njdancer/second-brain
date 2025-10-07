@@ -15,11 +15,13 @@ export class MockR2Bucket {
   private objects: Map<string, MockR2Object> = new Map();
   private shouldFail: boolean = false;
   private failureCount: number = 0;
+  private maxFailures: number = Infinity; // Default to always fail
 
   constructor() {}
 
   async get(key: string): Promise<R2ObjectBody | null> {
-    if (this.shouldFail) {
+    if (this.shouldFail && this.failureCount < this.maxFailures) {
+      this.failureCount++;
       throw new Error('R2 operation failed');
     }
 
@@ -51,7 +53,7 @@ export class MockR2Bucket {
     value: string | ReadableStream | ArrayBuffer,
     options?: { customMetadata?: Record<string, string> }
   ): Promise<R2Object> {
-    if (this.shouldFail && this.failureCount < 3) {
+    if (this.shouldFail && this.failureCount < this.maxFailures) {
       this.failureCount++;
       throw new Error('R2 operation failed');
     }
@@ -84,7 +86,8 @@ export class MockR2Bucket {
   }
 
   async delete(keys: string | string[]): Promise<void> {
-    if (this.shouldFail) {
+    if (this.shouldFail && this.failureCount < this.maxFailures) {
+      this.failureCount++;
       throw new Error('R2 operation failed');
     }
 
@@ -100,7 +103,8 @@ export class MockR2Bucket {
     limit?: number;
     cursor?: string;
   }): Promise<R2Objects> {
-    if (this.shouldFail) {
+    if (this.shouldFail && this.failureCount < this.maxFailures) {
+      this.failureCount++;
       throw new Error('R2 operation failed');
     }
 
@@ -129,14 +133,16 @@ export class MockR2Bucket {
   }
 
   // Test helpers
-  setFailure(shouldFail: boolean): void {
+  setFailure(shouldFail: boolean, maxFailures: number = Infinity): void {
     this.shouldFail = shouldFail;
+    this.maxFailures = maxFailures;
     this.failureCount = 0;
   }
 
   clear(): void {
     this.objects.clear();
     this.shouldFail = false;
+    this.maxFailures = Infinity;
     this.failureCount = 0;
   }
 

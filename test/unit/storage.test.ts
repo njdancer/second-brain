@@ -35,7 +35,7 @@ describe('StorageService', () => {
 
     it('should retry on transient failures', async () => {
       await mockBucket.put('test/file.txt', 'content');
-      mockBucket.setFailure(true);
+      mockBucket.setFailure(true, 2); // Fail twice, then succeed
 
       const result = await storage.getObject('test/file.txt');
 
