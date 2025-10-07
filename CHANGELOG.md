@@ -10,10 +10,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Planned
-- Manual testing checklist completion
-- GitHub Actions CI/CD workflows
-- Production deployment
-- User guide documentation
+- Manual testing from Claude.ai
+- OAuth integration for authentication
+- Performance optimization
+- Multi-user support
+
+---
+
+## [1.1.0] - 2025-10-08
+
+### Summary
+
+MCP Protocol Implementation Complete - Streamable HTTP transport fully functional with all tools operational.
+
+**Status:** Phase 8 complete - MCP endpoint ready for Claude.ai integration
+**Test Coverage:** 95%+ maintained
+**Tests:** 294 passing (273 unit + 21 integration)
+
+### Added
+
+#### MCP Transport Layer
+- Streamable HTTP transport implementation (`src/mcp-transport.ts`)
+  - Full MCP SDK integration with StreamableHTTPServerTransport
+  - Session management with transport lifecycle handling
+  - Initialize request handling with server capabilities
+  - Tools/list and tools/call request handlers
+  - Prompts/list and prompts/get request handlers
+  - Rate limiting integration on tool calls
+  - Bootstrap integration on first tool execution
+  - Monitoring and metrics collection
+  - 11 unit tests covering all transport functionality
+
+#### Tool Executor
+- Tool execution router (`src/tools/executor.ts`)
+  - Dispatches MCP tool calls to actual implementations
+  - Maps tool requests to storage operations
+  - Handles all 5 tools: read, write, edit, glob, grep
+  - Error propagation and handling
+  - Result formatting for MCP protocol
+  - 18 unit tests covering all tools and edge cases
+
+#### HTTP Endpoints
+- POST /mcp - JSON-RPC message handling
+- GET /mcp - Endpoint metadata (name, version, protocol)
+- Updated index.ts with full MCP integration
+
+### Changed
+- Tool interfaces now support both test-compatible and executor patterns
+- Updated version to 1.1.0 across all files
+- PLAN.md updated to reflect Phase 8 completion
+
+### Fixed
+- Tool executor parameter ordering and type safety
+- Test compatibility with storage mocks
+- Empty result handling in glob and grep tools
 
 ---
 

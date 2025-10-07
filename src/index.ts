@@ -58,7 +58,7 @@ export function createApp(env: Env): Hono {
     return c.json({
       status: 'ok',
       service: 'second-brain-mcp',
-      version: '1.0.0',
+      version: '1.1.0',
       timestamp: new Date().toISOString(),
     });
   });
@@ -209,7 +209,7 @@ export function createApp(env: Env): Hono {
   app.get('/mcp', async (c) => {
     return c.json({
       name: 'second-brain-mcp',
-      version: '1.0.0',
+      version: '1.1.0',
       description: 'Model Context Protocol server for Building a Second Brain methodology',
       protocol: 'streamable-http',
       protocolVersion: '2025-03-26',
