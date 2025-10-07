@@ -107,6 +107,57 @@ export function createApp(env: Env): Hono {
   // Handles both GET (endpoint info) and POST (JSON-RPC messages)
   app.post('/mcp', async (c) => {
     try {
+      // Extract and validate OAuth token
+      const authHeader = c.req.header('Authorization');
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return c.json({
+          jsonrpc: '2.0',
+          error: {
+            code: -32001,
+            message: 'Missing or invalid Authorization header',
+          },
+          id: null,
+        }, 401);
+      }
+
+      const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+
+      // Validate token and get user info
+      const oauthHandler = new OAuthHandler(
+        env.OAUTH_KV,
+        null,
+        env.GITHUB_CLIENT_ID,
+        env.GITHUB_CLIENT_SECRET,
+        env.GITHUB_ALLOWED_USER_ID,
+        env.COOKIE_ENCRYPTION_KEY
+      );
+
+      const userInfo = await oauthHandler.validateToken(token);
+      if (!userInfo) {
+        return c.json({
+          jsonrpc: '2.0',
+          error: {
+            code: -32002,
+            message: 'Invalid or expired token',
+          },
+          id: null,
+        }, 401);
+      }
+
+      // Check if user is authorized
+      if (!(await oauthHandler.isUserAuthorized(userInfo.userId))) {
+        return c.json({
+          jsonrpc: '2.0',
+          error: {
+            code: -32003,
+            message: 'User not authorized',
+          },
+          id: null,
+        }, 403);
+      }
+
+      const userId = userInfo.userId;
+
       // Extract session ID from headers
       const sessionId = c.req.header('mcp-session-id');
 
@@ -129,10 +180,6 @@ export function createApp(env: Env): Hono {
           id: body.id || null,
         }, 400);
       }
-
-      // TODO: Extract user ID from OAuth token
-      // For now, use a placeholder (will be implemented with OAuth integration)
-      const userId = 'user-placeholder';
 
       // Create storage and rate limiter instances
       const storage = new StorageService(env.SECOND_BRAIN_BUCKET);

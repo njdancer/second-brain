@@ -2,8 +2,8 @@
 
 **Version:** 3.0
 **Date:** October 8, 2025
-**Status:** 🚀 v1.1.0 DEPLOYED - MCP transport working, OAuth integration needed. Server live at https://second-brain-mcp.nick-01a.workers.dev but Claude.ai connection fails due to missing OAuth token handling.
-**Last Updated:** 2025-10-08 17:15 UTC
+**Status:** 🚀 v1.2.0 READY - OAuth integration complete! Ready to deploy and test from Claude.ai.
+**Last Updated:** 2025-10-08 18:30 UTC
 
 ---
 
@@ -19,7 +19,7 @@ This plan outlines the implementation of a Model Context Protocol (MCP) server t
 - ⚠️ OAuth authentication via GitHub - **NEEDS INTEGRATION**
 - ⏳ Automated S3 backups - **PLANNED**
 
-**Blocker:** OAuth token handling not wired up in `/mcp` endpoint. Server is live but Claude.ai cannot connect without proper authentication flow.
+**Current Step:** Deploy v1.2.0 with OAuth integration and test from Claude.ai
 
 ---
 
@@ -776,13 +776,13 @@ Note: OAuth, SSE, and deployment-specific scenarios require actual deployment to
 - [ ] Verify secrets are accessible in worker
 
 #### 9.3 MCP Endpoint OAuth Integration
-- [ ] Update `/mcp` POST handler to extract Bearer token from Authorization header
-- [ ] Decrypt and validate OAuth token from KV store
-- [ ] Extract GitHub user ID from token
-- [ ] Verify user is in allowlist
-- [ ] Pass real user ID to MCP server instance (not placeholder)
-- [ ] Handle expired tokens gracefully
-- [ ] Return proper 401/403 errors for auth failures
+- [x] Update `/mcp` POST handler to extract Bearer token from Authorization header (2025-10-08)
+- [x] Decrypt and validate OAuth token from KV store (2025-10-08)
+- [x] Extract GitHub user ID from token (2025-10-08)
+- [x] Verify user is in allowlist (2025-10-08)
+- [x] Pass real user ID to MCP server instance (not placeholder) (2025-10-08)
+- [x] Handle expired tokens gracefully (2025-10-08)
+- [x] Return proper 401/403 errors for auth failures (2025-10-08)
 
 #### 9.4 End-to-End Testing
 - [ ] Connect from Claude.ai web interface

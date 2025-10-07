@@ -13,7 +13,12 @@
       "Bash(gh api:*)",
       "Bash(pnpm wrangler secret put:*)",
       "Bash(gh secret:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh run watch:*)",
+      "Bash(git tag:*)",
+      "Bash(git push:*)",
+      "Bash(pnpm wrangler secret:*)"
     ],
     "deny": [],
     "ask": []
