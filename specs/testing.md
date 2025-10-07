@@ -42,6 +42,8 @@ Heavy unit test coverage is critical due to difficulty of integration testing MC
 }
 ```
 
+**Note:** Use `pnpm` instead of `npm` for all commands.
+
 **Configuration (`jest.config.js`):**
 ```javascript
 module.exports = {
@@ -546,8 +548,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - run: npm ci
-      - run: npm test -- --coverage
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test -- --coverage
       - name: Upload coverage
         uses: codecov/codecov-action@v3
         with:
@@ -560,7 +562,7 @@ jobs:
 #!/bin/bash
 # .git/hooks/pre-commit
 
-npm test
+pnpm test
 if [ $? -ne 0 ]; then
   echo "Tests failed. Commit aborted."
   exit 1

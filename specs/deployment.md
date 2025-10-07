@@ -23,9 +23,10 @@ Prerequisites, setup steps, configuration, and rollback procedures for the Secon
 
 ### Required Software
 
-- Node.js 20+ and npm
+- [mise](https://mise.jdx.dev/) (recommended) - manages Node.js and enables pnpm via corepack
+  - Or manually: Node.js 20+ with corepack enabled for pnpm
 - Git
-- `wrangler` CLI (`npm install -g wrangler`)
+- `wrangler` CLI (`pnpm add -g wrangler`)
 
 ---
 
@@ -56,10 +57,40 @@ Or visit: `https://api.github.com/users/YOUR_USERNAME`
 
 ### 1. Clone and Install
 
+**Option A: Using mise (Recommended)**
+
 ```bash
 git clone <repo-url>
 cd second-brain-mcp
-npm install
+
+# Install mise if not already installed
+# macOS/Linux: curl https://mise.run | sh
+# Windows: See https://mise.jdx.dev/getting-started.html
+
+# Install Node.js 20 (defined in .mise.toml)
+mise install
+
+# Enable corepack for pnpm
+mise run setup
+
+# Install dependencies
+pnpm install
+```
+
+**Option B: Manual Setup**
+
+```bash
+git clone <repo-url>
+cd second-brain-mcp
+
+# Ensure Node.js 20+ is installed
+node --version
+
+# Enable corepack
+corepack enable
+
+# Install dependencies (corepack uses packageManager field in package.json)
+pnpm install
 ```
 
 ### 2. Create R2 Buckets
@@ -175,7 +206,7 @@ wrangler secret put COOKIE_ENCRYPTION_KEY --env development
 ### Run Tests
 
 ```bash
-npm test
+pnpm test
 ```
 
 Ensure all tests pass before deploying.
@@ -308,10 +339,10 @@ jobs:
         with:
           node-version: '20'
 
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
 
       - name: Run tests
-        run: npm test
+        run: pnpm test
 
       - name: Deploy to production
         run: npx wrangler deploy
@@ -338,10 +369,10 @@ Tests run automatically before rollback is deployed.
 git checkout v1.0.0
 
 # 2. Install dependencies
-npm ci
+pnpm install --frozen-lockfile
 
 # 3. Run tests
-npm test
+pnpm test
 
 # 4. Deploy
 wrangler deploy
@@ -381,8 +412,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - run: npm ci
-      - run: npm test
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
 ```
 
 **`.github/workflows/deploy.yml`** (CD):
@@ -403,8 +434,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - run: npm ci
-      - run: npm test
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
 
       - name: Deploy to production
         if: startsWith(github.ref, 'refs/tags/v')
@@ -510,12 +541,22 @@ curl -X POST \
 ### Update Dependencies
 
 ```bash
-npm update
-npm audit fix
-npm test
+pnpm update
+pnpm audit --fix
+pnpm test
 wrangler deploy --env development
 # Test thoroughly
 wrangler deploy
+```
+
+### Update Node.js Version (if using mise)
+
+```bash
+# Edit .mise.toml to change Node version
+# Then run:
+mise install
+mise run setup
+pnpm install
 ```
 
 ### Rotate Secrets

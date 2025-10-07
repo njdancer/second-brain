@@ -55,17 +55,30 @@ The Second Brain MCP provides file system-like operations over Cloudflare R2 sto
 - Cloudflare account with Workers and R2 enabled
 - GitHub account for OAuth authentication
 - AWS account for S3 backups (optional but recommended)
-- Node.js 20+ and npm
+- [mise](https://mise.jdx.dev/) for managing Node.js and pnpm (recommended)
+  - Or manually install Node.js 20+ and enable corepack for pnpm
 
 ### Basic Setup
+
+**Option 1: Using mise (Recommended)**
 
 ```bash
 # Clone repository
 git clone <repo-url>
 cd second-brain-mcp
 
+# Install mise if you haven't already
+# macOS/Linux: curl https://mise.run | sh
+# Or see https://mise.jdx.dev/getting-started.html
+
+# mise will automatically install Node.js 20 from .mise.toml
+mise install
+
+# Enable corepack for pnpm
+mise run setup
+
 # Install dependencies
-npm install
+pnpm install
 
 # Create R2 bucket and KV namespaces
 wrangler r2 bucket create second-brain
@@ -78,10 +91,29 @@ wrangler secret put GITHUB_CLIENT_SECRET
 wrangler secret put COOKIE_ENCRYPTION_KEY
 
 # Run tests
-npm test
+pnpm test
 
 # Deploy
 wrangler deploy
+```
+
+**Option 2: Manual Setup**
+
+```bash
+# Clone repository
+git clone <repo-url>
+cd second-brain-mcp
+
+# Ensure you have Node.js 20+ installed
+node --version
+
+# Enable corepack for pnpm
+corepack enable
+
+# Install dependencies (corepack will automatically install the correct pnpm version)
+pnpm install
+
+# Continue with R2 buckets, secrets, etc. (same as above)
 ```
 
 See [Deployment Guide](specs/deployment.md) for detailed instructions.
@@ -224,13 +256,13 @@ See [Roadmap](specs/roadmap.md) for complete feature plan.
 
 ```bash
 # Run all tests
-npm test
+pnpm test
 
 # Run with coverage
-npm run coverage
+pnpm run coverage
 
 # Watch mode
-npm run test:watch
+pnpm run test:watch
 ```
 
 Target: 95%+ code coverage on all core modules.
@@ -270,10 +302,23 @@ This is currently a personal project (PoC phase). Future contributions welcome a
 1. Create feature branch
 2. Write tests first
 3. Implement feature
-4. Run tests: `npm test`
-5. Deploy to dev: `wrangler deploy --env development`
+4. Run tests: `pnpm test` (or `mise run test`)
+5. Deploy to dev: `wrangler deploy --env development` (or `mise run deploy:dev`)
 6. Manual testing on dev environment
 7. Create PR with detailed description
+
+### Using mise Tasks
+
+The project includes mise task shortcuts for common commands:
+
+```bash
+mise run setup      # Enable corepack for pnpm
+mise run dev        # Start development server
+mise run test       # Run tests
+mise run build      # Run type checking
+mise run deploy     # Deploy to production
+mise run deploy:dev # Deploy to development
+```
 
 ---
 

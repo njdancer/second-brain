@@ -1,0 +1,16 @@
+# mise configuration for Second Brain MCP
+# https://mise.jdx.dev/
+
+[tools]
+node = "20"
+
+[tasks]
+# Enable corepack for pnpm
+setup = "corepack enable"
+
+# Development tasks
+dev = "pnpm run dev"
+test = "pnpm test"
+build = "pnpm run type-check"
+deploy = "wrangler deploy"
+"deploy:dev" = "wrangler deploy --env development"

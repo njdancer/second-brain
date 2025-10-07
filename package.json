@@ -1,0 +1,26 @@
+{
+  "name": "second-brain-mcp",
+  "version": "1.0.0",
+  "description": "Model Context Protocol server for Building a Second Brain methodology",
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:dev": "wrangler deploy --env development",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src/**/*.ts",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "second-brain",
+    "basb",
+    "knowledge-management",
+    "cloudflare-workers"
+  ],
+  "author": "",
+  "license": "MIT"
+}
