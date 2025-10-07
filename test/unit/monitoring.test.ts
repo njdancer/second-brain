@@ -85,6 +85,19 @@ describe('Monitoring System', () => {
 
       expect(mockAnalytics.getCount()).toBe(3);
     });
+
+    it('should handle analytics write failures gracefully', async () => {
+      // Create mock that throws errors
+      const failingAnalytics = {
+        writeDataPoint: jest.fn(() => { throw new Error('Analytics failed'); })
+      };
+
+      const monitoringWithFailure = new MonitoringService(failingAnalytics as any);
+
+      // Should not throw, just log error
+      await expect(monitoringWithFailure.recordToolCall('read', 'user1', 100, true))
+        .resolves.not.toThrow();
+    });
   });
 
   describe('recordError', () => {
@@ -114,6 +127,17 @@ describe('Monitoring System', () => {
       const hasPII = dataPoints[0].blobs?.some((b) => b.includes('user123'));
       expect(hasPII).toBeFalsy();
     });
+
+    it('should handle analytics failures in recordError', async () => {
+      const failingAnalytics = {
+        writeDataPoint: jest.fn(() => { throw new Error('Analytics failed'); })
+      };
+
+      const monitoringWithFailure = new MonitoringService(failingAnalytics as any);
+
+      await expect(monitoringWithFailure.recordError(500, 'user1', 'Error'))
+        .resolves.not.toThrow();
+    });
   });
 
   describe('recordStorageMetrics', () => {
@@ -140,6 +164,17 @@ describe('Monitoring System', () => {
       const dataPoints = mockAnalytics.getDataPoints();
       const hasUserId = dataPoints[0].blobs?.some((b) => b.includes('user123'));
       expect(hasUserId).toBeFalsy();
+    });
+
+    it('should handle analytics failures in recordStorageMetrics', async () => {
+      const failingAnalytics = {
+        writeDataPoint: jest.fn(() => { throw new Error('Analytics failed'); })
+      };
+
+      const monitoringWithFailure = new MonitoringService(failingAnalytics as any);
+
+      await expect(monitoringWithFailure.recordStorageMetrics('user1', 1000, 10))
+        .resolves.not.toThrow();
     });
   });
 
@@ -171,6 +206,17 @@ describe('Monitoring System', () => {
       const hasUserId = dataPoints[0].blobs?.some((b) => b.includes('user123'));
       expect(hasUserId).toBeFalsy();
     });
+
+    it('should handle analytics failures in recordRateLimitHit', async () => {
+      const failingAnalytics = {
+        writeDataPoint: jest.fn(() => { throw new Error('Analytics failed'); })
+      };
+
+      const monitoringWithFailure = new MonitoringService(failingAnalytics as any);
+
+      await expect(monitoringWithFailure.recordRateLimitHit('user1', 'minute', 100))
+        .resolves.not.toThrow();
+    });
   });
 
   describe('recordOAuthEvent', () => {
@@ -198,6 +244,17 @@ describe('Monitoring System', () => {
       const hasUserId = dataPoints[0].blobs?.some((b) => b.includes('user123'));
       expect(hasUserId).toBeFalsy();
     });
+
+    it('should handle analytics failures in recordOAuthEvent', async () => {
+      const failingAnalytics = {
+        writeDataPoint: jest.fn(() => { throw new Error('Analytics failed'); })
+      };
+
+      const monitoringWithFailure = new MonitoringService(failingAnalytics as any);
+
+      await expect(monitoringWithFailure.recordOAuthEvent('user1', 'success'))
+        .resolves.not.toThrow();
+    });
   });
 
   describe('recordBackupEvent', () => {
@@ -217,6 +274,17 @@ describe('Monitoring System', () => {
       await monitoring.recordBackupEvent(0, 5, 0);
 
       expect(mockAnalytics.getCount()).toBe(3);
+    });
+
+    it('should handle analytics failures in recordBackupEvent', async () => {
+      const failingAnalytics = {
+        writeDataPoint: jest.fn(() => { throw new Error('Analytics failed'); })
+      };
+
+      const monitoringWithFailure = new MonitoringService(failingAnalytics as any);
+
+      await expect(monitoringWithFailure.recordBackupEvent(10, 2, 1500000))
+        .resolves.not.toThrow();
     });
   });
 
