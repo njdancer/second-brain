@@ -92,6 +92,23 @@ describe('StorageService', () => {
         'File size exceeds limit'
       );
     });
+
+    it('should retry on putObject failures', async () => {
+      mockBucket.setFailure(true, 2); // Fail twice, then succeed
+
+      await storage.putObject('test/file.txt', 'content');
+
+      // Clear failure mode before checking
+      mockBucket.setFailure(false);
+      const obj = await mockBucket.get('test/file.txt');
+      expect(obj).not.toBeNull();
+    });
+
+    it('should throw after max retries on putObject', async () => {
+      mockBucket.setFailure(true);
+
+      await expect(storage.putObject('test.txt', 'content')).rejects.toThrow();
+    });
   });
 
   describe('deleteObject', () => {
@@ -106,6 +123,24 @@ describe('StorageService', () => {
 
     it('should not throw when deleting non-existent object', async () => {
       await expect(storage.deleteObject('nonexistent.txt')).resolves.not.toThrow();
+    });
+
+    it('should retry on deleteObject failures', async () => {
+      await mockBucket.put('test/file.txt', 'content');
+      mockBucket.setFailure(true, 2); // Fail twice, then succeed
+
+      await storage.deleteObject('test/file.txt');
+
+      // Clear failure mode before checking
+      mockBucket.setFailure(false);
+      const obj = await mockBucket.get('test/file.txt');
+      expect(obj).toBeNull();
+    });
+
+    it('should throw after max retries on deleteObject', async () => {
+      mockBucket.setFailure(true);
+
+      await expect(storage.deleteObject('test.txt')).rejects.toThrow();
     });
   });
 
@@ -139,6 +174,20 @@ describe('StorageService', () => {
         expect(obj.size).toBeGreaterThan(0);
         expect(obj.modified).toBeInstanceOf(Date);
       });
+    });
+
+    it('should retry on listObjects failures', async () => {
+      mockBucket.setFailure(true, 2); // Fail twice, then succeed
+
+      const objects = await storage.listObjects();
+
+      expect(objects).toHaveLength(4);
+    });
+
+    it('should throw after max retries on listObjects', async () => {
+      mockBucket.setFailure(true);
+
+      await expect(storage.listObjects()).rejects.toThrow();
     });
   });
 

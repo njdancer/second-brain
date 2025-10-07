@@ -6,7 +6,8 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(pnpm test:*)",
-      "Bash(pnpm run:*)"
+      "Bash(pnpm run:*)",
+      "Read(//Users/nickdancer/Code/**)"
     ],
     "deny": [],
     "ask": []
