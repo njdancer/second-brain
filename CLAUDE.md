@@ -23,14 +23,27 @@ MCP server for Building a Second Brain (BASB) methodology running on Cloudflare 
 - Use conventional commit messages: `feat:`, `fix:`, `test:`, `docs:`, `refactor:`
 - Keep commits small and focused
 
-### PLAN.md Updates
-**MUST keep PLAN.md up to date** with current progress and status.
+### Task Management via PLAN.md
+**MUST use PLAN.md as the single source of truth for task tracking.** Do NOT use TodoWrite or other task management tools.
+
+PLAN.md is a living document that you should actively update throughout development:
 - Update status after completing each phase/sub-task
 - Mark deliverables with checkboxes and completion dates
 - Add commit hashes for completed work
 - Note any blockers or issues that arise
 - Update version number and last updated timestamp
+- Add new tasks as they emerge during implementation
+- Remove or archive obsolete tasks that no longer matter
+- Reorganize sections as the project evolves
 - Commit PLAN.md updates separately with `docs: update PLAN.md with X progress`
+
+**When to update PLAN.md:**
+- After completing any deliverable
+- When discovering new work that needs to be done
+- When pivoting or changing approach
+- After encountering blockers
+- Before starting a new phase
+- When realizing tasks are no longer needed
 
 ### Testing Requirements
 - **95%+ code coverage** required (configured in jest.config.js)
@@ -39,14 +52,16 @@ MCP server for Building a Second Brain (BASB) methodology running on Cloudflare 
 - All tests must pass before deploying
 
 ### Development Workflow
-1. Write tests first
-2. Implement feature
-3. Run `pnpm test` - must pass
-4. Run `pnpm run type-check` - must pass
-5. **Commit the change**
-6. Deploy to dev: `pnpm run deploy:dev`
-7. Manual testing in dev environment
-8. Only then deploy to prod
+1. **Check PLAN.md** - Review current phase and next task
+2. Write tests first (TDD)
+3. Implement feature
+4. Run `pnpm test` - must pass
+5. Run `pnpm run type-check` - must pass
+6. **Commit the change**
+7. **Update PLAN.md** - Mark task complete, add commit hash
+8. Deploy to dev: `pnpm run deploy:dev`
+9. Manual testing in dev environment
+10. Only then deploy to prod
 
 ## Essential Commands
 
