@@ -23,6 +23,15 @@ MCP server for Building a Second Brain (BASB) methodology running on Cloudflare 
 - Use conventional commit messages: `feat:`, `fix:`, `test:`, `docs:`, `refactor:`
 - Keep commits small and focused
 
+### PLAN.md Updates
+**MUST keep PLAN.md up to date** with current progress and status.
+- Update status after completing each phase/sub-task
+- Mark deliverables with checkboxes and completion dates
+- Add commit hashes for completed work
+- Note any blockers or issues that arise
+- Update version number and last updated timestamp
+- Commit PLAN.md updates separately with `docs: update PLAN.md with X progress`
+
 ### Testing Requirements
 - **95%+ code coverage** required (configured in jest.config.js)
 - 100% coverage for all tools, OAuth, rate limiting, storage, bootstrap, backup
