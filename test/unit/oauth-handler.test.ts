@@ -114,7 +114,10 @@ describe('OAuthHandler', () => {
     it('should validate a valid token', async () => {
       // First, simulate OAuth flow to get a token
       const { access_token } = await mockGitHub.exchangeCodeForToken('valid_code');
-      await mockKV.put(`oauth:token:${allowedUserId}`, access_token);
+
+      // Store encrypted token (as the OAuth handler does)
+      const encrypted = await oauthHandler.encryptToken(access_token);
+      await mockKV.put(`oauth:token:${allowedUserId}`, encrypted);
 
       const userInfo = await oauthHandler.validateToken(access_token);
 
@@ -158,9 +161,11 @@ describe('OAuthHandler', () => {
       const oldToken = 'old_token';
       const refreshToken = 'refresh_token';
 
-      // Store old token with refresh token
-      await mockKV.put(`oauth:token:${allowedUserId}`, oldToken);
-      await mockKV.put(`oauth:refresh:${allowedUserId}`, refreshToken);
+      // Store old token with refresh token (encrypted)
+      const encryptedOld = await oauthHandler.encryptToken(oldToken);
+      const encryptedRefresh = await oauthHandler.encryptToken(refreshToken);
+      await mockKV.put(`oauth:token:${allowedUserId}`, encryptedOld);
+      await mockKV.put(`oauth:refresh:${allowedUserId}`, encryptedRefresh);
 
       const response = await oauthHandler.refreshToken(refreshToken);
 
