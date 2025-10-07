@@ -20,6 +20,7 @@ id = "40096f26b84842c3a160501230ca74ca"
 # Analytics Engine binding
 [[analytics_engine_datasets]]
 binding = "ANALYTICS"
+dataset = "second-brain-analytics"
 
 # Cron triggers for daily backup
 [triggers]
