@@ -1,2 +1,12 @@
 node_modules
 coverage/
+
+# Environment files with secrets
+.env
+.env.local
+.env.test
+.env.*.local
+
+# Keep example files
+!.env.example
+!.env.test.example
