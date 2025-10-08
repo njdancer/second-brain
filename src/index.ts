@@ -150,6 +150,12 @@ export function createApp(env: Env): Hono {
       const isInitialize = isInitializeRequest(body);
       const authHeader = c.req.header('Authorization');
 
+      console.log('MCP POST request:', {
+        method: body.method,
+        hasAuth: !!authHeader,
+        isInitialize
+      });
+
       // For initialize requests WITHOUT auth header, allow anonymous access
       // For initialize requests WITH auth header, validate the auth
       // For all other requests, require auth
@@ -184,6 +190,7 @@ export function createApp(env: Env): Hono {
 
         const userInfo = await oauthHandler.validateToken(token);
         if (!userInfo) {
+          console.log('Token validation failed');
           return c.json({
             jsonrpc: '2.0',
             error: {
@@ -194,8 +201,11 @@ export function createApp(env: Env): Hono {
           }, 401);
         }
 
+        console.log('Token validated for user:', userInfo.userId);
+
         // Check if user is authorized
         if (!(await oauthHandler.isUserAuthorized(userInfo.userId))) {
+          console.log('User not authorized:', userInfo.userId);
           return c.json({
             jsonrpc: '2.0',
             error: {
@@ -206,6 +216,7 @@ export function createApp(env: Env): Hono {
           }, 403);
         }
 
+        console.log('User authorized:', userInfo.userId);
         userId = userInfo.userId;
       } else {
         // For unauthenticated initialize requests, return OAuth information
@@ -236,11 +247,13 @@ After authentication, reconnect with your OAuth token in the Authorization heade
 
       // Extract session ID from headers
       const sessionId = c.req.header('mcp-session-id');
+      console.log('Session ID:', sessionId || 'none');
 
       // Get or create transport
       const transport = getOrCreateTransport(sessionId, isInitialize);
 
       if (!transport) {
+        console.log('No transport - invalid session or not initialize request');
         return c.json({
           jsonrpc: '2.0',
           error: {
@@ -251,12 +264,15 @@ After authentication, reconnect with your OAuth token in the Authorization heade
         }, 400);
       }
 
+      console.log('Transport created/retrieved, session:', transport.sessionId);
+
       // Create storage and rate limiter instances
       const storage = new StorageService(env.SECOND_BRAIN_BUCKET);
       const rateLimiter = new RateLimiter(env.RATE_LIMIT_KV);
 
       // Create or retrieve MCP server instance
       const server = createMCPServerInstance(storage, rateLimiter, env.ANALYTICS, userId);
+      console.log('MCP server instance created for user:', userId);
 
       // Store session if this is a new initialize request
       if (isInitialize && transport.sessionId) {
