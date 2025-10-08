@@ -111,6 +111,9 @@ export class OAuthHandler {
       return new Response(
         JSON.stringify({
           success: true,
+          access_token: tokenResponse.access_token,
+          token_type: tokenResponse.token_type || 'bearer',
+          scope: tokenResponse.scope,
           userId: userInfo.userId,
           login: userInfo.login,
         }),

@@ -65,6 +65,8 @@ describe('OAuthHandler', () => {
       const body = await response.json();
       expect(body.success).toBe(true);
       expect(body.userId).toBe(allowedUserId);
+      expect(body.access_token).toBeDefined();
+      expect(body.token_type).toBe('bearer');
     });
 
     it('should reject unauthorized users', async () => {
