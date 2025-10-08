@@ -286,13 +286,51 @@ export class OAuthHandler {
    * Exchange authorization code for access token
    */
   private async exchangeCodeForToken(code: string): Promise<TokenResponse> {
-    // Use mock GitHub API if available
+    // Use mock GitHub API if available (for testing)
     if (this.githubAPI && this.githubAPI.exchangeCodeForToken) {
       return await this.githubAPI.exchangeCodeForToken(code);
     }
 
-    // Real implementation would call GitHub API
-    throw new Error('GitHub API not configured');
+    // Real implementation: Call GitHub token endpoint
+    try {
+      const response = await fetch(GITHUB_TOKEN_URL, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'User-Agent': 'second-brain-mcp',
+        },
+        body: JSON.stringify({
+          client_id: this.clientId,
+          client_secret: this.clientSecret,
+          code: code,
+        }),
+      });
+
+      if (!response.ok) {
+        console.error('GitHub token exchange failed:', response.status, response.statusText);
+        const errorText = await response.text();
+        console.error('GitHub error response:', errorText);
+        throw new Error(`GitHub token exchange failed: ${response.statusText}`);
+      }
+
+      const data = await response.json() as any;
+
+      if (data.error) {
+        console.error('GitHub OAuth error:', data.error, data.error_description);
+        throw new Error(`GitHub OAuth error: ${data.error}`);
+      }
+
+      return {
+        access_token: data.access_token,
+        token_type: data.token_type || 'bearer',
+        scope: data.scope || '',
+        refresh_token: data.refresh_token,
+      };
+    } catch (error) {
+      console.error('Failed to exchange code for token:', error);
+      throw error;
+    }
   }
 
   /**
