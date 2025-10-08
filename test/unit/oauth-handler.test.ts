@@ -57,7 +57,15 @@ describe('OAuthHandler', () => {
   describe('handleOAuthCallback', () => {
     it('should exchange code for token and store it', async () => {
       const code = 'valid_auth_code';
-      const request = new Request(`https://example.com/oauth/callback?code=${code}`);
+      const state = 'test_state_123';
+
+      // Set up state in KV
+      await mockKV.put(`oauth:state:${state}`, JSON.stringify({
+        clientRedirectUri: null,
+        timestamp: Date.now(),
+      }));
+
+      const request = new Request(`https://example.com/oauth/callback?code=${code}&state=${state}`);
 
       const response = await oauthHandler.handleOAuthCallback(request);
 
@@ -82,7 +90,13 @@ describe('OAuthHandler', () => {
       const code = 'unauthorized_code';
       mockGitHub.setCodeForUser(code, 99999);
 
-      const request = new Request(`https://example.com/oauth/callback?code=${code}`);
+      const state = 'test_state_456';
+      await mockKV.put(`oauth:state:${state}`, JSON.stringify({
+        clientRedirectUri: null,
+        timestamp: Date.now(),
+      }));
+
+      const request = new Request(`https://example.com/oauth/callback?code=${code}&state=${state}`);
 
       const response = await oauthHandler.handleOAuthCallback(request);
 
@@ -92,7 +106,13 @@ describe('OAuthHandler', () => {
     });
 
     it('should reject invalid authorization codes', async () => {
-      const request = new Request('https://example.com/oauth/callback?code=invalid_code');
+      const state = 'test_state_789';
+      await mockKV.put(`oauth:state:${state}`, JSON.stringify({
+        clientRedirectUri: null,
+        timestamp: Date.now(),
+      }));
+
+      const request = new Request(`https://example.com/oauth/callback?code=invalid_code&state=${state}`);
 
       const response = await oauthHandler.handleOAuthCallback(request);
 
@@ -108,7 +128,42 @@ describe('OAuthHandler', () => {
 
       expect(response.status).toBe(400);
       const body = await response.json();
-      expect(body.error).toContain('Missing code');
+      expect(body.error).toContain('Missing code or state');
+    });
+
+    it('should redirect to client redirect_uri when provided', async () => {
+      const code = 'valid_auth_code';
+      const state = 'test_state_redirect';
+      const clientRedirectUri = 'https://claude.ai/callback';
+
+      // Set up state with redirect URI
+      await mockKV.put(`oauth:state:${state}`, JSON.stringify({
+        clientRedirectUri,
+        timestamp: Date.now(),
+      }));
+
+      const request = new Request(`https://example.com/oauth/callback?code=${code}&state=${state}`);
+
+      const response = await oauthHandler.handleOAuthCallback(request);
+
+      expect(response.status).toBe(302);
+      const location = response.headers.get('Location');
+      expect(location).toContain(clientRedirectUri);
+      expect(location).toContain('access_token=');
+      expect(location).toContain('token_type=bearer');
+    });
+
+    it('should reject invalid or expired state', async () => {
+      const code = 'valid_auth_code';
+      const state = 'invalid_state';
+
+      const request = new Request(`https://example.com/oauth/callback?code=${code}&state=${state}`);
+
+      const response = await oauthHandler.handleOAuthCallback(request);
+
+      expect(response.status).toBe(400);
+      const body = await response.json();
+      expect(body.error).toContain('Invalid or expired state');
     });
   });
 

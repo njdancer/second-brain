@@ -39,8 +39,20 @@ export class OAuthHandler {
     const url = new URL(request.url);
     const state = this.generateState();
 
-    // Store state for CSRF protection
-    await this.kv.put(`oauth:state:${state}`, 'pending', { expirationTtl: 600 });
+    // Get the client's redirect_uri (where to send them after auth)
+    const clientRedirectUri = url.searchParams.get('redirect_uri');
+
+    console.log('OAuth authorize request:', {
+      clientRedirectUri,
+      state,
+    });
+
+    // Store state and client redirect URI for later
+    const stateData = JSON.stringify({
+      clientRedirectUri,
+      timestamp: Date.now(),
+    });
+    await this.kv.put(`oauth:state:${state}`, stateData, { expirationTtl: 600 });
 
     const authUrl = new URL(GITHUB_AUTH_URL);
     authUrl.searchParams.set('client_id', this.clientId);
@@ -60,15 +72,34 @@ export class OAuthHandler {
       const code = url.searchParams.get('code');
       const state = url.searchParams.get('state');
 
-      if (!code) {
-        return new Response(JSON.stringify({ error: 'Missing code parameter' }), {
+      if (!code || !state) {
+        return new Response(JSON.stringify({ error: 'Missing code or state parameter' }), {
           status: 400,
           headers: { 'Content-Type': 'application/json' },
         });
       }
 
-      // Verify state for CSRF protection (in real implementation)
-      // For testing, we skip state verification if githubAPI is a mock
+      // Verify state and get client redirect URI
+      const stateDataStr = await this.kv.get(`oauth:state:${state}`);
+      if (!stateDataStr) {
+        console.error('Invalid or expired state:', state);
+        return new Response(JSON.stringify({ error: 'Invalid or expired state' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
+      const stateData = JSON.parse(stateDataStr);
+      const clientRedirectUri = stateData.clientRedirectUri;
+
+      console.log('OAuth callback:', {
+        hasCode: !!code,
+        hasState: !!state,
+        clientRedirectUri,
+      });
+
+      // Delete state (one-time use)
+      await this.kv.delete(`oauth:state:${state}`);
 
       // Exchange code for token
       const tokenResponse = await this.exchangeCodeForToken(code);
@@ -108,6 +139,19 @@ export class OAuthHandler {
         });
       }
 
+      // If client provided a redirect URI, redirect back with the token
+      if (clientRedirectUri) {
+        const redirectUrl = new URL(clientRedirectUri);
+        redirectUrl.searchParams.set('access_token', tokenResponse.access_token);
+        redirectUrl.searchParams.set('token_type', tokenResponse.token_type || 'bearer');
+        redirectUrl.searchParams.set('scope', tokenResponse.scope);
+
+        console.log('Redirecting to client:', redirectUrl.origin);
+
+        return Response.redirect(redirectUrl.toString(), 302);
+      }
+
+      // Fallback: return JSON (for testing/debugging)
       return new Response(
         JSON.stringify({
           success: true,
