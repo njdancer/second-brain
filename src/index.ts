@@ -324,8 +324,18 @@ After authentication, reconnect with your OAuth token in the Authorization heade
       // Handle the request
       await transport.handleRequest(req as any, nodeResponse as any, body);
 
+      // Get the response body
+      const finalResponse = nodeResponse.end();
+      const responseBody = await finalResponse.text();
+
+      console.log('MCP Response status:', responseStatus);
+      console.log('MCP Response body:', responseBody.substring(0, 500));
+
       // Return the response
-      return nodeResponse.end();
+      return new Response(responseBody, {
+        status: responseStatus,
+        headers: responseHeaders,
+      });
 
     } catch (error) {
       console.error('MCP endpoint error:', error);
