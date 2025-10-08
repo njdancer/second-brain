@@ -83,7 +83,7 @@ export function createApp(env: Env): Hono {
     }
   });
 
-  // OAuth callback endpoint
+  // OAuth callback endpoint (browser redirect from GitHub)
   app.get('/oauth/callback', async (c) => {
     try {
       const oauthHandler = new OAuthHandler(
@@ -100,6 +100,44 @@ export function createApp(env: Env): Hono {
     } catch (error) {
       console.error('OAuth callback error:', error);
       return c.json({ error: 'Failed to complete OAuth flow' }, 500);
+    }
+  });
+
+  // OAuth token endpoint (server-to-server token exchange)
+  app.post('/oauth/token', async (c) => {
+    try {
+      const oauthHandler = new OAuthHandler(
+        env.OAUTH_KV,
+        null,
+        env.GITHUB_CLIENT_ID,
+        env.GITHUB_CLIENT_SECRET,
+        env.GITHUB_ALLOWED_USER_ID,
+        env.COOKIE_ENCRYPTION_KEY
+      );
+
+      const body = await c.req.parseBody();
+      const code = body.code as string;
+      const grantType = body.grant_type as string;
+
+      if (grantType !== 'authorization_code') {
+        return c.json({ error: 'unsupported_grant_type' }, 400);
+      }
+
+      if (!code) {
+        return c.json({ error: 'invalid_request', error_description: 'Missing code parameter' }, 400);
+      }
+
+      // Exchange code for token
+      const result = await oauthHandler.handleTokenExchange(code);
+
+      if (!result) {
+        return c.json({ error: 'invalid_grant', error_description: 'Invalid authorization code or user not authorized' }, 400);
+      }
+
+      return c.json(result);
+    } catch (error) {
+      console.error('OAuth token endpoint error:', error);
+      return c.json({ error: 'server_error', error_description: 'Failed to exchange token' }, 500);
     }
   });
 

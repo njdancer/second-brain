@@ -135,6 +135,57 @@ export class OAuthHandler {
   }
 
   /**
+   * Handle OAuth token endpoint (exchange code for token)
+   */
+  async handleTokenExchange(code: string): Promise<{
+    access_token: string;
+    token_type: string;
+    scope: string;
+    expires_in: number;
+  } | null> {
+    try {
+      // Exchange code for token
+      const tokenResponse = await this.exchangeCodeForToken(code);
+
+      // Get user info
+      const userInfo = await this.getUserFromToken(tokenResponse.access_token);
+
+      if (!userInfo) {
+        return null;
+      }
+
+      // Check if user is authorized
+      if (!(await this.isUserAuthorized(userInfo.userId))) {
+        return null;
+      }
+
+      // Encrypt and store token
+      const encryptedToken = await this.encryptToken(tokenResponse.access_token);
+      await this.kv.put(`oauth:token:${userInfo.userId}`, encryptedToken, {
+        expirationTtl: TOKEN_TTL,
+      });
+
+      // Store refresh token if provided
+      if (tokenResponse.refresh_token) {
+        const encryptedRefresh = await this.encryptToken(tokenResponse.refresh_token);
+        await this.kv.put(`oauth:refresh:${userInfo.userId}`, encryptedRefresh, {
+          expirationTtl: TOKEN_TTL * 2,
+        });
+      }
+
+      return {
+        access_token: tokenResponse.access_token,
+        token_type: tokenResponse.token_type || 'bearer',
+        scope: tokenResponse.scope,
+        expires_in: 3600,
+      };
+    } catch (error) {
+      console.error('Token exchange error:', error);
+      return null;
+    }
+  }
+
+  /**
    * Validate a token and return user info
    */
   async validateToken(token: string): Promise<UserInfo | null> {
