@@ -8,28 +8,43 @@ This test client helps identify whether connection issues are server-side or cli
 
 ## Setup
 
-1. Copy the example configuration file:
+### Quick Setup for OAuth Testing
+
+**See [LOCAL-OAUTH-SETUP.md](../LOCAL-OAUTH-SETUP.md) for detailed step-by-step instructions!**
+
+**Quick version:**
+
+1. Create a GitHub OAuth app at https://github.com/settings/developers
+   - Callback URL: `http://localhost:3000/callback`
+
+2. Copy configuration file:
    ```bash
    cp .env.test.example .env.test
    ```
 
-2. Fill in your configuration in `.env.test`:
-   - `MCP_SERVER_URL`: Your MCP server URL (default: production)
-   - `GITHUB_OAUTH_TOKEN`: Your GitHub OAuth token (for authenticated tests)
-   - `TEST_USER_ID`: Your GitHub user ID
+3. Add your OAuth app credentials to `.env.test`:
+   ```bash
+   GITHUB_CLIENT_ID_LOCAL=<your_client_id>
+   GITHUB_CLIENT_SECRET_LOCAL=<your_client_secret>
+   ```
 
-### Getting an OAuth Token
+### Alternative: Quick Testing Without OAuth Setup
 
-**Option 1: Manual OAuth Flow**
-1. Visit your server's OAuth URL: `https://second-brain-mcp.nick-01a.workers.dev/oauth/authorize`
-2. Complete GitHub authorization
-3. Extract the token from browser DevTools (Application > Local Storage or Network tab)
+**Use a GitHub Personal Access Token:**
 
-**Option 2: GitHub Personal Access Token**
-1. Go to https://github.com/settings/tokens
-2. Generate new token (classic)
-3. Select scope: `read:user`
-4. Copy token to `.env.test`
+1. Generate token: https://github.com/settings/tokens/new
+   - Scope: `read:user` only
+   - Copy token
+
+2. Add to `.env.test`:
+   ```bash
+   GITHUB_OAUTH_TOKEN=ghp_xxxxxxxxxxxx
+   ```
+
+3. Run quick tests:
+   ```bash
+   pnpm run test:mcp:quick
+   ```
 
 ## Usage
 

@@ -21,7 +21,9 @@ import fetch from 'node-fetch';
 dotenv.config({ path: '.env.test' });
 
 const SERVER_URL = process.env.MCP_SERVER_URL || 'https://second-brain-mcp.nick-01a.workers.dev';
-const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID;
+const GITHUB_CLIENT_ID_LOCAL = process.env.GITHUB_CLIENT_ID_LOCAL;
+const GITHUB_CLIENT_SECRET_LOCAL = process.env.GITHUB_CLIENT_SECRET_LOCAL;
+const CALLBACK_PORT = parseInt(process.env.CALLBACK_PORT || '3000');
 
 interface OAuthResult {
   success: boolean;
@@ -104,68 +106,73 @@ function startCallbackServer(port: number): Promise<OAuthResult> {
 
 /**
  * Exchange authorization code for access token
- * This is what the server SHOULD do, but we need to check if it's exposed
+ * We do this DIRECTLY with GitHub (not through the server)
+ * to test if the server's OAuth callback properly returns the token
  */
 async function exchangeCodeForToken(code: string): Promise<{ access_token: string; userId?: string }> {
-  console.log(chalk.gray('Exchanging code for token...'));
+  console.log(chalk.gray('Exchanging code for token with GitHub...'));
 
-  // Try calling the server's callback endpoint
-  const response = await fetch(`${SERVER_URL}/oauth/callback?code=${code}`, {
-    method: 'GET',
+  if (!GITHUB_CLIENT_ID_LOCAL || !GITHUB_CLIENT_SECRET_LOCAL) {
+    throw new Error('GITHUB_CLIENT_ID_LOCAL and GITHUB_CLIENT_SECRET_LOCAL must be set');
+  }
+
+  // Exchange code for token with GitHub
+  const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    },
+    body: JSON.stringify({
+      client_id: GITHUB_CLIENT_ID_LOCAL,
+      client_secret: GITHUB_CLIENT_SECRET_LOCAL,
+      code,
+    }),
   });
 
-  const data = await response.json() as any;
+  const tokenData = await tokenResponse.json() as any;
 
-  console.log(chalk.gray('Server response:'), JSON.stringify(data, null, 2));
-
-  if (data.error) {
-    throw new Error(data.error);
+  if (tokenData.error) {
+    throw new Error(`GitHub OAuth error: ${tokenData.error_description || tokenData.error}`);
   }
 
-  // Check if server returned a token (it currently doesn't!)
-  if (data.access_token) {
-    return {
-      access_token: data.access_token,
-      userId: data.userId,
-    };
+  if (!tokenData.access_token) {
+    throw new Error('No access_token in GitHub response');
   }
 
-  // Server only returns userId/login but not the token!
-  // This is the BUG - we need to fix the server to return the token
-  if (data.success && data.userId) {
-    console.log(chalk.yellow('\n⚠️  SERVER BUG DETECTED:'));
-    console.log(chalk.yellow('The server callback returns:'));
-    console.log(chalk.yellow(JSON.stringify(data, null, 2)));
-    console.log(chalk.yellow('\nBut it does NOT return the access_token!'));
-    console.log(chalk.yellow('MCP clients need the token to send in Authorization headers.'));
-    console.log(chalk.yellow('\nThe server needs to be fixed to return:'));
-    console.log(chalk.yellow(JSON.stringify({
-      success: true,
-      access_token: '<github_token>',
-      token_type: 'bearer',
-      userId: data.userId,
-      login: data.login,
-    }, null, 2)));
+  console.log(chalk.green('✅ Got access token from GitHub!'));
 
-    throw new Error('Server callback does not return access_token');
-  }
+  // Get user info
+  const userResponse = await fetch('https://api.github.com/user', {
+    headers: {
+      'Authorization': `Bearer ${tokenData.access_token}`,
+      'Accept': 'application/vnd.github.v3+json',
+    },
+  });
 
-  throw new Error('Unexpected server response');
+  const userData = await userResponse.json() as any;
+
+  console.log(chalk.gray('GitHub user:'), userData.login, `(ID: ${userData.id})`);
+
+  return {
+    access_token: tokenData.access_token,
+    userId: userData.id.toString(),
+  };
 }
 
 /**
  * Generate OAuth URL with localhost redirect
  */
 function generateOAuthUrl(port: number): string {
-  if (!GITHUB_CLIENT_ID) {
-    throw new Error('GITHUB_CLIENT_ID not set in environment');
+  if (!GITHUB_CLIENT_ID_LOCAL) {
+    throw new Error('GITHUB_CLIENT_ID_LOCAL not set in .env.test - see setup instructions');
   }
 
   const redirectUri = `http://localhost:${port}/callback`;
   const state = Math.random().toString(36).substring(7);
 
   const authUrl = new URL('https://github.com/login/oauth/authorize');
-  authUrl.searchParams.set('client_id', GITHUB_CLIENT_ID);
+  authUrl.searchParams.set('client_id', GITHUB_CLIENT_ID_LOCAL);
   authUrl.searchParams.set('redirect_uri', redirectUri);
   authUrl.searchParams.set('scope', 'read:user');
   authUrl.searchParams.set('state', state);
@@ -183,20 +190,23 @@ async function main() {
 
   // Step 1: Start callback server
   console.log(chalk.blue('\n📡 Step 1: Starting local callback server...'));
-  const port = 3000 + Math.floor(Math.random() * 1000); // Random port
-  const callbackPromise = startCallbackServer(port);
+  console.log(chalk.gray(`Using port: ${CALLBACK_PORT} (set CALLBACK_PORT in .env.test to change)`));
+  const callbackPromise = startCallbackServer(CALLBACK_PORT);
 
   // Step 2: Generate OAuth URL
   console.log(chalk.blue('\n🔗 Step 2: Generating OAuth URL...'));
   let oauthUrl: string;
   try {
-    oauthUrl = generateOAuthUrl(port);
+    oauthUrl = generateOAuthUrl(CALLBACK_PORT);
     console.log(chalk.gray('OAuth URL:'), oauthUrl);
   } catch (error: any) {
     console.log(chalk.red('\n❌ Failed to generate OAuth URL:'), error.message);
-    console.log(chalk.yellow('\nTo fix: Set GITHUB_CLIENT_ID in .env.test'));
-    console.log(chalk.gray('You can get this from the Cloudflare Worker secrets:'));
-    console.log(chalk.gray('  pnpm wrangler secret list'));
+    console.log(chalk.yellow('\n📋 Setup Instructions:'));
+    console.log(chalk.yellow('1. Create a GitHub OAuth App at: https://github.com/settings/developers'));
+    console.log(chalk.yellow('2. Set callback URL to: http://localhost:3000/callback'));
+    console.log(chalk.yellow('3. Add to .env.test:'));
+    console.log(chalk.gray('   GITHUB_CLIENT_ID_LOCAL=<your_client_id>'));
+    console.log(chalk.gray('   GITHUB_CLIENT_SECRET_LOCAL=<your_client_secret>'));
     process.exit(1);
   }
 
