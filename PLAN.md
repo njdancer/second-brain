@@ -1,9 +1,9 @@
 # Second Brain MCP Implementation Plan
 
-**Version:** 3.3
-**Date:** October 8, 2025
-**Status:** ✅ E2E Testing Overhaul COMPLETE - Production deployment verification operational
-**Last Updated:** 2025-10-08 14:30 UTC
+**Version:** 3.4
+**Date:** October 9, 2025
+**Status:** 🚀 Deploying v1.2.3 with OAuth 2.1 discovery endpoints and comprehensive E2E testing
+**Last Updated:** 2025-10-09 UTC
 
 ---
 
@@ -11,19 +11,19 @@
 
 This plan outlines the implementation of a Model Context Protocol (MCP) server that enables Claude to function as a personal knowledge management assistant using the Building a Second Brain (BASB) methodology. The server is deployed on Cloudflare Workers with R2 storage, providing file-like operations over a cloud-based second brain accessible from any Claude client (desktop, web, mobile).
 
-**Current Status (v1.2.4):**
+**Current Status (v1.2.3):**
 - ✅ MCP server with 5 core tools (read, write, edit, glob, grep) - **DEPLOYED**
 - ✅ Rate limiting and storage quotas - **IMPLEMENTED**
 - ✅ Bootstrap system for new users - **IMPLEMENTED**
 - ✅ Comprehensive test coverage (299 tests passing) - **COMPLETE**
 - ✅ OAuth authentication via GitHub - **DEPLOYED**
-- ✅ OAuth discovery for unauthenticated clients - **FIXED (v1.2.2)**
-- ✅ MCP response handling fixed - **FIXED (v1.2.3)** - Tools now properly returned to authenticated clients
-- ✅ **E2E testing & deployment verification** - **IMPLEMENTED** - Automatic rollback on failed smoke tests
-- ✅ **Critical bug fixes deployed** - OAuth callback & token validation fixed
+- ✅ **OAuth 2.1 discovery endpoints** - **READY TO DEPLOY (v1.2.3)**
+- ✅ **OAuth token endpoint (/oauth/token)** - **READY TO DEPLOY (v1.2.3)**
+- ✅ **Comprehensive E2E testing with mock OAuth** - **IMPLEMENTED (v1.2.3)**
+- ✅ **Debug logging for MCP endpoint** - **IMPLEMENTED (v1.2.3)**
 - ⏳ Automated S3 backups - **PLANNED**
 
-**Current Step:** Production is stable with automatic deployment verification. Next: Complete OAuth flow testing from Claude clients
+**Current Step:** Deploying v1.2.3 to production to enable proper OAuth discovery for Claude.ai clients
 
 **Progress:**
 - ✅ MCP test client implemented (9 scenarios)

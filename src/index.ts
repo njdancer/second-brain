@@ -227,7 +227,7 @@ export function createApp(env: Env): Hono {
             protocolVersion: '2024-11-05',
             serverInfo: {
               name: 'second-brain-mcp',
-              version: '1.2.1',
+              version: '1.2.3',
             },
             capabilities: {
               tools: {},
