@@ -302,6 +302,44 @@ After authentication, reconnect with your OAuth token in the Authorization heade
     });
   });
 
+  // OAuth 2.1 Authorization Server Metadata (RFC 8414)
+  app.get('/.well-known/oauth-authorization-server', async (c) => {
+    const baseUrl = new URL(c.req.url).origin;
+    return c.json({
+      issuer: baseUrl,
+      authorization_endpoint: `${baseUrl}/oauth/authorize`,
+      token_endpoint: `${baseUrl}/oauth/token`,
+      registration_endpoint: `${baseUrl}/register`,
+      scopes_supported: ['read:user'],
+      response_types_supported: ['code'],
+      grant_types_supported: ['authorization_code', 'refresh_token'],
+      token_endpoint_auth_methods_supported: ['client_secret_post', 'client_secret_basic'],
+    });
+  });
+
+  // OAuth 2.1 Protected Resource Metadata
+  app.get('/.well-known/oauth-protected-resource/mcp', async (c) => {
+    const baseUrl = new URL(c.req.url).origin;
+    return c.json({
+      resource: `${baseUrl}/mcp`,
+      authorization_servers: [baseUrl],
+      scopes_supported: ['read:user'],
+      bearer_methods_supported: ['header'],
+    });
+  });
+
+  // Dynamic Client Registration (RFC 7591) - Simplified
+  app.post('/register', async (c) => {
+    // For now, return metadata pointing to our OAuth app
+    // In a full implementation, this would create a new OAuth client
+    return c.json({
+      client_id: 'use-github-oauth-app',
+      client_secret: 'n/a',
+      authorization_endpoint: new URL('/oauth/authorize', c.req.url).toString(),
+      token_endpoint: new URL('/oauth/token', c.req.url).toString(),
+    });
+  });
+
   // Manual backup trigger endpoint
   // This will be implemented in Phase 4
   app.post('/admin/backup', async (c) => {
