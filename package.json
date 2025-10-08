@@ -16,6 +16,8 @@
     "test:mcp:full": "tsx scripts/test-mcp-client.ts full",
     "test:mcp:scenario": "tsx scripts/test-mcp-client.ts scenario",
     "test:mcp:oauth": "tsx scripts/test-mcp-with-oauth.ts",
+    "test:e2e:full": "jest --config=jest.e2e.config.js test/e2e/full-flow.e2e.ts",
+    "mock:oauth": "tsx scripts/mock-oauth-server.ts",
     "lint": "eslint src/**/*.ts",
     "type-check": "tsc --noEmit"
   },
