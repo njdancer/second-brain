@@ -275,11 +275,16 @@ After authentication, reconnect with your OAuth token in the Authorization heade
 
     } catch (error) {
       console.error('MCP endpoint error:', error);
+      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+      console.error('Error message:', error instanceof Error ? error.message : String(error));
       return c.json({
         jsonrpc: '2.0',
         error: {
           code: -32603,
           message: 'Internal server error',
+          data: {
+            error: error instanceof Error ? error.message : String(error),
+          },
         },
         id: null,
       }, 500);
