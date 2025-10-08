@@ -131,10 +131,10 @@ describe('OAuthHandler', () => {
       expect(body.error).toContain('Missing code or state');
     });
 
-    it('should redirect to client redirect_uri when provided', async () => {
+    it('should redirect to client redirect_uri with authorization code', async () => {
       const code = 'valid_auth_code';
       const state = 'test_state_redirect';
-      const clientRedirectUri = 'https://claude.ai/callback';
+      const clientRedirectUri = 'https://claude.ai/api/mcp/auth_callback';
 
       // Set up state with redirect URI
       await mockKV.put(`oauth:state:${state}`, JSON.stringify({
@@ -149,8 +149,9 @@ describe('OAuthHandler', () => {
       expect(response.status).toBe(302);
       const location = response.headers.get('Location');
       expect(location).toContain(clientRedirectUri);
-      expect(location).toContain('access_token=');
-      expect(location).toContain('token_type=bearer');
+      expect(location).toContain('code='); // Should be an auth code, not access token
+      expect(location).toContain(`state=${state}`); // Should echo back the state
+      expect(location).not.toContain('access_token'); // Should NOT contain the token
     });
 
     it('should reject invalid or expired state', async () => {
@@ -164,6 +165,49 @@ describe('OAuthHandler', () => {
       expect(response.status).toBe(400);
       const body = await response.json();
       expect(body.error).toContain('Invalid or expired state');
+    });
+  });
+
+  describe('handleTokenExchange', () => {
+    it('should exchange authorization code for access token', async () => {
+      const authCode = 'test_auth_code_123';
+      const accessToken = 'gho_test_access_token';
+
+      // Store authorization code data
+      await mockKV.put(`oauth:code:${authCode}`, JSON.stringify({
+        accessToken,
+        tokenType: 'bearer',
+        scope: 'read:user',
+        userId: allowedUserId,
+        timestamp: Date.now(),
+      }));
+
+      const result = await oauthHandler.handleTokenExchange(authCode);
+
+      expect(result).not.toBeNull();
+      expect(result!.access_token).toBe(accessToken);
+      expect(result!.token_type).toBe('bearer');
+      expect(result!.scope).toBe('read:user');
+      expect(result!.expires_in).toBeGreaterThan(0);
+
+      // Code should be deleted after use
+      const codeStillExists = await mockKV.get(`oauth:code:${authCode}`);
+      expect(codeStillExists).toBeNull();
+    });
+
+    it('should reject invalid authorization code', async () => {
+      const result = await oauthHandler.handleTokenExchange('invalid_code');
+
+      expect(result).toBeNull();
+    });
+
+    it('should reject expired authorization code', async () => {
+      const authCode = 'expired_code';
+
+      // Don't store the code (simulates expired/deleted code)
+      const result = await oauthHandler.handleTokenExchange(authCode);
+
+      expect(result).toBeNull();
     });
   });
 

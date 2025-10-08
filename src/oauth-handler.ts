@@ -139,14 +139,28 @@ export class OAuthHandler {
         });
       }
 
-      // If client provided a redirect URI, redirect back with the token
+      // If client provided a redirect URI, redirect back with an authorization code
       if (clientRedirectUri) {
-        const redirectUrl = new URL(clientRedirectUri);
-        redirectUrl.searchParams.set('access_token', tokenResponse.access_token);
-        redirectUrl.searchParams.set('token_type', tokenResponse.token_type || 'bearer');
-        redirectUrl.searchParams.set('scope', tokenResponse.scope);
+        // Generate a temporary authorization code for the client to exchange
+        const authCode = this.generateState(); // Reuse state generator for auth code
 
-        console.log('Redirecting to client:', redirectUrl.origin);
+        // Store the token with the auth code for later exchange
+        const codeData = JSON.stringify({
+          accessToken: tokenResponse.access_token,
+          tokenType: tokenResponse.token_type || 'bearer',
+          scope: tokenResponse.scope,
+          userId: userInfo.userId,
+          timestamp: Date.now(),
+        });
+
+        // Authorization code expires in 5 minutes
+        await this.kv.put(`oauth:code:${authCode}`, codeData, { expirationTtl: 300 });
+
+        const redirectUrl = new URL(clientRedirectUri);
+        redirectUrl.searchParams.set('code', authCode);
+        redirectUrl.searchParams.set('state', state); // Echo back the state for client verification
+
+        console.log('Redirecting to client with auth code:', redirectUrl.origin);
 
         return Response.redirect(redirectUrl.toString(), 302);
       }
@@ -188,40 +202,30 @@ export class OAuthHandler {
     expires_in: number;
   } | null> {
     try {
-      // Exchange code for token
-      const tokenResponse = await this.exchangeCodeForToken(code);
+      // Look up the authorization code that we generated
+      const codeDataStr = await this.kv.get(`oauth:code:${code}`);
 
-      // Get user info
-      const userInfo = await this.getUserFromToken(tokenResponse.access_token);
-
-      if (!userInfo) {
+      if (!codeDataStr) {
+        console.error('Invalid or expired authorization code');
         return null;
       }
 
-      // Check if user is authorized
-      if (!(await this.isUserAuthorized(userInfo.userId))) {
-        return null;
-      }
+      // Parse the stored token data
+      const codeData = JSON.parse(codeDataStr);
 
-      // Encrypt and store token
-      const encryptedToken = await this.encryptToken(tokenResponse.access_token);
-      await this.kv.put(`oauth:token:${userInfo.userId}`, encryptedToken, {
-        expirationTtl: TOKEN_TTL,
+      // Delete the code (one-time use)
+      await this.kv.delete(`oauth:code:${code}`);
+
+      console.log('Exchanged authorization code for access token', {
+        userId: codeData.userId,
+        scope: codeData.scope,
       });
 
-      // Store refresh token if provided
-      if (tokenResponse.refresh_token) {
-        const encryptedRefresh = await this.encryptToken(tokenResponse.refresh_token);
-        await this.kv.put(`oauth:refresh:${userInfo.userId}`, encryptedRefresh, {
-          expirationTtl: TOKEN_TTL * 2,
-        });
-      }
-
       return {
-        access_token: tokenResponse.access_token,
-        token_type: tokenResponse.token_type || 'bearer',
-        scope: tokenResponse.scope,
-        expires_in: 3600,
+        access_token: codeData.accessToken,
+        token_type: codeData.tokenType,
+        scope: codeData.scope,
+        expires_in: TOKEN_TTL,
       };
     } catch (error) {
       console.error('Token exchange error:', error);
