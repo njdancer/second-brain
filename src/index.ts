@@ -49,8 +49,9 @@ export function createApp(env: Env): Hono {
   // CORS middleware
   app.use('*', cors({
     origin: '*',
-    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowHeaders: ['Content-Type', 'Authorization'],
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'HEAD'],
+    allowHeaders: ['Content-Type', 'Authorization', 'mcp-protocol-version', 'mcp-session-id'],
+    exposeHeaders: ['mcp-session-id'],
   }));
 
   // Health check endpoint
@@ -150,11 +151,12 @@ export function createApp(env: Env): Hono {
       const isInitialize = isInitializeRequest(body);
       const authHeader = c.req.header('Authorization');
 
-      console.log('MCP POST request:', {
-        method: body.method,
-        hasAuth: !!authHeader,
-        isInitialize
-      });
+      console.log('MCP POST request received');
+      console.log('Request method:', body.method);
+      console.log('Request ID:', body.id);
+      console.log('Has Authorization header:', !!authHeader);
+      console.log('Is initialize request:', isInitialize);
+      console.log('Request body:', JSON.stringify(body));
 
       // For initialize requests WITHOUT auth header, allow anonymous access
       // For initialize requests WITH auth header, validate the auth
@@ -162,8 +164,10 @@ export function createApp(env: Env): Hono {
       let userId: string;
 
       const requiresAuth = !isInitialize || (isInitialize && authHeader);
+      console.log('Requires auth:', requiresAuth);
 
       if (requiresAuth) {
+        console.log('Entering auth validation block');
         // Extract and validate OAuth token
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
           return c.json({
@@ -219,6 +223,7 @@ export function createApp(env: Env): Hono {
         console.log('User authorized:', userInfo.userId);
         userId = userInfo.userId;
       } else {
+        console.log('Returning OAuth info for unauthenticated initialize request');
         // For unauthenticated initialize requests, return OAuth information
         // without creating a full session
         return c.json({
