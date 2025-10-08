@@ -248,7 +248,7 @@ export class OAuthHandler {
    * Get user info from access token
    */
   private async getUserFromToken(token: string): Promise<UserInfo | null> {
-    // Use mock GitHub API if available
+    // Use mock GitHub API if available (for testing)
     if (this.githubAPI && this.githubAPI.getUserInfo) {
       const user = await this.githubAPI.getUserInfo(token);
       if (!user) return null;
@@ -261,8 +261,33 @@ export class OAuthHandler {
       };
     }
 
-    // Real implementation would call GitHub API
-    return null;
+    // Real implementation: Call GitHub API directly
+    try {
+      const response = await fetch('https://api.github.com/user', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'User-Agent': 'second-brain-mcp',
+        },
+      });
+
+      if (!response.ok) {
+        console.error('GitHub API error:', response.status, response.statusText);
+        return null;
+      }
+
+      const user = await response.json() as any;
+
+      return {
+        userId: user.id.toString(),
+        login: user.login,
+        name: user.name || '',
+        email: user.email || '',
+      };
+    } catch (error) {
+      console.error('Failed to fetch user from GitHub:', error);
+      return null;
+    }
   }
 
   /**
