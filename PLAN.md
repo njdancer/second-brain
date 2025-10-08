@@ -21,7 +21,9 @@ This plan outlines the implementation of a Model Context Protocol (MCP) server t
 - ✅ MCP response handling fixed - **FIXED (v1.2.3)** - Tools now properly returned to authenticated clients
 - ⏳ Automated S3 backups - **PLANNED**
 
-**Current Step:** Deploy v1.2.3 and test tool visibility from Claude desktop/mobile
+**Current Step:** Build MCP client test script to debug connection issues
+
+**Critical Issue:** Desktop shows no tools, mobile fails to generate OAuth URL. Need programmatic test client to verify each step of the MCP protocol independently.
 
 ---
 
@@ -820,6 +822,431 @@ Note: OAuth, SSE, and deployment-specific scenarios require actual deployment to
 - [ ] Bootstrap runs on first connection for new users
 
 **Status:** ✅ OAUTH CODE COMPLETE - Ready to deploy v1.2.0 and test from Claude.ai
+
+---
+
+### Phase 10: MCP Client Test Script (URGENT - 2-3 hours)
+
+**Objective:** Build comprehensive test client that simulates Claude's MCP connection flow to debug and verify server behavior
+
+**Current Issue:** Despite successful deployments (v1.2.3), Claude desktop shows no tools and mobile fails to generate OAuth URL. Need programmatic test to isolate whether issue is server-side or client-side.
+
+**What This Will Prove:**
+1. Server correctly implements MCP Streamable HTTP protocol
+2. OAuth flow works end-to-end
+3. All tools are discoverable and callable
+4. Session management works correctly
+5. Response formatting matches MCP spec
+
+**Script Requirements:**
+
+#### 10.1 Test Script Structure (`test-client.ts`)
+
+**Location:** `scripts/test-mcp-client.ts`
+
+**Dependencies:**
+- `@modelcontextprotocol/sdk` - Use official client library
+- `node-fetch` - For HTTP requests
+- `open` - For OAuth browser flow
+- `chalk` - For colored output
+- Configuration via `.env.test`
+
+**Configuration File (`.env.test`):**
+```bash
+MCP_SERVER_URL=https://second-brain-mcp.nick-01a.workers.dev
+GITHUB_OAUTH_TOKEN=<manually_obtained_token>  # For quick auth testing
+TEST_USER_ID=<github_user_id>
+```
+
+#### 10.2 Test Scenarios (in order)
+
+**Scenario 1: Discovery (Unauthenticated Initialize)**
+```typescript
+// Test: POST /mcp with initialize, no Authorization header
+// Expected: Returns server info with OAuth instructions
+// Validates: Discovery flow for new clients
+```
+**Checks:**
+- ✅ Response status 200
+- ✅ `result.protocolVersion` = "2024-11-05"
+- ✅ `result.serverInfo.name` = "second-brain-mcp"
+- ✅ `result.instructions` contains OAuth URL
+- ✅ No session ID in response (since unauthenticated)
+
+**Scenario 2: OAuth Authorization URL Generation**
+```typescript
+// Test: GET /oauth/authorize
+// Expected: 302 redirect to GitHub with correct params
+// Validates: OAuth URL generation working
+```
+**Checks:**
+- ✅ Response status 302
+- ✅ Location header contains github.com/login/oauth/authorize
+- ✅ Query params include: client_id, redirect_uri, scope=read:user, state
+- ✅ State is stored in KV (simulate callback verification)
+
+**Scenario 3: OAuth Callback Simulation**
+```typescript
+// Test: GET /oauth/callback?code=TEST_CODE&state=<state>
+// Expected: Exchange code for token, store encrypted token
+// Validates: Token exchange and storage
+// NOTE: Requires mock GitHub API or real OAuth app setup
+```
+**Checks:**
+- ✅ Response status 200
+- ✅ Returns user info (userId, login)
+- ✅ Token stored in KV (encrypted)
+- ✅ User authorized (matches GITHUB_ALLOWED_USER_ID)
+
+**Scenario 4: Authenticated Initialize**
+```typescript
+// Test: POST /mcp with initialize, Authorization: Bearer <token>
+// Expected: Full server capabilities, session ID, tools list
+// Validates: Authenticated session creation
+```
+**Checks:**
+- ✅ Response status 200
+- ✅ `result.capabilities.tools` is not empty
+- ✅ `result.capabilities.prompts` is not empty
+- ✅ Session ID returned (in headers or response)
+- ✅ No "instructions" field (since authenticated)
+
+**Scenario 5: Tools List Request**
+```typescript
+// Test: POST /mcp with tools/list, Authorization: Bearer <token>
+// Expected: Array of 5 tools with schemas
+// Validates: Tool discovery after authentication
+```
+**Checks:**
+- ✅ Response contains 5 tools: read, write, edit, glob, grep
+- ✅ Each tool has: name, description, inputSchema
+- ✅ Input schemas match specs (required fields, types)
+- ✅ Response format matches MCP protocol
+
+**Scenario 6: Tool Call - Write (Bootstrap Test)**
+```typescript
+// Test: POST /mcp with tools/call name="write"
+// Expected: Creates file, returns success
+// Validates: Tool execution, bootstrap, storage
+```
+**Checks:**
+- ✅ Bootstrap runs (creates PARA structure on first call)
+- ✅ File created successfully
+- ✅ Response contains result content
+- ✅ Rate limit counter incremented
+
+**Scenario 7: Tool Call - Read**
+```typescript
+// Test: POST /mcp with tools/call name="read" path="README.md"
+// Expected: Returns README.md content
+// Validates: File reading, bootstrap verification
+```
+**Checks:**
+- ✅ Returns bootstrap README.md content
+- ✅ Content includes PARA structure explanation
+- ✅ Response format correct
+
+**Scenario 8: Tool Call - Glob**
+```typescript
+// Test: POST /mcp with tools/call name="glob" pattern="**/*.md"
+// Expected: Returns list of markdown files
+// Validates: Pattern matching, file listing
+```
+**Checks:**
+- ✅ Returns bootstrap files (README.md, projects/README.md, etc.)
+- ✅ Files include metadata (size, modified)
+- ✅ Results sorted by modified date
+
+**Scenario 9: Tool Call - Grep**
+```typescript
+// Test: POST /mcp with tools/call name="grep" pattern="PARA"
+// Expected: Returns matches across files
+// Validates: Content search
+```
+**Checks:**
+- ✅ Finds "PARA" in multiple bootstrap files
+- ✅ Returns line numbers and context
+- ✅ Max matches enforced
+
+**Scenario 10: Tool Call - Edit**
+```typescript
+// Test: POST /mcp with tools/call name="edit"
+// Expected: Modifies file successfully
+// Validates: File editing, string replacement
+```
+**Checks:**
+- ✅ String replacement works
+- ✅ File content updated
+- ✅ Error on non-unique string
+
+**Scenario 11: Prompts List**
+```typescript
+// Test: POST /mcp with prompts/list
+// Expected: Returns 3 prompts
+// Validates: Prompt discovery
+```
+**Checks:**
+- ✅ Returns 3 prompts: capture-note, weekly-review, research-summary
+- ✅ Each has name, description, arguments
+
+**Scenario 12: Prompt Get**
+```typescript
+// Test: POST /mcp with prompts/get name="capture-note"
+// Expected: Returns prompt message template
+// Validates: Prompt message generation
+```
+**Checks:**
+- ✅ Returns messages array
+- ✅ Message contains template with placeholders
+- ✅ Arguments interpolated correctly
+
+**Scenario 13: Rate Limiting**
+```typescript
+// Test: Rapid-fire 101 tool calls in quick succession
+// Expected: 100 succeed, 101st returns rate limit error
+// Validates: Rate limiting enforcement
+```
+**Checks:**
+- ✅ First 100 calls succeed
+- ✅ 101st returns 429 or rate limit error
+- ✅ Error includes retry-after time
+- ✅ After waiting, calls work again
+
+**Scenario 14: Session Persistence**
+```typescript
+// Test: Make tool call, store session ID, make another call with same session
+// Expected: Session reused, no re-authentication
+// Validates: Session management
+```
+**Checks:**
+- ✅ Second call uses same session ID
+- ✅ No re-authentication needed
+- ✅ Session state persists
+
+**Scenario 15: Invalid Token Handling**
+```typescript
+// Test: POST /mcp with invalid Bearer token
+// Expected: 401 Unauthorized
+// Validates: Token validation
+```
+**Checks:**
+- ✅ Returns 401 status
+- ✅ Error message indicates invalid token
+- ✅ No sensitive info leaked
+
+**Scenario 16: Unauthorized User**
+```typescript
+// Test: OAuth with user NOT in allowlist
+// Expected: 403 Forbidden
+// Validates: User authorization check
+```
+**Checks:**
+- ✅ Returns 403 status
+- ✅ Error indicates user not authorized
+- ✅ Token not stored
+
+#### 10.3 Test Output Format
+
+```typescript
+// Colored, hierarchical output:
+// ✅ PASS: Discovery (unauthenticated initialize)
+//   ✅ Response status: 200
+//   ✅ Protocol version: 2024-11-05
+//   ✅ OAuth instructions present
+//
+// ❌ FAIL: Authenticated initialize
+//   ✅ Response status: 200
+//   ❌ Tools list empty (expected 5 tools)
+//   📋 Response body: {...}
+//
+// Summary:
+// ✅ 12/16 scenarios passed
+// ❌ 4/16 scenarios failed
+// ⚠️  Critical failures: Authenticated initialize, Tools list
+```
+
+#### 10.4 Script Execution Modes
+
+**Mode 1: Quick Check (No OAuth)**
+```bash
+pnpm run test:mcp:quick
+# Uses pre-configured token from .env.test
+# Runs scenarios 4-15 (skips OAuth flow)
+# Takes ~30 seconds
+```
+
+**Mode 2: Full Flow (With OAuth)**
+```bash
+pnpm run test:mcp:full
+# Runs ALL scenarios 1-16
+# Opens browser for OAuth
+# User completes GitHub authorization
+# Script captures callback and continues
+# Takes ~2-3 minutes
+```
+
+**Mode 3: Single Scenario**
+```bash
+pnpm run test:mcp:scenario -- "Authenticated initialize"
+# Runs just one named scenario
+# Useful for debugging specific issues
+```
+
+**Mode 4: Watch Mode**
+```bash
+pnpm run test:mcp:watch
+# Re-runs tests on server changes
+# Useful during development
+```
+
+#### 10.5 Implementation Structure
+
+```typescript
+// scripts/test-mcp-client.ts
+
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+
+// Core test infrastructure
+class MCPTestClient {
+  private serverUrl: string;
+  private authToken?: string;
+  private sessionId?: string;
+
+  async testDiscovery(): Promise<TestResult> { }
+  async testOAuthUrl(): Promise<TestResult> { }
+  async testOAuthCallback(code: string): Promise<TestResult> { }
+  async testAuthenticatedInit(): Promise<TestResult> { }
+  async testToolsList(): Promise<TestResult> { }
+  async testToolCall(tool: string, args: any): Promise<TestResult> { }
+  async testPromptsList(): Promise<TestResult> { }
+  async testPromptGet(name: string, args: any): Promise<TestResult> { }
+  async testRateLimiting(): Promise<TestResult> { }
+  async testSessionPersistence(): Promise<TestResult> { }
+
+  // Helper methods
+  private async makeRequest(method: string, params: any): Promise<any> { }
+  private validateResponse(response: any, expected: any): TestResult { }
+  private logResult(scenario: string, result: TestResult): void { }
+}
+
+interface TestResult {
+  passed: boolean;
+  checks: Array<{ name: string; passed: boolean; actual?: any; expected?: any }>;
+  error?: string;
+  responseBody?: any;
+}
+
+// Scenario definitions
+const scenarios: Array<Scenario> = [
+  {
+    name: 'Discovery (unauthenticated)',
+    run: async (client) => await client.testDiscovery(),
+  },
+  // ... 15 more scenarios
+];
+
+// Main test runner
+async function runTests(mode: 'quick' | 'full' | 'scenario', scenarioName?: string) {
+  const client = new MCPTestClient(config);
+
+  const toRun = mode === 'scenario'
+    ? scenarios.filter(s => s.name === scenarioName)
+    : mode === 'quick'
+    ? scenarios.filter(s => !s.requiresOAuth)
+    : scenarios;
+
+  const results = [];
+  for (const scenario of toRun) {
+    console.log(`\n🧪 Testing: ${scenario.name}`);
+    const result = await scenario.run(client);
+    client.logResult(scenario.name, result);
+    results.push(result);
+  }
+
+  // Summary
+  const passed = results.filter(r => r.passed).length;
+  const failed = results.filter(r => !r.passed).length;
+
+  console.log(`\n${'='.repeat(60)}`);
+  console.log(`Summary: ✅ ${passed} passed, ❌ ${failed} failed`);
+
+  if (failed > 0) {
+    console.log(`\n⚠️  Failed scenarios:`);
+    results.filter(r => !r.passed).forEach(r => {
+      console.log(`   - ${r.name}`);
+    });
+    process.exit(1);
+  }
+}
+```
+
+#### 10.6 Expected Outcomes
+
+**If All Tests Pass:**
+- ✅ Server implementation is correct
+- ✅ Issue is in Claude client configuration/implementation
+- ✅ Can provide test results to Claude support
+- ✅ Can confidently deploy to production
+
+**If Tests Fail:**
+- ❌ Identifies exact point of failure
+- ❌ Provides detailed error information
+- ❌ Can reproduce issue independently of Claude
+- ❌ Can fix and re-test quickly
+
+**Common Failure Scenarios We'll Catch:**
+1. MCP protocol version mismatch
+2. Incorrect JSON-RPC message format
+3. Missing or incorrect headers (Content-Type, Authorization)
+4. Session ID not being returned/stored
+5. Tools/prompts not registered in initialize response
+6. OAuth token not being validated correctly
+7. Response body not being captured (current suspected issue)
+8. SSE vs JSON response format confusion
+
+#### 10.7 Integration with CI/CD
+
+**Add to GitHub Actions:**
+```yaml
+# .github/workflows/e2e-test.yml
+name: E2E MCP Client Test
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 */6 * * *'  # Every 6 hours
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+      - name: Run MCP client test
+        env:
+          MCP_SERVER_URL: https://second-brain-mcp.nick-01a.workers.dev
+          GITHUB_OAUTH_TOKEN: ${{ secrets.TEST_OAUTH_TOKEN }}
+        run: pnpm run test:mcp:quick
+```
+
+**Deliverables:**
+- [ ] Test script implemented (`scripts/test-mcp-client.ts`)
+- [ ] Configuration file template (`.env.test.example`)
+- [ ] All 16 scenarios implemented and passing
+- [ ] Documentation for running tests (`scripts/README.md`)
+- [ ] Integration with CI/CD pipeline
+- [ ] Test results identify root cause of Claude connection issues
+
+**Success Criteria:**
+- Script can run against production server
+- All scenarios execute without crashing
+- Clear pass/fail output for each scenario
+- Identifies whether issue is server-side or client-side
+- Can reproduce issue or prove server is working correctly
+
+**Priority:** 🔥 **CRITICAL** - Blocking production use until connection issues resolved
 
 ---
 
