@@ -10,6 +10,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "test:e2e": "jest --config=jest.e2e.config.js",
+    "test:e2e:smoke": "jest --config=jest.e2e.config.js test/e2e/smoke",
     "test:mcp:quick": "tsx scripts/test-mcp-client.ts quick",
     "test:mcp:full": "tsx scripts/test-mcp-client.ts full",
     "test:mcp:scenario": "tsx scripts/test-mcp-client.ts scenario",

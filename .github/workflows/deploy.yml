@@ -134,7 +134,25 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Deploy to Cloudflare Workers (Production)
+        id: deploy
         run: pnpm run deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Run smoke tests against deployed server
+        id: smoke_tests
+        run: |
+          echo "Running smoke tests against production..."
+          pnpm run test:e2e:smoke
+        env:
+          MCP_SERVER_URL: https://second-brain-mcp.nick-01a.workers.dev
+
+      - name: Rollback deployment if smoke tests failed
+        if: failure() && steps.smoke_tests.conclusion == 'failure'
+        run: |
+          echo "❌ Smoke tests FAILED - Rolling back deployment"
+          pnpm wrangler rollback
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
