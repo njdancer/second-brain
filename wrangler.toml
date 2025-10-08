@@ -26,6 +26,11 @@ dataset = "second-brain-analytics"
 [triggers]
 crons = ["0 2 * * *"]
 
+# Observability - Workers Logs
+[observability]
+enabled = true
+head_sampling_rate = 1.0  # 100% sampling
+
 # Environment variables (set via wrangler secret)
 # GITHUB_CLIENT_ID - GitHub OAuth app client ID
 # GITHUB_CLIENT_SECRET - GitHub OAuth app client secret
