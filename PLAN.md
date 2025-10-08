@@ -1,9 +1,9 @@
 # Second Brain MCP Implementation Plan
 
-**Version:** 3.2
+**Version:** 3.3
 **Date:** October 8, 2025
-**Status:** 🧪 MCP Test Client IMPLEMENTED - Verifying server behavior
-**Last Updated:** 2025-10-08 10:00 UTC
+**Status:** ✅ E2E Testing Overhaul COMPLETE - Production deployment verification operational
+**Last Updated:** 2025-10-08 14:30 UTC
 
 ---
 
@@ -11,7 +11,7 @@
 
 This plan outlines the implementation of a Model Context Protocol (MCP) server that enables Claude to function as a personal knowledge management assistant using the Building a Second Brain (BASB) methodology. The server is deployed on Cloudflare Workers with R2 storage, providing file-like operations over a cloud-based second brain accessible from any Claude client (desktop, web, mobile).
 
-**Current Status (v1.2.3):**
+**Current Status (v1.2.4):**
 - ✅ MCP server with 5 core tools (read, write, edit, glob, grep) - **DEPLOYED**
 - ✅ Rate limiting and storage quotas - **IMPLEMENTED**
 - ✅ Bootstrap system for new users - **IMPLEMENTED**
@@ -19,9 +19,11 @@ This plan outlines the implementation of a Model Context Protocol (MCP) server t
 - ✅ OAuth authentication via GitHub - **DEPLOYED**
 - ✅ OAuth discovery for unauthenticated clients - **FIXED (v1.2.2)**
 - ✅ MCP response handling fixed - **FIXED (v1.2.3)** - Tools now properly returned to authenticated clients
+- ✅ **E2E testing & deployment verification** - **IMPLEMENTED** - Automatic rollback on failed smoke tests
+- ✅ **Critical bug fixes deployed** - OAuth callback & token validation fixed
 - ⏳ Automated S3 backups - **PLANNED**
 
-**Current Step:** Test MCP client against production with OAuth token
+**Current Step:** Production is stable with automatic deployment verification. Next: Complete OAuth flow testing from Claude clients
 
 **Progress:**
 - ✅ MCP test client implemented (9 scenarios)
@@ -1259,6 +1261,143 @@ jobs:
 - ✅ **CRITICAL FIX:** OAuth callback now returns access_token to client!
 - Created proper OAuth flow test with localhost callback
 - Ready to test complete end-to-end OAuth flow
+
+---
+
+### Phase 11: E2E Testing & Deployment Verification (URGENT - 3-4 hours)
+
+**Objective:** Implement comprehensive E2E testing infrastructure to prevent deploying broken code to production
+
+**Context:** Deployed broken code to production **3 times** because unit tests with mocks gave false confidence. All unit tests passed but production was broken.
+
+#### Critical Bugs Found in Production
+
+**Bug #1: OAuth callback not returning access_token (deployed 3 times)**
+- Server returned: `{ success: true, userId: "...", login: "..." }`
+- Should have returned: `{ success: true, access_token: "gho_...", token_type: "bearer", ... }`
+- **Root Cause:** Missing access_token in OAuth callback response
+- **Why unit tests didn't catch it:** Tests verified user info, not OAuth contract
+- **Fixed in:** `src/oauth-handler.ts` lines 111-124
+
+**Bug #2: Token validation returning null (deployed 2 times)**
+- Production code: `getUserFromToken()` had comment "Real implementation would call GitHub API" but just returned `null`
+- **Root Cause:** `if (this.githubAPI) return await this.githubAPI.getUserInfo(token); return null;` - Production always hit the null return!
+- **Why unit tests didn't catch it:** Unit tests injected mock GitHub API, production had no mock
+- **Fixed in:** `src/oauth-handler.ts` lines 264-290 - Implemented real GitHub API call
+
+#### The Testing Gap
+
+**Problem:** Unit tests with mocks test the mock implementation, not the real code path.
+
+Example:
+```typescript
+// Unit test
+const handler = new OAuthHandler(kv, mockGitHub, ...);
+const user = await handler.validateToken('token'); // ✅ PASSES
+
+// Production
+new OAuthHandler(kv, null, ...); // No mock injected!
+// → getUserFromToken() returns null
+// → All validation fails
+// → But tests are green!
+```
+
+#### Solution: E2E Smoke Tests
+
+**Tasks:**
+
+#### 11.1 E2E Test Infrastructure
+- [x] Create `test/e2e/` directory structure (2025-10-08)
+- [x] Create `jest.e2e.config.js` - E2E test configuration (2025-10-08)
+- [x] Add E2E test scripts to package.json (2025-10-08)
+- [x] Create `.env.test.example` for E2E test configuration (2025-10-08)
+
+#### 11.2 Smoke Tests (Run Against Real Server)
+- [x] `test/e2e/smoke/deployment-health.e2e.ts` - Basic health checks (2025-10-08)
+  - Server responds to requests
+  - OAuth redirect works
+  - JSON-RPC protocol correct
+  - CORS headers present
+- [x] `test/e2e/smoke/oauth-token-in-callback.e2e.ts` - Contract test for Bug #1 (2025-10-08)
+  - Verifies OAuth callback returns correct response shape
+  - Would have caught missing access_token immediately
+- [x] `test/e2e/smoke/token-validation.e2e.ts` - Integration test for Bug #2 (2025-10-08)
+  - Verifies token validation calls real GitHub API
+  - Would have caught null return immediately
+
+#### 11.3 Documentation
+- [x] `test/e2e/README.md` - Why E2E tests exist and what they test (2025-10-08)
+- [x] `TESTING-IMPROVEMENTS.md` - Comprehensive post-mortem (2025-10-08)
+  - The Problem (3 broken deployments)
+  - Why Unit Tests Didn't Catch These
+  - The Solution (E2E + smoke tests)
+  - Lessons Learned
+
+#### 11.4 CI/CD Integration
+- [x] Update `.github/workflows/deploy.yml` (2025-10-08)
+  - Run smoke tests immediately after deployment
+  - Automatic rollback if smoke tests fail
+  - Prevents broken deployments from affecting users
+
+```yaml
+- name: Deploy to Cloudflare Workers (Production)
+  run: pnpm run deploy
+
+- name: Run smoke tests against deployed server
+  run: pnpm run test:e2e:smoke
+  env:
+    MCP_SERVER_URL: https://second-brain-mcp.nick-01a.workers.dev
+
+- name: Rollback deployment if smoke tests failed
+  if: failure()
+  run: pnpm wrangler rollback
+```
+
+#### 11.5 Testing Strategy (Updated)
+
+**Unit Tests (Existing)**
+- Purpose: Test individual functions in isolation
+- Use mocks: Yes
+- Coverage: 95%+
+- When: On every commit
+
+**Integration Tests (IMPROVED)**
+- Purpose: Test interactions between components
+- Use mocks: Only for external services (Cloudflare, AWS)
+- Coverage: Critical paths
+- When: On every commit
+
+**E2E Tests (NEW)**
+- Purpose: Verify production actually works
+- Use mocks: NO - test real deployed server
+- Coverage: Critical user flows
+- When: After every deployment + nightly
+
+**Smoke Tests (NEW)**
+- Purpose: Verify deployment succeeded
+- Use mocks: NO
+- Coverage: Essential functionality
+- When: Immediately after deployment
+
+**Deliverables:**
+- [x] E2E test infrastructure created (2025-10-08)
+- [x] 11 smoke tests implemented and passing (2025-10-08)
+- [x] Deployment verification with automatic rollback (2025-10-08)
+- [x] Comprehensive testing documentation (2025-10-08)
+- [x] Coverage threshold adjustments (jest.config.js) (2025-10-08)
+- [x] .gitignore updated for .env files (2025-10-08)
+
+**Test Results:**
+```
+Test Suites: 3 passed, 3 total
+Tests:       11 passed, 11 total
+```
+
+**Impact:**
+- **Before:** 3 broken deployments, days of debugging, users couldn't connect
+- **After:** Automatic verification, immediate rollback on failure, bugs caught before users
+
+**Status:** ✅ **PHASE 11 COMPLETE** - E2E testing infrastructure deployed and operational
 
 ---
 
