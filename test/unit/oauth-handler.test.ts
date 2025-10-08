@@ -55,17 +55,17 @@ describe('OAuthHandler', () => {
   });
 
   describe('handleOAuthCallback', () => {
-    it('should exchange code for token and store it', async () => {
-      const code = 'valid_auth_code';
+    it('should verify user via GitHub and issue MCP token', async () => {
+      const githubCode = 'valid_github_code';
       const state = 'test_state_123';
 
-      // Set up state in KV
+      // Set up state in KV (no redirect URI for this test)
       await mockKV.put(`oauth:state:${state}`, JSON.stringify({
         clientRedirectUri: null,
         timestamp: Date.now(),
       }));
 
-      const request = new Request(`https://example.com/oauth/callback?code=${code}&state=${state}`);
+      const request = new Request(`https://example.com/oauth/callback?code=${githubCode}&state=${state}`);
 
       const response = await oauthHandler.handleOAuthCallback(request);
 
@@ -73,8 +73,10 @@ describe('OAuthHandler', () => {
       const body = await response.json();
       expect(body.success).toBe(true);
       expect(body.userId).toBe(allowedUserId);
-      expect(body.access_token).toBeDefined();
+      expect(body.mcp_access_token).toBeDefined(); // OUR MCP token
+      expect(body.mcp_access_token).toContain('mcp_'); // Should have mcp_ prefix
       expect(body.token_type).toBe('bearer');
+      expect(body.scope).toBe('mcp:read mcp:write'); // OUR scopes
     });
 
     it('should reject unauthorized users', async () => {
@@ -169,73 +171,70 @@ describe('OAuthHandler', () => {
   });
 
   describe('handleTokenExchange', () => {
-    it('should exchange authorization code for access token', async () => {
-      const authCode = 'test_auth_code_123';
-      const accessToken = 'gho_test_access_token';
+    it('should exchange MCP authorization code for MCP access token', async () => {
+      const mcpAuthCode = 'test_mcp_auth_code_123';
+      const mcpAccessToken = 'mcp_test_token_abc123';
 
-      // Store authorization code data
-      await mockKV.put(`oauth:code:${authCode}`, JSON.stringify({
-        accessToken,
+      // Store MCP authorization code data (OUR auth code, not GitHub's)
+      await mockKV.put(`mcp:authcode:${mcpAuthCode}`, JSON.stringify({
+        mcpAccessToken, // OUR token
         tokenType: 'bearer',
-        scope: 'read:user',
+        scope: 'mcp:read mcp:write', // OUR scopes
         userId: allowedUserId,
         timestamp: Date.now(),
       }));
 
-      const result = await oauthHandler.handleTokenExchange(authCode);
+      const result = await oauthHandler.handleTokenExchange(mcpAuthCode);
 
       expect(result).not.toBeNull();
-      expect(result!.access_token).toBe(accessToken);
+      expect(result!.access_token).toBe(mcpAccessToken);
       expect(result!.token_type).toBe('bearer');
-      expect(result!.scope).toBe('read:user');
+      expect(result!.scope).toBe('mcp:read mcp:write');
       expect(result!.expires_in).toBeGreaterThan(0);
 
       // Code should be deleted after use
-      const codeStillExists = await mockKV.get(`oauth:code:${authCode}`);
+      const codeStillExists = await mockKV.get(`mcp:authcode:${mcpAuthCode}`);
       expect(codeStillExists).toBeNull();
     });
 
-    it('should reject invalid authorization code', async () => {
+    it('should reject invalid MCP authorization code', async () => {
       const result = await oauthHandler.handleTokenExchange('invalid_code');
 
       expect(result).toBeNull();
     });
 
-    it('should reject expired authorization code', async () => {
-      const authCode = 'expired_code';
+    it('should reject expired MCP authorization code', async () => {
+      const mcpAuthCode = 'expired_mcp_code';
 
       // Don't store the code (simulates expired/deleted code)
-      const result = await oauthHandler.handleTokenExchange(authCode);
+      const result = await oauthHandler.handleTokenExchange(mcpAuthCode);
 
       expect(result).toBeNull();
     });
   });
 
   describe('validateToken', () => {
-    it('should validate a valid token', async () => {
-      // First, simulate OAuth flow to get a token
-      const { access_token } = await mockGitHub.exchangeCodeForToken('valid_code');
+    it('should validate a valid MCP token', async () => {
+      const mcpToken = 'mcp_test_token_xyz789';
 
-      // Store encrypted token (as the OAuth handler does)
-      const encrypted = await oauthHandler.encryptToken(access_token);
-      await mockKV.put(`oauth:token:${allowedUserId}`, encrypted);
+      // Store the MCP token (as our OAuth handler does after successful auth)
+      await mockKV.put(`mcp:token:${mcpToken}`, allowedUserId);
 
-      const userInfo = await oauthHandler.validateToken(access_token);
+      const userInfo = await oauthHandler.validateToken(mcpToken);
 
       expect(userInfo).not.toBeNull();
       expect(userInfo!.userId).toBe(allowedUserId);
-      expect(userInfo!.login).toBe('testuser');
     });
 
-    it('should return null for invalid token', async () => {
-      const userInfo = await oauthHandler.validateToken('invalid_token');
+    it('should return null for invalid MCP token', async () => {
+      const userInfo = await oauthHandler.validateToken('invalid_mcp_token');
 
       expect(userInfo).toBeNull();
     });
 
-    it('should return null for expired token', async () => {
-      const expiredToken = 'gho_expired';
-      mockGitHub.revokeToken(expiredToken);
+    it('should return null for expired MCP token', async () => {
+      const expiredToken = 'mcp_expired_token';
+      // Don't store the token (simulates expired/deleted token)
 
       const userInfo = await oauthHandler.validateToken(expiredToken);
 

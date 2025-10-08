@@ -64,22 +64,24 @@ export class OAuthHandler {
   }
 
   /**
-   * Handle OAuth callback from GitHub
+   * Handle OAuth callback from GitHub (user identity verification)
+   * This callback is from GitHub after the user has authenticated.
+   * We verify the user's identity, then issue OUR OWN token for Claude to use.
    */
   async handleOAuthCallback(request: Request): Promise<Response> {
     try {
       const url = new URL(request.url);
-      const code = url.searchParams.get('code');
+      const githubCode = url.searchParams.get('code'); // GitHub's authorization code
       const state = url.searchParams.get('state');
 
-      if (!code || !state) {
+      if (!githubCode || !state) {
         return new Response(JSON.stringify({ error: 'Missing code or state parameter' }), {
           status: 400,
           headers: { 'Content-Type': 'application/json' },
         });
       }
 
-      // Verify state and get client redirect URI
+      // Verify state and get client redirect URI (Claude's callback URL)
       const stateDataStr = await this.kv.get(`oauth:state:${state}`);
       if (!stateDataStr) {
         console.error('Invalid or expired state:', state);
@@ -92,8 +94,8 @@ export class OAuthHandler {
       const stateData = JSON.parse(stateDataStr);
       const clientRedirectUri = stateData.clientRedirectUri;
 
-      console.log('OAuth callback:', {
-        hasCode: !!code,
+      console.log('GitHub OAuth callback received:', {
+        hasGitHubCode: !!githubCode,
         hasState: !!state,
         clientRedirectUri,
       });
@@ -101,21 +103,28 @@ export class OAuthHandler {
       // Delete state (one-time use)
       await this.kv.delete(`oauth:state:${state}`);
 
-      // Exchange code for token
-      const tokenResponse = await this.exchangeCodeForToken(code);
+      // === GITHUB OAUTH FLOW ===
+      // Exchange GitHub code for GitHub access token (for user verification only)
+      const githubTokenResponse = await this.exchangeCodeForToken(githubCode);
 
-      // Get user info
-      const userInfo = await this.getUserFromToken(tokenResponse.access_token);
+      // Get user info from GitHub to verify identity
+      const userInfo = await this.getUserFromToken(githubTokenResponse.access_token);
 
       if (!userInfo) {
-        return new Response(JSON.stringify({ error: 'Failed to fetch user info' }), {
+        return new Response(JSON.stringify({ error: 'Failed to fetch user info from GitHub' }), {
           status: 500,
           headers: { 'Content-Type': 'application/json' },
         });
       }
 
-      // Check if user is authorized
+      console.log('User authenticated via GitHub:', {
+        userId: userInfo.userId,
+        login: userInfo.login,
+      });
+
+      // Check if user is authorized to use this MCP server
       if (!(await this.isUserAuthorized(userInfo.userId))) {
+        console.log('User not authorized:', userInfo.userId);
         return new Response(
           JSON.stringify({ error: 'User not authorized to access this service' }),
           {
@@ -125,42 +134,44 @@ export class OAuthHandler {
         );
       }
 
-      // Encrypt and store token
-      const encryptedToken = await this.encryptToken(tokenResponse.access_token);
-      await this.kv.put(`oauth:token:${userInfo.userId}`, encryptedToken, {
+      // === OUR MCP SERVER OAUTH FLOW ===
+      // Generate OUR OWN access token for Claude to use with our MCP server
+      const mcpAccessToken = this.generateMCPToken(userInfo.userId);
+
+      // Store our MCP token mapped to the user ID
+      await this.kv.put(`mcp:token:${mcpAccessToken}`, userInfo.userId, {
         expirationTtl: TOKEN_TTL,
       });
 
-      // Store refresh token if provided
-      if (tokenResponse.refresh_token) {
-        const encryptedRefresh = await this.encryptToken(tokenResponse.refresh_token);
-        await this.kv.put(`oauth:refresh:${userInfo.userId}`, encryptedRefresh, {
-          expirationTtl: TOKEN_TTL * 2,
-        });
-      }
+      // Optionally store the GitHub token (encrypted) if we need it for future GitHub API calls
+      // This allows us to make GitHub API calls on behalf of the user if needed
+      const encryptedGitHubToken = await this.encryptToken(githubTokenResponse.access_token);
+      await this.kv.put(`github:token:${userInfo.userId}`, encryptedGitHubToken, {
+        expirationTtl: TOKEN_TTL,
+      });
 
       // If client provided a redirect URI, redirect back with an authorization code
       if (clientRedirectUri) {
-        // Generate a temporary authorization code for the client to exchange
-        const authCode = this.generateState(); // Reuse state generator for auth code
+        // Generate a temporary authorization code for the MCP client (Claude) to exchange
+        const mcpAuthCode = this.generateState();
 
-        // Store the token with the auth code for later exchange
+        // Store OUR token with the auth code for later exchange
         const codeData = JSON.stringify({
-          accessToken: tokenResponse.access_token,
-          tokenType: tokenResponse.token_type || 'bearer',
-          scope: tokenResponse.scope,
+          mcpAccessToken: mcpAccessToken, // OUR token, not GitHub's
+          tokenType: 'bearer',
+          scope: 'mcp:read mcp:write', // Our scopes, not GitHub's
           userId: userInfo.userId,
           timestamp: Date.now(),
         });
 
         // Authorization code expires in 5 minutes
-        await this.kv.put(`oauth:code:${authCode}`, codeData, { expirationTtl: 300 });
+        await this.kv.put(`mcp:authcode:${mcpAuthCode}`, codeData, { expirationTtl: 300 });
 
         const redirectUrl = new URL(clientRedirectUri);
-        redirectUrl.searchParams.set('code', authCode);
-        redirectUrl.searchParams.set('state', state); // Echo back the state for client verification
+        redirectUrl.searchParams.set('code', mcpAuthCode); // Our auth code, not GitHub's
+        redirectUrl.searchParams.set('state', state);
 
-        console.log('Redirecting to client with auth code:', redirectUrl.origin);
+        console.log('Redirecting to MCP client with authorization code');
 
         return Response.redirect(redirectUrl.toString(), 302);
       }
@@ -169,9 +180,9 @@ export class OAuthHandler {
       return new Response(
         JSON.stringify({
           success: true,
-          access_token: tokenResponse.access_token,
-          token_type: tokenResponse.token_type || 'bearer',
-          scope: tokenResponse.scope,
+          mcp_access_token: mcpAccessToken, // OUR token for the MCP server
+          token_type: 'bearer',
+          scope: 'mcp:read mcp:write',
           userId: userInfo.userId,
           login: userInfo.login,
         }),
@@ -193,7 +204,21 @@ export class OAuthHandler {
   }
 
   /**
-   * Handle OAuth token endpoint (exchange code for token)
+   * Generate an MCP access token for our server
+   * This is OUR token that Claude will use, NOT GitHub's token
+   */
+  private generateMCPToken(userId: string): string {
+    // Generate a secure random token with user ID embedded
+    // Format: mcp_<random>_<timestamp>
+    const random = this.generateState();
+    const timestamp = Date.now().toString(36);
+    return `mcp_${random}_${timestamp}`;
+  }
+
+  /**
+   * Handle MCP OAuth token endpoint (exchange authorization code for MCP access token)
+   * This exchanges OUR authorization codes for OUR MCP access tokens.
+   * Claude calls this endpoint to get a token to use with our MCP server.
    */
   async handleTokenExchange(code: string): Promise<{
     access_token: string;
@@ -202,59 +227,64 @@ export class OAuthHandler {
     expires_in: number;
   } | null> {
     try {
-      // Look up the authorization code that we generated
-      const codeDataStr = await this.kv.get(`oauth:code:${code}`);
+      // Look up the MCP authorization code that we generated
+      const codeDataStr = await this.kv.get(`mcp:authcode:${code}`);
 
       if (!codeDataStr) {
-        console.error('Invalid or expired authorization code');
+        console.error('Invalid or expired MCP authorization code');
         return null;
       }
 
-      // Parse the stored token data
+      // Parse the stored MCP token data
       const codeData = JSON.parse(codeDataStr);
 
       // Delete the code (one-time use)
-      await this.kv.delete(`oauth:code:${code}`);
+      await this.kv.delete(`mcp:authcode:${code}`);
 
-      console.log('Exchanged authorization code for access token', {
+      console.log('Exchanged MCP authorization code for MCP access token', {
         userId: codeData.userId,
         scope: codeData.scope,
       });
 
       return {
-        access_token: codeData.accessToken,
+        access_token: codeData.mcpAccessToken, // OUR MCP token, not GitHub's
         token_type: codeData.tokenType,
         scope: codeData.scope,
         expires_in: TOKEN_TTL,
       };
     } catch (error) {
-      console.error('Token exchange error:', error);
+      console.error('MCP token exchange error:', error);
       return null;
     }
   }
 
   /**
-   * Validate a token and return user info
+   * Validate an MCP access token and return user info
+   * This validates OUR MCP tokens that we issued to Claude, NOT GitHub tokens.
+   * Claude sends this token in the Authorization header for MCP requests.
    */
   async validateToken(token: string): Promise<UserInfo | null> {
     try {
-      // Check if token exists in our KV store
-      const storedToken = await this.findStoredToken(token);
-      if (!storedToken) {
-        // Try to validate directly with GitHub
-        const userInfo = await this.getUserFromToken(token);
-        return userInfo;
+      // Look up the MCP token in our KV store
+      // The value is the user ID
+      const userId = await this.kv.get(`mcp:token:${token}`);
+
+      if (!userId) {
+        console.log('MCP token not found or expired');
+        return null;
       }
 
-      // Decrypt and validate
-      const decryptedToken = await this.decryptToken(storedToken.encrypted);
-      if (decryptedToken === token) {
-        return await this.getUserFromToken(token);
-      }
+      console.log('MCP token validated for user:', userId);
 
-      return null;
+      // Return user info - we could enrich this by fetching from GitHub if needed
+      return {
+        userId,
+        login: '', // We don't have the login stored, could fetch from GitHub if needed
+        name: '',
+        email: '',
+      };
     } catch (error) {
-      console.error('Token validation error:', error);
+      console.error('MCP token validation error:', error);
       return null;
     }
   }
