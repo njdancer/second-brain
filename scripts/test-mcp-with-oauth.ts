@@ -179,7 +179,7 @@ function generateOAuthUrl(port: number): string {
 async function main() {
   console.log(chalk.bold.blue('\n🧪 MCP OAuth Flow Test\n'));
   console.log(chalk.gray('This test simulates the exact OAuth flow Claude desktop would use.'));
-  console.log(chalk.gray('='repeat(60)));
+  console.log(chalk.gray('='.repeat(60)));
 
   // Step 1: Start callback server
   console.log(chalk.blue('\n📡 Step 1: Starting local callback server...'));
