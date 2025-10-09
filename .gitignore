@@ -12,3 +12,5 @@ coverage/
 !.env.test.example
 
 .wrangler
+
+*.local.*
