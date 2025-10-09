@@ -150,46 +150,61 @@ All spec files are in [specs/](specs/) directory. Read them before implementing 
 **Flow 1: OAuth SERVER (We Issue Tokens)**
 - MCP clients (Claude.ai, MCP Inspector) authenticate WITH US
 - We are the OAuth 2.1 authorization server
-- We issue MCP access tokens (`mcp_*` prefix) to clients
-- **Requires PKCE** (OAuth 2.1 requirement for public clients)
-- **Current blocker:** Hand-rolled implementation missing PKCE
-- **Solution:** Phase 13 migration to `@cloudflare/workers-oauth-provider`
+- We issue MCP access tokens to clients
+- **Includes PKCE** (OAuth 2.1 requirement for public clients)
+- **Implementation:** `@cloudflare/workers-oauth-provider` v0.0.11
+- **Status:** ✅ Production-ready (Phase 13A complete)
 
 **Flow 2: OAuth CLIENT (We Consume Tokens)**
 - We authenticate users WITH GitHub
 - GitHub is the authorization server
 - We use GitHub tokens to verify user identity
 - For authorization check only (user ID against allowlist)
-- **Current status:** Hand-rolled implementation (works, has security issues)
-- **Optional:** Phase 13B migration to Arctic
+- **Implementation:** Arctic v3.7.0 (supports 50+ OAuth providers)
+- **Status:** ✅ Production-ready (Phase 13B complete)
 
 ### Key Files
 
-`/src/oauth-handler.ts` (513 lines) - **TO BE REPLACED**
-- Current hand-rolled OAuth implementation
-- Lines 106-136: GitHub OAuth flow (OAuth CLIENT role)
-- Lines 137-211: MCP OAuth flow (OAuth SERVER role)
-- **Security issues:** No PKCE, base64 encryption, Math.random()
-- **Phase 13:** Archive this file, replace with `@cloudflare/workers-oauth-provider`
+`/src/index.ts` - **OAuthProvider Configuration**
+- Exports OAuthProvider instance (replaces Hono app)
+- Configures OAuth SERVER endpoints (`/oauth/authorize`, `/oauth/token`, `/register`)
+- Routes `/mcp` to authenticated API handler
+- Routes default to GitHub OAuth UI handler
+- All OAuth SERVER logic handled by `@cloudflare/workers-oauth-provider`
 
-`/src/index.ts` - **TO BE REFACTORED**
-- Lines 67-156: OAuth endpoints (will be handled by library)
-- Lines 158-370: MCP endpoint (will remain, wraps with OAuthProvider)
-- Lines 383-419: Discovery endpoints (will be handled by library)
+`/src/oauth-ui-handler.ts` - **GitHub OAuth CLIENT**
+- GitHub authentication flow using Arctic library
+- `/oauth/authorize` - Parse MCP request, redirect to GitHub
+- `/oauth/callback` - Exchange code, verify user, complete MCP OAuth
+- User allowlist check (`GITHUB_ALLOWED_USER_ID`)
+- State management (encodes MCP OAuth request)
+
+`/src/mcp-api-handler.ts` - **Authenticated MCP Endpoint**
+- Handles `/mcp` requests after OAuthProvider validates token
+- Rate limiting enforcement
+- MCP server instantiation and request routing
+- Session management for MCP transport
+
+`/src/archive/oauth-handler-v1.2.3.ts` - **Archived**
+- Old hand-rolled OAuth implementation (513 lines)
+- Replaced in Phase 13 with library-based approach
+- Kept for reference only
 
 ### Common Pitfalls
 
 ❌ **DON'T:**
 - Confuse MCP tokens (we issue) with GitHub tokens (GitHub issues)
 - Think Arctic handles OAuth SERVER (it's OAuth CLIENT only)
-- Manually implement PKCE (use @cloudflare/workers-oauth-provider)
+- Manually implement OAuth logic (both libraries handle it automatically)
 - Return GitHub tokens to MCP clients (security boundary violation)
+- Mock OAuthProvider or Arctic in tests (let libraries handle OAuth internally)
 
 ✅ **DO:**
 - Understand we have TWO OAuth roles (server AND client)
-- Read PLAN.md Phase 13 before touching OAuth code
+- Trust library implementations for PKCE, token management, security
 - Check specs/security.md for OAuth architecture overview
 - Test OAuth changes with `pnpm run test:mcp:oauth`
+- Review archived oauth-handler-v1.2.3.ts if you need to understand old implementation
 
 ### Testing OAuth
 
@@ -212,21 +227,24 @@ pnpm run test:e2e
 
 ```
 src/
-├── index.ts              # Hono app entry point
-├── oauth-handler.ts      # GitHub OAuth flow
+├── index.ts              # OAuthProvider configuration (OAuth SERVER)
+├── oauth-ui-handler.ts   # GitHub OAuth CLIENT flow (Arctic)
+├── mcp-api-handler.ts    # Authenticated MCP endpoint
 ├── mcp-server.ts         # MCP protocol + tool/prompt registration
 ├── storage.ts            # R2 wrapper with quotas
 ├── rate-limiting.ts      # KV-based rate limiting
 ├── bootstrap.ts          # Initial PARA structure
 ├── backup.ts             # Daily R2→S3 sync
 ├── monitoring.ts         # Analytics Engine
-└── tools/                # Tool implementations (read, write, edit, glob, grep)
+├── tools/                # Tool implementations (read, write, edit, glob, grep)
+└── archive/              # Archived implementations (oauth-handler-v1.2.3.ts, etc)
 
 test/
 ├── unit/                 # Mirrors src/ structure
 ├── integration/          # End-to-end tests
 ├── fixtures/             # Test data
-└── mocks/                # R2, KV, GitHub mocks
+├── mocks/                # R2, KV, GitHub mocks
+└── archive/              # Archived tests from previous implementations
 ```
 
 ## When Stuck

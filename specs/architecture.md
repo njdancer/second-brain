@@ -7,7 +7,8 @@
 - **Platform**: Cloudflare Workers
 - **Framework**: Hono (for HTTP routing)
 - **Protocol**: Model Context Protocol (MCP) via `@modelcontextprotocol/sdk`
-- **OAuth**: `@cloudflare/workers-oauth-provider` (GitHub as identity provider)
+- **OAuth SERVER**: `@cloudflare/workers-oauth-provider` v0.0.11 (issues MCP tokens with PKCE)
+- **OAuth CLIENT**: Arctic v3.7.0 (GitHub authentication for user verification)
 - **Storage**: Cloudflare R2 (single bucket, configured via wrangler)
 - **Transport**: Streamable HTTP (MCP protocol version 2025-03-26)
 
@@ -16,21 +17,44 @@
 ## Architecture Pattern
 
 ```
-Claude Client → MCP Client (OAuth) → Worker (Hono + OAuth Provider) → R2 Storage
-                                              ↓
-                                         GitHub OAuth
+Claude/MCP Client
+    ↓ (OAuth 2.1 + PKCE)
+    ↓ [MCP tokens issued by us]
+Worker (OAuthProvider)
+    ├─→ /mcp endpoint (authenticated) → MCP Server → R2 Storage
+    └─→ /oauth/* (GitHub flow)
+            ↓ (OAuth 2.0 + PKCE)
+            ↓ [GitHub tokens consumed by us via Arctic]
+        GitHub API
+            ↓
+        User Verification (allowlist check)
 ```
+
+**Dual OAuth Architecture:**
+- **Flow 1**: Claude authenticates WITH US (we issue MCP tokens via OAuthProvider)
+- **Flow 2**: We authenticate WITH GitHub (we verify user identity via Arctic)
 
 ---
 
 ## Authentication Flow
 
-1. Claude initiates OAuth with MCP server's client ID/secret
-2. Worker redirects user to GitHub for authentication
-3. GitHub returns authorization code to worker
-4. Worker validates user is authorized (checks against allowed GitHub user ID)
-5. Worker issues MCP access tokens to Claude
-6. Claude uses tokens for subsequent MCP tool calls
+**Complete OAuth Flow (both roles combined):**
+
+1. Claude initiates OAuth with MCP server at `/oauth/authorize` (PKCE code challenge)
+2. OAuthProvider parses MCP OAuth request, validates client
+3. Worker redirects user to GitHub via Arctic (`/oauth/callback` return URL)
+4. User authenticates with GitHub and authorizes `read:user` scope
+5. GitHub redirects back to `/oauth/callback` with authorization code
+6. Arctic validates code and exchanges for GitHub access token (with PKCE)
+7. Worker fetches GitHub user info using token
+8. Worker validates user against `GITHUB_ALLOWED_USER_ID` allowlist
+9. OAuthProvider.completeAuthorization() issues MCP authorization code to Claude
+10. Claude exchanges authorization code for MCP access token (with PKCE verification)
+11. Claude uses MCP token for subsequent tool calls at `/mcp` endpoint
+
+**Library Responsibilities:**
+- **Arctic** - Handles GitHub OAuth CLIENT (steps 3-7): auth URL generation, token exchange, PKCE
+- **OAuthProvider** - Handles MCP OAuth SERVER (steps 1-2, 9-10): request parsing, token issuance, PKCE validation
 
 **GitHub OAuth Scopes Required:**
 - `read:user` - To verify user identity and retrieve GitHub user ID
@@ -65,53 +89,60 @@ No enforced hierarchy - structure emerges from user's file paths.
 ## Components
 
 ### 1. Worker Entry Point (`src/index.ts`)
-- Hono app initialization
-- Route handling (MCP endpoint for POST/GET, OAuth callbacks)
-- Request routing to handlers
-- Streamable HTTP transport implementation
+- OAuthProvider instance configuration and export
+- Configures OAuth endpoints (`/oauth/authorize`, `/oauth/token`, `/register`)
+- Routes `/mcp` to authenticated API handler
+- Routes `/oauth/*` to GitHub UI handler
 
-### 2. OAuth Handler (`src/oauth-handler.ts`)
-- GitHub OAuth flow implementation
-- Token issuance and validation
-- User authorization check
-- Token storage in KV
+### 2. GitHub OAuth UI Handler (`src/oauth-ui-handler.ts`)
+- GitHub OAuth CLIENT flow using Arctic library
+- `/oauth/authorize` - Parse MCP request, redirect to GitHub
+- `/oauth/callback` - Exchange code for GitHub token, verify user, complete MCP OAuth
+- User authorization check against `GITHUB_ALLOWED_USER_ID`
+- State management (encodes MCP OAuth request in GitHub state parameter)
 
-### 3. MCP Server (`src/mcp-server.ts`)
+### 3. MCP API Handler (`src/mcp-api-handler.ts`)
+- Authenticated MCP requests (token validation by OAuthProvider)
+- Rate limiting enforcement
+- MCP server instantiation and request routing
+- Session management for MCP transport
+
+### 4. MCP Server (`src/mcp-server.ts`)
 - MCP protocol implementation
 - Tool registration and dispatch
 - Server metadata (name, description, version)
 - Prompt registration
 
-### 4. Tool Implementations (`src/tools/`)
+### 5. Tool Implementations (`src/tools/`)
 - `read.ts` - File reading with range support
 - `write.ts` - File creation/overwrite
 - `edit.ts` - String replacement, move, rename, delete
 - `glob.ts` - Pattern-based file search
 - `grep.ts` - Content search with regex
 
-### 5. Storage Abstraction (`src/storage.ts`)
+### 6. Storage Abstraction (`src/storage.ts`)
 - R2 API wrapper
 - Error handling and retries
 - Storage limit checks
 - Metadata management
 
-### 6. Rate Limiting (`src/rate-limiting.ts`)
+### 7. Rate Limiting (`src/rate-limiting.ts`)
 - Per-user rate limit tracking
 - KV-based counters with TTL
 - Multiple time windows (minute, hour, day)
 - Storage quota enforcement
 
-### 7. Bootstrap (`src/bootstrap.ts`)
+### 8. Bootstrap (`src/bootstrap.ts`)
 - Initial file creation logic
 - README and PARA directory structure
 - Idempotent execution (check for existing files)
 
-### 8. Backup (`src/backup.ts`)
+### 9. Backup (`src/backup.ts`)
 - R2 to S3 sync via cron trigger
 - Incremental backup logic
 - Retention management (30 days)
 
-### 9. Monitoring (`src/monitoring.ts`)
+### 10. Monitoring (`src/monitoring.ts`)
 - Analytics Engine integration
 - Metric collection helpers
 - Error logging

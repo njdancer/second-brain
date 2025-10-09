@@ -13,19 +13,18 @@ Authentication, authorization, data protection, and access control for the Secon
 - **Clients:** Claude.ai, MCP Inspector, other MCP clients
 - **We provide:** MCP access tokens (`mcp_*` prefix)
 - **Protocol:** OAuth 2.1 with PKCE (required for public clients)
-- **Implementation:** `@cloudflare/workers-oauth-provider` library (Phase 13 migration)
-- **Endpoints:** `/oauth/authorize`, `/oauth/token`, `/.well-known/oauth-authorization-server`
-- **Current Status:** Hand-rolled implementation (Phase 12) → Library migration (Phase 13)
-- **Blocker:** Missing PKCE prevents Claude.ai from connecting
+- **Implementation:** `@cloudflare/workers-oauth-provider` v0.0.11 (production library)
+- **Endpoints:** `/oauth/authorize`, `/oauth/token`, `/register`, `/.well-known/oauth-authorization-server`
+- **Current Status:** ✅ Production-ready with PKCE support (Phase 13 complete)
 
 ### 2. OAuth CLIENT (We Consume Tokens)
 - **Role:** OAuth client consuming GitHub's OAuth service
 - **Provider:** GitHub
 - **We consume:** GitHub access tokens (for user identity verification only)
-- **Protocol:** OAuth 2.0
+- **Protocol:** OAuth 2.0 with PKCE
+- **Implementation:** Arctic v3.7.0 (production library with 50+ OAuth provider support)
 - **Purpose:** Verify user ID against `GITHUB_ALLOWED_USER_ID` allowlist
-- **Current Status:** Hand-rolled implementation (working, but has security issues)
-- **Future:** Required Arctic migration (Phase 13B, deferred until 13A stable)
+- **Current Status:** ✅ Production-ready with secure token handling (Phase 13B complete)
 
 **Why Two Flows?**
 - We can't give MCP clients direct access to GitHub tokens (security boundary)
@@ -36,6 +35,12 @@ Authentication, authorization, data protection, and access control for the Secon
 - MCP access tokens (issued by us) → Used for MCP protocol requests
 - GitHub access tokens (issued by GitHub) → Used for user verification only
 - **Never** mix these tokens across boundaries
+
+**Implementation Files:**
+- `src/index.ts` - OAuthProvider instance configuration and export
+- `src/oauth-ui-handler.ts` - GitHub OAuth CLIENT flow (Arctic integration)
+- `src/mcp-api-handler.ts` - Authenticated MCP requests (validates tokens from OAuthProvider)
+- OAuth SERVER endpoints - Handled automatically by `@cloudflare/workers-oauth-provider`
 
 ---
 
@@ -62,9 +67,10 @@ Authentication, authorization, data protection, and access control for the Secon
 10. Token stored in `OAUTH_KV` with TTL
 
 **Token Storage:**
-- Access tokens stored in `OAUTH_KV` namespace
-- Tokens encrypted using `COOKIE_ENCRYPTION_KEY`
-- TTL enforced (tokens expire automatically)
+- Access tokens stored in `OAUTH_KV` namespace (managed by OAuthProvider)
+- Token encryption handled automatically by `@cloudflare/workers-oauth-provider`
+- TTL enforced: 1 hour access tokens, 30 days refresh tokens
+- PKCE validation on token exchange (OAuth 2.1 compliance)
 - Refresh tokens supported for long sessions
 
 **Token Validation:**

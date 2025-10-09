@@ -412,7 +412,7 @@ Delete or archive this entire file:
 - [x] src/mcp-api-handler.ts created for authenticated MCP requests
 - [x] src/oauth-handler.ts archived (no longer needed)
 - [x] All OAuth tests updated and passing (259/259)
-- [ ] Documentation updated (specs/security.md, specs/architecture.md, CLAUDE.md) - TODO
+- [x] Documentation updated (specs/security.md, specs/architecture.md, CLAUDE.md) ✅
 - [ ] Successfully deployed to production - READY TO DEPLOY
 - [ ] Claude.ai connection verified working - TODO (after deployment)
 
