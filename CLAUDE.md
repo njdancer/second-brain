@@ -141,6 +141,73 @@ pnpm test -- --testNamePattern="test name"
 
 All spec files are in [specs/](specs/) directory. Read them before implementing features.
 
+## OAuth Architecture (CRITICAL)
+
+**This project has a DUAL OAuth role architecture that is easy to misunderstand.**
+
+### Two Separate OAuth Flows
+
+**Flow 1: OAuth SERVER (We Issue Tokens)**
+- MCP clients (Claude.ai, MCP Inspector) authenticate WITH US
+- We are the OAuth 2.1 authorization server
+- We issue MCP access tokens (`mcp_*` prefix) to clients
+- **Requires PKCE** (OAuth 2.1 requirement for public clients)
+- **Current blocker:** Hand-rolled implementation missing PKCE
+- **Solution:** Phase 13 migration to `@cloudflare/workers-oauth-provider`
+
+**Flow 2: OAuth CLIENT (We Consume Tokens)**
+- We authenticate users WITH GitHub
+- GitHub is the authorization server
+- We use GitHub tokens to verify user identity
+- For authorization check only (user ID against allowlist)
+- **Current status:** Hand-rolled implementation (works, has security issues)
+- **Optional:** Phase 13B migration to Arctic
+
+### Key Files
+
+`/src/oauth-handler.ts` (513 lines) - **TO BE REPLACED**
+- Current hand-rolled OAuth implementation
+- Lines 106-136: GitHub OAuth flow (OAuth CLIENT role)
+- Lines 137-211: MCP OAuth flow (OAuth SERVER role)
+- **Security issues:** No PKCE, base64 encryption, Math.random()
+- **Phase 13:** Archive this file, replace with `@cloudflare/workers-oauth-provider`
+
+`/src/index.ts` - **TO BE REFACTORED**
+- Lines 67-156: OAuth endpoints (will be handled by library)
+- Lines 158-370: MCP endpoint (will remain, wraps with OAuthProvider)
+- Lines 383-419: Discovery endpoints (will be handled by library)
+
+### Common Pitfalls
+
+❌ **DON'T:**
+- Confuse MCP tokens (we issue) with GitHub tokens (GitHub issues)
+- Think Arctic handles OAuth SERVER (it's OAuth CLIENT only)
+- Manually implement PKCE (use @cloudflare/workers-oauth-provider)
+- Return GitHub tokens to MCP clients (security boundary violation)
+
+✅ **DO:**
+- Understand we have TWO OAuth roles (server AND client)
+- Read PLAN.md Phase 13 before touching OAuth code
+- Check specs/security.md for OAuth architecture overview
+- Test OAuth changes with `pnpm run test:mcp:oauth`
+
+### Testing OAuth
+
+```bash
+# Test complete OAuth flow
+pnpm run test:mcp:oauth
+
+# Interactive OAuth inspector
+pnpm run inspect
+
+# E2E tests (includes OAuth)
+pnpm run test:e2e
+```
+
+**See also:**
+- [specs/security.md](specs/security.md) - OAuth architecture details
+- [PLAN.md Phase 13](PLAN.md#phase-13-oauth-library-migration-next---urgent) - Migration plan
+
 ## Project Structure
 
 ```
