@@ -379,7 +379,7 @@ After authentication, reconnect with your OAuth token in the Authorization heade
       authorization_endpoint: `${baseUrl}/oauth/authorize`,
       token_endpoint: `${baseUrl}/oauth/token`,
       registration_endpoint: `${baseUrl}/register`,
-      scopes_supported: ['read:user'],
+      scopes_supported: ['mcp:read', 'mcp:write'],
       response_types_supported: ['code'],
       grant_types_supported: ['authorization_code', 'refresh_token'],
       token_endpoint_auth_methods_supported: ['client_secret_post', 'client_secret_basic'],
@@ -392,7 +392,7 @@ After authentication, reconnect with your OAuth token in the Authorization heade
     return c.json({
       resource: `${baseUrl}/mcp`,
       authorization_servers: [baseUrl],
-      scopes_supported: ['read:user'],
+      scopes_supported: ['mcp:read', 'mcp:write'],
       bearer_methods_supported: ['header'],
     });
   });
