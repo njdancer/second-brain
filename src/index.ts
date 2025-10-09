@@ -309,6 +309,7 @@ After authentication, reconnect with your OAuth token in the Authorization heade
       const responseChunks: string[] = [];
       const responseHeaders = new Headers();
       let responseStatus = 200;
+      let isEnded = false;
 
       const nodeResponse = {
         statusCode: 200,
@@ -331,20 +332,15 @@ After authentication, reconnect with your OAuth token in the Authorization heade
           if (data) {
             responseChunks.push(data);
           }
-          const body = responseChunks.join('');
-          return new Response(body, {
-            status: responseStatus,
-            headers: responseHeaders,
-          });
+          isEnded = true;
         },
       };
 
       // Handle the request
       await transport.handleRequest(req as any, nodeResponse as any, body);
 
-      // Get the response body
-      const finalResponse = nodeResponse.end();
-      const responseBody = await finalResponse.text();
+      // Get the response body after transport.handleRequest has called end()
+      const responseBody = responseChunks.join('');
 
       console.log('MCP Response status:', responseStatus);
       console.log('MCP Response body:', responseBody.substring(0, 500));
