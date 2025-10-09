@@ -21,8 +21,6 @@ import fetch from 'node-fetch';
 dotenv.config({ path: '.env.test' });
 
 const SERVER_URL = process.env.MCP_SERVER_URL || 'https://second-brain-mcp.nick-01a.workers.dev';
-const GITHUB_CLIENT_ID_LOCAL = process.env.GITHUB_CLIENT_ID_LOCAL;
-const GITHUB_CLIENT_SECRET_LOCAL = process.env.GITHUB_CLIENT_SECRET_LOCAL;
 const CALLBACK_PORT = parseInt(process.env.CALLBACK_PORT || '3000');
 
 interface OAuthResult {
@@ -105,77 +103,63 @@ function startCallbackServer(port: number): Promise<OAuthResult> {
 }
 
 /**
- * Exchange authorization code for access token
- * We do this DIRECTLY with GitHub (not through the server)
- * to test if the server's OAuth callback properly returns the token
+ * Exchange MCP authorization code for MCP access token
+ * This is the CORRECT flow: exchange OUR code with OUR /oauth/token endpoint
+ * (Not GitHub's token endpoint!)
  */
 async function exchangeCodeForToken(code: string): Promise<{ access_token: string; userId?: string }> {
-  console.log(chalk.gray('Exchanging code for token with GitHub...'));
+  console.log(chalk.gray('Exchanging MCP authorization code for MCP access token...'));
 
-  if (!GITHUB_CLIENT_ID_LOCAL || !GITHUB_CLIENT_SECRET_LOCAL) {
-    throw new Error('GITHUB_CLIENT_ID_LOCAL and GITHUB_CLIENT_SECRET_LOCAL must be set');
-  }
-
-  // Exchange code for token with GitHub
-  const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
+  // Exchange MCP code for MCP token with OUR server
+  const tokenResponse = await fetch(`${SERVER_URL}/oauth/token`, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
+      'Content-Type': 'application/x-www-form-urlencoded',
       'Accept': 'application/json',
     },
-    body: JSON.stringify({
-      client_id: GITHUB_CLIENT_ID_LOCAL,
-      client_secret: GITHUB_CLIENT_SECRET_LOCAL,
-      code,
-    }),
+    body: 'grant_type=authorization_code&code=' + encodeURIComponent(code),
   });
+
+  console.log(chalk.gray('Token endpoint response status:'), tokenResponse.status);
+
+  if (!tokenResponse.ok) {
+    const errorText = await tokenResponse.text();
+    console.error(chalk.red('Token exchange failed:'), errorText);
+    throw new Error(`Token exchange failed: ${tokenResponse.status} ${errorText}`);
+  }
 
   const tokenData = await tokenResponse.json() as any;
 
   if (tokenData.error) {
-    throw new Error(`GitHub OAuth error: ${tokenData.error_description || tokenData.error}`);
+    throw new Error(`MCP OAuth error: ${tokenData.error_description || tokenData.error}`);
   }
 
   if (!tokenData.access_token) {
-    throw new Error('No access_token in GitHub response');
+    throw new Error('No access_token in MCP token response');
   }
 
-  console.log(chalk.green('✅ Got access token from GitHub!'));
-
-  // Get user info
-  const userResponse = await fetch('https://api.github.com/user', {
-    headers: {
-      'Authorization': `Bearer ${tokenData.access_token}`,
-      'Accept': 'application/vnd.github.v3+json',
-    },
-  });
-
-  const userData = await userResponse.json() as any;
-
-  console.log(chalk.gray('GitHub user:'), userData.login, `(ID: ${userData.id})`);
+  console.log(chalk.green('✅ Got MCP access token!'));
+  console.log(chalk.gray('Token type:'), tokenData.token_type);
+  console.log(chalk.gray('Scope:'), tokenData.scope);
+  console.log(chalk.gray('Expires in:'), tokenData.expires_in, 'seconds');
 
   return {
     access_token: tokenData.access_token,
-    userId: userData.id.toString(),
+    userId: undefined, // We don't have userId from token response, will get it from MCP request
   };
 }
 
 /**
  * Generate OAuth URL with localhost redirect
+ * This hits OUR /oauth/authorize endpoint, which redirects to GitHub
  */
 function generateOAuthUrl(port: number): string {
-  if (!GITHUB_CLIENT_ID_LOCAL) {
-    throw new Error('GITHUB_CLIENT_ID_LOCAL not set in .env.test - see setup instructions');
-  }
-
   const redirectUri = `http://localhost:${port}/callback`;
-  const state = Math.random().toString(36).substring(7);
 
-  const authUrl = new URL('https://github.com/login/oauth/authorize');
-  authUrl.searchParams.set('client_id', GITHUB_CLIENT_ID_LOCAL);
+  // Call OUR /oauth/authorize endpoint with redirect_uri
+  // Our server will redirect to GitHub, then back to our callback, then back to redirect_uri
+  const authUrl = new URL(`${SERVER_URL}/oauth/authorize`);
   authUrl.searchParams.set('redirect_uri', redirectUri);
-  authUrl.searchParams.set('scope', 'read:user');
-  authUrl.searchParams.set('state', state);
 
   return authUrl.toString();
 }
@@ -195,20 +179,9 @@ async function main() {
 
   // Step 2: Generate OAuth URL
   console.log(chalk.blue('\n🔗 Step 2: Generating OAuth URL...'));
-  let oauthUrl: string;
-  try {
-    oauthUrl = generateOAuthUrl(CALLBACK_PORT);
-    console.log(chalk.gray('OAuth URL:'), oauthUrl);
-  } catch (error: any) {
-    console.log(chalk.red('\n❌ Failed to generate OAuth URL:'), error.message);
-    console.log(chalk.yellow('\n📋 Setup Instructions:'));
-    console.log(chalk.yellow('1. Create a GitHub OAuth App at: https://github.com/settings/developers'));
-    console.log(chalk.yellow('2. Set callback URL to: http://localhost:3000/callback'));
-    console.log(chalk.yellow('3. Add to .env.test:'));
-    console.log(chalk.gray('   GITHUB_CLIENT_ID_LOCAL=<your_client_id>'));
-    console.log(chalk.gray('   GITHUB_CLIENT_SECRET_LOCAL=<your_client_secret>'));
-    process.exit(1);
-  }
+  const oauthUrl = generateOAuthUrl(CALLBACK_PORT);
+  console.log(chalk.gray('OAuth URL:'), oauthUrl);
+  console.log(chalk.gray('This will redirect through our /oauth/authorize endpoint'));
 
   // Step 3: Open browser
   console.log(chalk.blue('\n🌐 Step 3: Opening browser for authentication...'));
@@ -264,7 +237,7 @@ async function main() {
       }),
     });
 
-    const mcpData = await mcpResponse.json();
+    const mcpData = await mcpResponse.json() as any;
     console.log(chalk.gray('MCP response:'), JSON.stringify(mcpData, null, 2));
 
     if (mcpData.result?.capabilities?.tools) {
