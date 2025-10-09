@@ -164,6 +164,14 @@ export class OAuthHandler {
           timestamp: Date.now(),
         });
 
+        console.log('=== OAUTH CALLBACK DEBUG ===');
+        console.log('GitHub code:', githubCode);
+        console.log('State:', state);
+        console.log('Client redirect URI:', clientRedirectUri);
+        console.log('MCP auth code generated:', mcpAuthCode);
+        console.log('Stored at key:', `mcp:authcode:${mcpAuthCode}`);
+        console.log('Code data:', codeData);
+
         // Authorization code expires in 5 minutes
         await this.kv.put(`mcp:authcode:${mcpAuthCode}`, codeData, { expirationTtl: 300 });
 
@@ -227,8 +235,15 @@ export class OAuthHandler {
     expires_in: number;
   } | null> {
     try {
+      console.log('=== OAUTH TOKEN EXCHANGE DEBUG ===');
+      console.log('Code received:', code);
+      console.log('Looking up key:', `mcp:authcode:${code}`);
+
       // Look up the MCP authorization code that we generated
       const codeDataStr = await this.kv.get(`mcp:authcode:${code}`);
+
+      console.log('Found code data:', codeDataStr ? 'YES' : 'NO');
+      console.log('Code data string:', codeDataStr);
 
       if (!codeDataStr) {
         console.error('Invalid or expired MCP authorization code');
@@ -237,6 +252,7 @@ export class OAuthHandler {
 
       // Parse the stored MCP token data
       const codeData = JSON.parse(codeDataStr);
+      console.log('Parsed code data:', codeData);
 
       // Delete the code (one-time use)
       await this.kv.delete(`mcp:authcode:${code}`);

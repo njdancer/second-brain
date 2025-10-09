@@ -230,29 +230,26 @@ Check `/oauth/token` endpoint (src/index.ts:108-143):
 - [ ] Verify response format matches OAuth 2.1 spec
 - [ ] Add detailed logging for debugging
 
-#### 12.5 Add Debug Logging
+#### 12.5 Add Debug Logging ✅
 
-Add temporary debug logging to track OAuth flow:
+Added comprehensive debug logging to track OAuth flow:
 
-```typescript
-// In /oauth/callback (src/oauth-handler.ts:71)
-console.log('=== OAUTH CALLBACK DEBUG ===');
-console.log('GitHub code:', githubCode);
-console.log('State:', state);
-console.log('Client redirect URI:', clientRedirectUri);
-console.log('MCP auth code generated:', mcpAuthCode);
-console.log('Stored at key:', `mcp:authcode:${mcpAuthCode}`);
-console.log('Code data:', codeData);
+**src/oauth-handler.ts (handleOAuthCallback):**
+- Logs GitHub code, state, client redirect URI
+- Logs generated MCP auth code and KV key
+- Logs code data being stored
 
-// In /oauth/token (src/index.ts:108)
-console.log('=== OAUTH TOKEN EXCHANGE DEBUG ===');
-console.log('Request body:', body);
-console.log('Code:', code);
-console.log('Grant type:', grantType);
-console.log('Looking up:', `mcp:authcode:${code}`);
-const codeData = await this.kv.get(`mcp:authcode:${code}`);
-console.log('Found code data:', codeData);
-```
+**src/oauth-handler.ts (handleTokenExchange):**
+- Logs code received and KV key lookup
+- Logs whether code data was found
+- Logs parsed code data
+
+**src/index.ts (/oauth/token endpoint):**
+- Logs request headers
+- Logs parsed body, code, and grant type
+- Logs token exchange result
+
+All 304 tests passing with debug logging in place.
 
 **Deliverables:**
 - [ ] test-mcp-with-oauth.ts updated to test correct flow
@@ -267,7 +264,7 @@ console.log('Found code data:', codeData);
 - Complete OAuth flow test passes
 - Can connect and use MCP server from Claude.ai
 
-**Status:** 🚧 IN PROGRESS - Investigating token exchange failure
+**Status:** 🚧 IN PROGRESS - Debug logging deployed, ready for OAuth flow test
 
 ---
 
@@ -372,4 +369,4 @@ pnpm run test:mcp:oauth        # Test OAuth flow
 
 ---
 
-**Last Updated:** 2025-10-09 - Identified critical OAuth testing gaps, debugging token exchange failure
+**Last Updated:** 2025-10-09 - Added comprehensive debug logging to OAuth flow, ready for testing

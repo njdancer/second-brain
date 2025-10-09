@@ -107,6 +107,9 @@ export function createApp(env: Env): Hono {
   // OAuth token endpoint (server-to-server token exchange)
   app.post('/oauth/token', async (c) => {
     try {
+      console.log('=== /oauth/token ENDPOINT DEBUG ===');
+      console.log('Request headers:', Object.fromEntries(c.req.raw.headers.entries()));
+
       const oauthHandler = new OAuthHandler(
         env.OAUTH_KV,
         null,
@@ -117,24 +120,34 @@ export function createApp(env: Env): Hono {
       );
 
       const body = await c.req.parseBody();
+      console.log('Parsed body:', body);
+
       const code = body.code as string;
       const grantType = body.grant_type as string;
 
+      console.log('Code:', code);
+      console.log('Grant type:', grantType);
+
       if (grantType !== 'authorization_code') {
+        console.log('Unsupported grant type:', grantType);
         return c.json({ error: 'unsupported_grant_type' }, 400);
       }
 
       if (!code) {
+        console.log('Missing code parameter');
         return c.json({ error: 'invalid_request', error_description: 'Missing code parameter' }, 400);
       }
 
       // Exchange code for token
+      console.log('Calling handleTokenExchange with code:', code);
       const result = await oauthHandler.handleTokenExchange(code);
 
       if (!result) {
+        console.log('handleTokenExchange returned null - invalid code or unauthorized user');
         return c.json({ error: 'invalid_grant', error_description: 'Invalid authorization code or user not authorized' }, 400);
       }
 
+      console.log('Token exchange successful, returning result');
       return c.json(result);
     } catch (error) {
       console.error('OAuth token endpoint error:', error);
