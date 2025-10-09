@@ -4,11 +4,46 @@ Authentication, authorization, data protection, and access control for the Secon
 
 ---
 
+## OAuth Architecture Overview
+
+**IMPORTANT:** This MCP server has a **dual OAuth role** architecture with TWO separate flows:
+
+### 1. OAuth SERVER (We Issue Tokens)
+- **Role:** Authorization server for MCP clients
+- **Clients:** Claude.ai, MCP Inspector, other MCP clients
+- **We provide:** MCP access tokens (`mcp_*` prefix)
+- **Protocol:** OAuth 2.1 with PKCE (required for public clients)
+- **Implementation:** `@cloudflare/workers-oauth-provider` library (Phase 13 migration)
+- **Endpoints:** `/oauth/authorize`, `/oauth/token`, `/.well-known/oauth-authorization-server`
+- **Current Status:** Hand-rolled implementation (Phase 12) → Library migration (Phase 13)
+- **Blocker:** Missing PKCE prevents Claude.ai from connecting
+
+### 2. OAuth CLIENT (We Consume Tokens)
+- **Role:** OAuth client consuming GitHub's OAuth service
+- **Provider:** GitHub
+- **We consume:** GitHub access tokens (for user identity verification only)
+- **Protocol:** OAuth 2.0
+- **Purpose:** Verify user ID against `GITHUB_ALLOWED_USER_ID` allowlist
+- **Current Status:** Hand-rolled implementation (working, but has security issues)
+- **Future:** Optional Arctic migration (Phase 13B)
+
+**Why Two Flows?**
+- We can't give MCP clients direct access to GitHub tokens (security boundary)
+- We need to verify user identity before issuing our own MCP tokens
+- MCP tokens have different scopes (`mcp:read`, `mcp:write`) than GitHub tokens (`read:user`)
+
+**Token Boundaries:**
+- MCP access tokens (issued by us) → Used for MCP protocol requests
+- GitHub access tokens (issued by GitHub) → Used for user verification only
+- **Never** mix these tokens across boundaries
+
+---
+
 ## Authentication
 
-### OAuth 2.1 via GitHub
+### OAuth 2.1 via GitHub (Combined Flows)
 
-**Provider:** GitHub OAuth
+**Note:** The flow below describes BOTH OAuth roles. Steps 1-2 and 9-10 are our OAuth SERVER role. Steps 3-8 are our OAuth CLIENT role.
 
 **Required Scopes:**
 - `read:user` - To verify user identity and retrieve GitHub user ID
