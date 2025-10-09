@@ -37,8 +37,9 @@ After comprehensive research into production OAuth solutions, chose **two-librar
    - Official Cloudflare solution, used in production MCP servers
    - Handles PKCE automatically, wraps existing Hono app
    - Fixes the Claude.ai blocker
-2. **Arctic** for OAuth CLIENT (us consuming GitHub tokens) - OPTIONAL Phase 13B
+2. **Arctic** for OAuth CLIENT (us consuming GitHub tokens) - Required Phase 13B
    - Deferred until Phase 13A (OAuth SERVER) is stable
+   - Eliminates all hand-rolled OAuth code from codebase
    - Fixes Math.random() and base64 issues in GitHub integration
 
 **Test Coverage:** 95.13% statements, 86.1% branches, 96.2% functions (304/304 tests passing)
@@ -159,11 +160,11 @@ After comprehensive research, we're using a **two-library approach** that separa
    - Handles PKCE, token management, authorization flows
    - Wraps our existing Hono app
 
-2. **OAuth CLIENT (Arctic)** - PRIORITY 2 (Optional)
+2. **OAuth CLIENT (Arctic)** - PRIORITY 2 (Required)
    - For us authenticating WITH GitHub
-   - Makes GitHub integration more secure
-   - Fixes Math.random() and base64 encryption issues
-   - Can be deferred if @cloudflare/workers-oauth-provider is sufficient
+   - Eliminates all hand-rolled OAuth code from our codebase
+   - Fixes Math.random() and base64 encryption issues in GitHub integration
+   - Can be deferred until Phase 13A is stable, but must be completed to remove hand-rolled code
 
 **Why @cloudflare/workers-oauth-provider:**
 - **Official Cloudflare** - Built by the platform team, optimized for Workers
@@ -411,8 +412,9 @@ Delete or archive this entire file:
 - [ ] Successfully deployed to production
 - [ ] Claude.ai connection verified working
 
-**Optional Future Enhancement (Phase 13B):**
-- [ ] Migrate GitHub OAuth CLIENT to Arctic (fixes Math.random, base64 issues)
+**Required Follow-Up Work (Phase 13B):**
+- [ ] Migrate GitHub OAuth CLIENT to Arctic (eliminates hand-rolled OAuth code)
+- [ ] Fixes Math.random() and base64 encryption issues
 - [ ] Reduces GitHub integration from ~100 lines to ~30 lines
 - [ ] Deferred until Phase 13A (OAuth SERVER) is stable
 
@@ -625,7 +627,7 @@ pnpm run test:mcp:oauth        # Test OAuth flow
   - Free (no per-user costs)
   - Documented in Cloudflare's MCP guides
 
-**Arctic (OPTIONAL FOR OAUTH CLIENT)**
+**Arctic (REQUIRED FOR OAUTH CLIENT)**
 - **Package:** `arctic` on npm
 - **NPM:** https://www.npmjs.com/package/arctic
 - **GitHub:** https://github.com/pilcrowOnPaper/arctic
@@ -639,7 +641,7 @@ pnpm run test:mcp:oauth        # Test OAuth flow
 - **License:** MIT
 - **Use Case:**
   - OAuth CLIENT role (us → GitHub)
-  - Optional Phase 13B enhancement
+  - Required Phase 13B to eliminate all hand-rolled OAuth code
   - Fixes Math.random() and base64 encryption issues
   - Deferred until Phase 13A is stable
 
@@ -742,7 +744,7 @@ After researching OAuth libraries at user request, discovered hand-rolled implem
 
 **Approach:** Two-library strategy
 1. **Phase 13A (PRIORITY 1):** OAuth SERVER with @cloudflare/workers-oauth-provider
-2. **Phase 13B (OPTIONAL):** OAuth CLIENT with Arctic (deferred)
+2. **Phase 13B (REQUIRED):** OAuth CLIENT with Arctic (deferred until 13A stable)
 
 **Blockers Resolved:**
 - ✅ Research completed (@cloudflare/workers-oauth-provider selected for OAuth SERVER)

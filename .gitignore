@@ -10,3 +10,5 @@ coverage/
 # Keep example files
 !.env.example
 !.env.test.example
+
+.wrangler

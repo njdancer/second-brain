@@ -25,7 +25,7 @@ Authentication, authorization, data protection, and access control for the Secon
 - **Protocol:** OAuth 2.0
 - **Purpose:** Verify user ID against `GITHUB_ALLOWED_USER_ID` allowlist
 - **Current Status:** Hand-rolled implementation (working, but has security issues)
-- **Future:** Optional Arctic migration (Phase 13B)
+- **Future:** Required Arctic migration (Phase 13B, deferred until 13A stable)
 
 **Why Two Flows?**
 - We can't give MCP clients direct access to GitHub tokens (security boundary)
