@@ -205,12 +205,12 @@ After comprehensive research, we're using a **two-library approach** that separa
 
 **Migration Tasks:**
 
-#### 13.1 Install @cloudflare/workers-oauth-provider
+#### 13.1 Install @cloudflare/workers-oauth-provider ✅ COMPLETE
 
-- [ ] Install library: `pnpm add @cloudflare/workers-oauth-provider`
-- [ ] Review Cloudflare OAuth provider documentation
-- [ ] Study example MCP servers using this library
-- [ ] Review CVE-2025-4144 fix (ensure we're on v0.0.5+)
+- [x] Install library: `pnpm add @cloudflare/workers-oauth-provider` (v0.0.11)
+- [x] Review Cloudflare OAuth provider documentation
+- [x] Study example MCP servers using this library (cloudflare/ai/demos/remote-mcp-github-oauth)
+- [x] Review CVE-2025-4144 fix (v0.0.5+ installed)
 
 #### 13.2 Understand Current vs New Architecture
 
@@ -230,7 +230,7 @@ Request → OAuthProvider wrapper → {
 
 **Key insight:** The library WRAPS our existing Hono app, rather than replacing it.
 
-#### 13.3 Integrate OAuth Provider Wrapper
+#### 13.3 Integrate OAuth Provider Wrapper ✅ COMPLETE
 
 **File:** `src/index.ts` (main export)
 
@@ -269,13 +269,15 @@ export default new OAuthProvider({
 ```
 
 **Tasks:**
-- [ ] Refactor createApp() to separate MCP handler from OAuth endpoints
-- [ ] Create createMCPHandler() that handles authenticated MCP requests
-- [ ] Create createOAuthUIHandler() for OAuth flows (GitHub redirect, user consent)
-- [ ] Remove manual OAuth endpoints from Hono app (library handles them)
-- [ ] Configure OAuthProvider with our KV namespaces
+- [x] Refactor createApp() to separate MCP handler from OAuth endpoints
+- [x] Create createMCPHandler() that handles authenticated MCP requests (src/mcp-api-handler.ts)
+- [x] Create createOAuthUIHandler() for OAuth flows (src/oauth-ui-handler.ts)
+- [x] Remove manual OAuth endpoints from Hono app (library handles them)
+- [x] Configure OAuthProvider with our KV namespaces (OAUTH_KV)
+- [x] Archive old files (index-v1.2.3-manual-oauth.ts, oauth-handler-v1.2.3.ts)
+- [x] Type checking passes
 
-#### 13.4 Implement OAuth UI Handler (GitHub Integration)
+#### 13.4 Implement OAuth UI Handler (GitHub Integration) ✅ COMPLETE
 
 **File:** `src/oauth-ui-handler.ts` (NEW)
 
@@ -339,23 +341,23 @@ export async function createOAuthUIHandler(env: Env) {
 
 **Key insight:** The library handles MCP OAuth (PKCE, token issuance), we just provide GitHub identity verification.
 
-#### 13.5 Remove Manual OAuth Endpoints
+#### 13.5 Remove Manual OAuth Endpoints ✅ COMPLETE
 
 **File:** `src/index.ts`
 
 Remove these sections (library handles them):
-- [ ] Lines 67-85: `/oauth/authorize` endpoint
-- [ ] Lines 87-105: `/oauth/callback` endpoint
-- [ ] Lines 108-156: `/oauth/token` endpoint
-- [ ] Lines 383-419: Discovery endpoints
-- [ ] Lines 421-463: `/register` endpoint
+- [x] Lines 67-85: `/oauth/authorize` endpoint - ✅ Removed (now in GitHubHandler)
+- [x] Lines 87-105: `/oauth/callback` endpoint - ✅ Removed (now in GitHubHandler)
+- [x] Lines 108-156: `/oauth/token` endpoint - ✅ Removed (OAuthProvider handles)
+- [x] Lines 383-419: Discovery endpoints - ✅ Removed (OAuthProvider handles)
+- [x] Lines 421-463: `/register` endpoint - ✅ Removed (OAuthProvider handles)
 
 **File:** `src/oauth-handler.ts`
 
 Delete or archive this entire file:
-- [ ] Backup to `/src/archive/oauth-handler-v1.2.3.ts`
-- [ ] Remove from imports
-- [ ] Library replaces all functionality
+- [x] Backup to `/src/archive/oauth-handler-v1.2.3.ts` - ✅ Archived
+- [x] Remove from imports - ✅ No longer imported
+- [x] Library replaces all functionality - ✅ Complete
 
 #### 13.6 Update Tests
 
