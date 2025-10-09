@@ -395,7 +395,18 @@ After authentication, reconnect with your OAuth token in the Authorization heade
     });
   });
 
-  // OAuth 2.1 Protected Resource Metadata
+  // OAuth 2.1 Protected Resource Metadata (base path for MCP Inspector)
+  app.get('/.well-known/oauth-protected-resource', async (c) => {
+    const baseUrl = new URL(c.req.url).origin;
+    return c.json({
+      resource: `${baseUrl}/mcp`,
+      authorization_servers: [baseUrl],
+      scopes_supported: ['mcp:read', 'mcp:write'],
+      bearer_methods_supported: ['header'],
+    });
+  });
+
+  // OAuth 2.1 Protected Resource Metadata (with /mcp suffix for backwards compatibility)
   app.get('/.well-known/oauth-protected-resource/mcp', async (c) => {
     const baseUrl = new URL(c.req.url).origin;
     return c.json({
@@ -408,14 +419,46 @@ After authentication, reconnect with your OAuth token in the Authorization heade
 
   // Dynamic Client Registration (RFC 7591) - Simplified
   app.post('/register', async (c) => {
-    // For now, return metadata pointing to our OAuth app
-    // In a full implementation, this would create a new OAuth client
-    return c.json({
-      client_id: 'use-github-oauth-app',
-      client_secret: 'n/a',
-      authorization_endpoint: new URL('/oauth/authorize', c.req.url).toString(),
-      token_endpoint: new URL('/oauth/token', c.req.url).toString(),
-    });
+    try {
+      // Parse the registration request
+      const registration = await c.req.json();
+
+      // Validate required redirect_uris
+      if (!registration.redirect_uris || !Array.isArray(registration.redirect_uris)) {
+        return c.json({
+          error: 'invalid_redirect_uri',
+          error_description: 'redirect_uris is required and must be an array',
+        }, 400);
+      }
+
+      // For this implementation, we don't actually register dynamic clients
+      // Instead, we return metadata for our pre-configured GitHub OAuth app
+      // This tells the inspector how to use our existing OAuth flow
+      const baseUrl = new URL(c.req.url).origin;
+
+      return c.json({
+        // RFC 7591 required fields
+        client_id: 'mcp-inspector',
+        client_id_issued_at: Math.floor(Date.now() / 1000),
+
+        // Registration fields echoed back
+        redirect_uris: registration.redirect_uris,
+        token_endpoint_auth_method: registration.token_endpoint_auth_method || 'none',
+        grant_types: registration.grant_types || ['authorization_code'],
+        response_types: registration.response_types || ['code'],
+        client_name: registration.client_name || 'MCP Client',
+
+        // Our OAuth endpoints
+        authorization_endpoint: `${baseUrl}/oauth/authorize`,
+        token_endpoint: `${baseUrl}/oauth/token`,
+      });
+    } catch (error) {
+      console.error('Client registration error:', error);
+      return c.json({
+        error: 'invalid_request',
+        error_description: 'Invalid registration request',
+      }, 400);
+    }
   });
 
   // Manual backup trigger endpoint
