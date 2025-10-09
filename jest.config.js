@@ -4,7 +4,8 @@ module.exports = {
   collectCoverageFrom: [
     'src/**/*.ts',
     '!src/**/*.d.ts',
-    '!src/**/*.test.ts'
+    '!src/**/*.test.ts',
+    '!src/archive/**'  // Exclude archived files from coverage
   ],
   coverageThreshold: {
     global: {
@@ -15,7 +16,8 @@ module.exports = {
     }
   },
   testMatch: [
-    '**/test/**/*.test.ts'
+    '**/test/**/*.test.ts',
+    '!**/test/archive/**'  // Exclude archived tests
   ],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1'

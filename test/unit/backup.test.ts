@@ -6,6 +6,9 @@ import { BackupService, BackupResult } from '../../src/backup';
 import { StorageService } from '../../src/storage';
 import { MockR2Bucket } from '../mocks/r2';
 
+// Increase timeout for backup operations (AWS SDK can be slow)
+jest.setTimeout(15000);
+
 // Mock S3 Client
 class MockS3Client {
   private objects: Map<

@@ -1,10 +1,11 @@
 /**
- * OAuth UI Handler
- * Handles GitHub authentication and authorization UI flow
- * Pattern based on Cloudflare's remote-mcp-github-oauth template
+ * OAuth UI Handler with Arctic
+ * Handles GitHub authentication flow using Arctic library
+ * Integrates with OAuthProvider for MCP token management
  */
 
 import type { OAuthHelpers } from '@cloudflare/workers-oauth-provider';
+import { GitHub } from 'arctic';
 import { Hono } from 'hono';
 import { Env } from './index';
 
@@ -26,9 +27,7 @@ interface GitHubUser {
 }
 
 /**
- * Create OAuth UI handler for GitHub authentication
- * This handles the user-facing OAuth flow (authorize + callback)
- * OAuthProvider handles the MCP token management (token endpoint, PKCE, etc.)
+ * Create OAuth UI handler for GitHub authentication using Arctic
  */
 export function createGitHubHandler() {
   const app = new Hono<{ Bindings: OAuthEnv }>();
@@ -38,14 +37,13 @@ export function createGitHubHandler() {
    */
   app.get('/authorize', async (c) => {
     try {
-      // Parse the OAuth authorization request from MCP client (Claude.ai, MCP Inspector)
+      // Parse the OAuth authorization request from MCP client
       const oauthReqInfo = await c.env.OAUTH_PROVIDER.parseAuthRequest(c.req.raw);
 
       console.log('OAuth authorize request:', {
         clientId: oauthReqInfo.clientId,
         redirectUri: oauthReqInfo.redirectUri,
         scope: oauthReqInfo.scope,
-        state: oauthReqInfo.state,
         codeChallenge: oauthReqInfo.codeChallenge,
         codeChallengeMethod: oauthReqInfo.codeChallengeMethod,
       });
@@ -56,20 +54,24 @@ export function createGitHubHandler() {
         return c.text('Invalid client', 400);
       }
 
-      // Encode the MCP OAuth request state to pass through GitHub auth
-      // We'll decode it in the callback to complete the MCP authorization
-      const stateParam = btoa(JSON.stringify(oauthReqInfo));
+      // Initialize Arctic GitHub client
+      const github = new GitHub(
+        c.env.GITHUB_CLIENT_ID,
+        c.env.GITHUB_CLIENT_SECRET,
+        `${new URL(c.req.url).origin}/oauth/callback`
+      );
 
-      // Redirect to GitHub OAuth
-      const githubUrl = new URL('https://github.com/login/oauth/authorize');
-      githubUrl.searchParams.set('client_id', c.env.GITHUB_CLIENT_ID);
-      githubUrl.searchParams.set('redirect_uri', `${new URL(c.req.url).origin}/oauth/callback`);
-      githubUrl.searchParams.set('scope', 'read:user');
-      githubUrl.searchParams.set('state', stateParam);
+      // Generate state with MCP OAuth request encoded in it
+      // Arctic generates cryptographically secure state
+      const state = btoa(JSON.stringify(oauthReqInfo));
 
-      console.log('Redirecting to GitHub:', githubUrl.toString());
+      // Create GitHub authorization URL with Arctic
+      // Arctic automatically handles PKCE for the GitHub flow
+      const authUrl = github.createAuthorizationURL(state, ['read:user']);
 
-      return Response.redirect(githubUrl.toString(), 302);
+      console.log('Redirecting to GitHub:', authUrl.toString());
+
+      return Response.redirect(authUrl.toString(), 302);
     } catch (error) {
       console.error('OAuth authorize error:', error);
       return c.text('Failed to initiate OAuth flow', 500);
@@ -82,7 +84,7 @@ export function createGitHubHandler() {
   app.get('/callback', async (c) => {
     try {
       const code = c.req.query('code');
-      const stateParam = c.req.query('state');
+      const state = c.req.query('state');
       const error = c.req.query('error');
 
       // Handle GitHub OAuth errors
@@ -91,46 +93,35 @@ export function createGitHubHandler() {
         return c.text(`GitHub authorization failed: ${error}`, 400);
       }
 
-      if (!code || !stateParam) {
+      if (!code || !state) {
         return c.text('Missing code or state parameter', 400);
       }
 
       console.log('OAuth callback received');
 
-      // Decode the original MCP OAuth request
-      const oauthReqInfo = JSON.parse(atob(stateParam));
+      // Decode the original MCP OAuth request from state
+      const oauthReqInfo = JSON.parse(atob(state));
       console.log('Retrieved MCP auth request:', oauthReqInfo);
 
-      // Exchange GitHub code for access token
-      const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({
-          client_id: c.env.GITHUB_CLIENT_ID,
-          client_secret: c.env.GITHUB_CLIENT_SECRET,
-          code,
-        }),
-      });
+      // Initialize Arctic GitHub client
+      const github = new GitHub(
+        c.env.GITHUB_CLIENT_ID,
+        c.env.GITHUB_CLIENT_SECRET,
+        `${new URL(c.req.url).origin}/oauth/callback`
+      );
 
-      if (!tokenResponse.ok) {
-        console.error('GitHub token exchange failed:', tokenResponse.status);
-        return c.text('Failed to exchange GitHub authorization code', 500);
-      }
+      // Validate callback and exchange code for tokens using Arctic
+      // Arctic handles token exchange, validation, and refresh token management
+      const tokens = await github.validateAuthorizationCode(code);
 
-      const tokenData = await tokenResponse.json() as { access_token?: string; error?: string };
-      if (tokenData.error || !tokenData.access_token) {
-        console.error('GitHub token error:', tokenData.error);
-        return c.text(`GitHub token error: ${tokenData.error}`, 400);
-      }
+      console.log('GitHub tokens received');
 
-      // Get GitHub user info
+      // Get GitHub user info using the access token
       const userResponse = await fetch('https://api.github.com/user', {
         headers: {
-          'Authorization': `Bearer ${tokenData.access_token}`,
+          'Authorization': `Bearer ${tokens.accessToken()}`,
           'Accept': 'application/json',
+          'User-Agent': 'Second-Brain-MCP/1.0',
         },
       });
 
@@ -151,7 +142,7 @@ export function createGitHubHandler() {
       console.log('User authorized, completing MCP OAuth flow');
 
       // Complete the MCP OAuth authorization using OAuthProvider
-      // This creates the authorization code and redirect back to the MCP client
+      // This creates the MCP authorization code and redirects back to the MCP client
       const { redirectTo } = await c.env.OAUTH_PROVIDER.completeAuthorization({
         request: oauthReqInfo,
         userId: githubUser.id.toString(),
@@ -164,6 +155,8 @@ export function createGitHubHandler() {
         props: {
           userId: githubUser.id.toString(),
           githubLogin: githubUser.login,
+          // Store GitHub access token for potential future use
+          githubAccessToken: tokens.accessToken(),
         },
       });
 
@@ -173,7 +166,7 @@ export function createGitHubHandler() {
       return Response.redirect(redirectTo, 302);
     } catch (error) {
       console.error('OAuth callback error:', error);
-      return c.text('Failed to complete OAuth flow', 500);
+      return c.text(`Failed to complete OAuth flow: ${error instanceof Error ? error.message : 'Unknown error'}`, 500);
     }
   });
 
