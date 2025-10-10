@@ -104,14 +104,14 @@ function startCallbackServer(port: number): Promise<OAuthResult> {
 
 /**
  * Exchange MCP authorization code for MCP access token
- * This is the CORRECT flow: exchange OUR code with OUR /oauth/token endpoint
+ * This is the CORRECT flow: exchange OUR code with OUR /token endpoint
  * (Not GitHub's token endpoint!)
  */
 async function exchangeCodeForToken(code: string): Promise<{ access_token: string; userId?: string }> {
   console.log(chalk.gray('Exchanging MCP authorization code for MCP access token...'));
 
   // Exchange MCP code for MCP token with OUR server
-  const tokenResponse = await fetch(`${SERVER_URL}/oauth/token`, {
+  const tokenResponse = await fetch(`${SERVER_URL}/token`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -151,14 +151,14 @@ async function exchangeCodeForToken(code: string): Promise<{ access_token: strin
 
 /**
  * Generate OAuth URL with localhost redirect
- * This hits OUR /oauth/authorize endpoint, which redirects to GitHub
+ * This hits OUR /authorize endpoint, which redirects to GitHub
  */
 function generateOAuthUrl(port: number): string {
   const redirectUri = `http://localhost:${port}/callback`;
 
-  // Call OUR /oauth/authorize endpoint with redirect_uri
+  // Call OUR /authorize endpoint with redirect_uri
   // Our server will redirect to GitHub, then back to our callback, then back to redirect_uri
-  const authUrl = new URL(`${SERVER_URL}/oauth/authorize`);
+  const authUrl = new URL(`${SERVER_URL}/authorize`);
   authUrl.searchParams.set('redirect_uri', redirectUri);
 
   return authUrl.toString();
@@ -181,7 +181,7 @@ async function main() {
   console.log(chalk.blue('\n🔗 Step 2: Generating OAuth URL...'));
   const oauthUrl = generateOAuthUrl(CALLBACK_PORT);
   console.log(chalk.gray('OAuth URL:'), oauthUrl);
-  console.log(chalk.gray('This will redirect through our /oauth/authorize endpoint'));
+  console.log(chalk.gray('This will redirect through our /authorize endpoint'));
 
   // Step 3: Open browser
   console.log(chalk.blue('\n🌐 Step 3: Opening browser for authentication...'));

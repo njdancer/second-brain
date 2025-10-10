@@ -198,5 +198,29 @@ export function createMCPHandler() {
 
 /**
  * Export the handler for OAuthProvider apiHandler configuration
+ * Wrapper class required to bridge OAuthProvider's ctx.props to Hono's context
  */
-export const MCPHandler = createMCPHandler();
+export class MCPHandler {
+  private honoApp = createMCPHandler();
+
+  /**
+   * Fetch handler called by OAuthProvider
+   * OAuthProvider injects props into this.ctx after token validation
+   */
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    // Extract props from OAuthProvider's context
+    // @ts-expect-error - OAuthProvider injects ctx.props dynamically
+    const props = this.ctx?.props as MCPProps | undefined;
+
+    // Create extended environment with props
+    const extendedEnv: MCPEnv = {
+      ...env,
+      props: props || { userId: '', githubLogin: '' },
+    };
+
+    console.log('MCPHandler.fetch called with props:', props);
+
+    // Call Hono app with extended environment
+    return this.honoApp.fetch(request, extendedEnv, ctx);
+  }
+}

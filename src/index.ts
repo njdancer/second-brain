@@ -45,9 +45,9 @@ export interface Env {
  */
 export default new OAuthProvider({
   // API handler for authenticated MCP requests
-  // OAuthProvider validates tokens and injects user info into env.props
+  // OAuthProvider validates tokens and injects user info into the handler's ctx.props
   apiRoute: '/mcp',
-  apiHandler: MCPHandler as any,
+  apiHandler: new MCPHandler() as any,
 
   // Default handler for OAuth UI (GitHub authentication)
   // Handles /authorize and /callback endpoints
