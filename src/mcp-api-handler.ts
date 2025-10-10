@@ -209,12 +209,12 @@ export class MCPHandler {
    */
   async fetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
     // OAuthProvider might inject props into env, ctx, or this.ctx
-    // Let's log all possible locations
-    console.log('MCPHandler.fetch called');
-    console.log('this.ctx?.props:', (this as any).ctx?.props);
-    console.log('env.props:', env.props);
-    console.log('ctx.props:', (ctx as any).props);
-    console.log('env keys:', Object.keys(env));
+    // Log all possible locations as JSON strings for easy viewing
+    console.log('DEBUG: MCPHandler.fetch called');
+    console.log('DEBUG: this.ctx=' + JSON.stringify((this as any).ctx));
+    console.log('DEBUG: env.props=' + JSON.stringify(env.props));
+    console.log('DEBUG: ctx=' + JSON.stringify(ctx));
+    console.log('DEBUG: env.keys=' + JSON.stringify(Object.keys(env)));
 
     // Try to find props in various locations
     const props = (this as any).ctx?.props || env.props || (ctx as any).props || { userId: '', githubLogin: '' };
@@ -225,7 +225,7 @@ export class MCPHandler {
       props: props,
     };
 
-    console.log('Final props used:', props);
+    console.log('DEBUG: Final props=' + JSON.stringify(props));
 
     // Call Hono app with extended environment
     return this.honoApp.fetch(request, extendedEnv, ctx);
