@@ -165,6 +165,15 @@ export function createMCPHandler() {
             responseChunks.push(data);
           }
         },
+        flushHeaders: () => {
+          console.log('flushHeaders called');
+          // No-op in our implementation
+        },
+        on: (event: string, callback: (...args: any[]) => void) => {
+          console.log('on called for event:', event);
+          // No-op in our implementation, but return this for chaining
+          return nodeResponse;
+        },
       };
 
       console.log('About to call transport.handleRequest');
