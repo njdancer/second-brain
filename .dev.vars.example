@@ -1,0 +1,17 @@
+# Local development environment variables
+# Copy this file to .dev.vars and fill in your actual values
+# .dev.vars is used by `wrangler dev` for local testing
+
+# GitHub OAuth Application credentials
+# Create at: https://github.com/settings/developers
+# Callback URL for local dev: http://localhost:8787/callback
+GITHUB_CLIENT_ID=your_github_client_id_here
+GITHUB_CLIENT_SECRET=your_github_client_secret_here
+
+# Your GitHub user ID (numeric)
+# Get it from: https://api.github.com/users/YOUR_USERNAME
+GITHUB_ALLOWED_USER_ID=your_github_user_id_here
+
+# Cookie encryption key (32+ random characters)
+# Generate with: openssl rand -base64 32
+COOKIE_ENCRYPTION_KEY=your_cookie_encryption_key_here

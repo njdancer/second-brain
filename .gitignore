@@ -6,10 +6,12 @@ coverage/
 .env.local
 .env.test
 .env.*.local
+.dev.vars
 
 # Keep example files
 !.env.example
 !.env.test.example
+!.dev.vars.example
 
 .wrangler
 
