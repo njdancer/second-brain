@@ -205,20 +205,27 @@ export class MCPHandler {
 
   /**
    * Fetch handler called by OAuthProvider
-   * OAuthProvider injects props into this.ctx after token validation
+   * OAuthProvider injects props into env after token validation
    */
-  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    // Extract props from OAuthProvider's context
-    // @ts-expect-error - OAuthProvider injects ctx.props dynamically
-    const props = this.ctx?.props as MCPProps | undefined;
+  async fetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
+    // OAuthProvider might inject props into env, ctx, or this.ctx
+    // Let's log all possible locations
+    console.log('MCPHandler.fetch called');
+    console.log('this.ctx?.props:', (this as any).ctx?.props);
+    console.log('env.props:', env.props);
+    console.log('ctx.props:', (ctx as any).props);
+    console.log('env keys:', Object.keys(env));
+
+    // Try to find props in various locations
+    const props = (this as any).ctx?.props || env.props || (ctx as any).props || { userId: '', githubLogin: '' };
 
     // Create extended environment with props
     const extendedEnv: MCPEnv = {
       ...env,
-      props: props || { userId: '', githubLogin: '' },
+      props: props,
     };
 
-    console.log('MCPHandler.fetch called with props:', props);
+    console.log('Final props used:', props);
 
     // Call Hono app with extended environment
     return this.honoApp.fetch(request, extendedEnv, ctx);
