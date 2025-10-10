@@ -142,9 +142,11 @@ export function createMCPHandler() {
       const nodeResponse = {
         statusCode: 200,
         setHeader: (name: string, value: string) => {
+          console.log('setHeader called:', name, value);
           responseHeaders.set(name, value);
         },
         writeHead: (statusCode: number, headers?: Record<string, string>) => {
+          console.log('writeHead called:', statusCode, headers);
           responseStatus = statusCode;
           if (headers) {
             Object.entries(headers).forEach(([key, value]) => {
@@ -153,18 +155,28 @@ export function createMCPHandler() {
           }
         },
         write: (chunk: string) => {
+          console.log('write called, chunk length:', chunk?.length);
           responseChunks.push(chunk);
           return true;
         },
         end: (data?: string) => {
+          console.log('end called, data length:', data?.length);
           if (data) {
             responseChunks.push(data);
           }
         },
       };
 
+      console.log('About to call transport.handleRequest');
+      console.log('transport:', !!transport, 'nodeResponse:', !!nodeResponse, 'body:', !!body);
+
       // Handle the request
-      await transport.handleRequest(c.req.raw as any, nodeResponse as any, body);
+      try {
+        await transport.handleRequest(c.req.raw as any, nodeResponse as any, body);
+      } catch (err) {
+        console.error('transport.handleRequest error:', err);
+        throw err;
+      }
 
       // Get the response body after transport.handleRequest has called end()
       const responseBody = responseChunks.join('');
@@ -205,27 +217,19 @@ export class MCPHandler {
 
   /**
    * Fetch handler called by OAuthProvider
-   * OAuthProvider injects props into env after token validation
+   * OAuthProvider injects props into ExecutionContext after token validation
    */
-  async fetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
-    // OAuthProvider might inject props into env, ctx, or this.ctx
-    // Log all possible locations as JSON strings for easy viewing
-    console.log('DEBUG: MCPHandler.fetch called');
-    console.log('DEBUG: this.ctx=' + JSON.stringify((this as any).ctx));
-    console.log('DEBUG: env.props=' + JSON.stringify(env.props));
-    console.log('DEBUG: ctx=' + JSON.stringify(ctx));
-    console.log('DEBUG: env.keys=' + JSON.stringify(Object.keys(env)));
+  async fetch(request: Request, env: any, ctx: any): Promise<Response> {
+    // OAuthProvider injects props into ctx.props (ExecutionContext)
+    const props = ctx.props || { userId: '', githubLogin: '' };
 
-    // Try to find props in various locations
-    const props = (this as any).ctx?.props || env.props || (ctx as any).props || { userId: '', githubLogin: '' };
+    console.log('MCP request authenticated for user:', props.userId, props.githubLogin);
 
     // Create extended environment with props
     const extendedEnv: MCPEnv = {
       ...env,
       props: props,
     };
-
-    console.log('DEBUG: Final props=' + JSON.stringify(props));
 
     // Call Hono app with extended environment
     return this.honoApp.fetch(request, extendedEnv, ctx);
