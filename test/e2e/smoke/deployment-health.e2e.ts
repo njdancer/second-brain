@@ -54,13 +54,13 @@ describe('E2E: Post-Deployment Smoke Tests', () => {
     expect(data.result.protocolVersion).toBe('2024-11-05');
     expect(data.result.serverInfo.name).toBe('second-brain-mcp');
     expect(data.result.instructions).toContain('OAuth');
-    expect(data.result.instructions).toContain('/oauth/authorize');
+    expect(data.result.instructions).toContain('/authorize');
 
     console.log('✅ Unauthenticated initialize working');
   });
 
   it('OAuth authorize endpoint redirects to GitHub', async () => {
-    const response = await fetch(`${SERVER_URL}/oauth/authorize`, {
+    const response = await fetch(`${SERVER_URL}/authorize`, {
       redirect: 'manual', // Don't follow redirects
     });
 
@@ -117,7 +117,7 @@ describe('E2E: Critical Path Smoke Tests', () => {
    */
   it('CRITICAL: Full OAuth flow contract verification', async () => {
     // Step 1: Get OAuth URL
-    const authResponse = await fetch(`${SERVER_URL}/oauth/authorize`, {
+    const authResponse = await fetch(`${SERVER_URL}/authorize`, {
       redirect: 'manual',
     });
 

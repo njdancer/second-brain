@@ -21,7 +21,7 @@ describe('E2E: OAuth Callback Contract', () => {
     // but we can verify the response structure when it succeeds
 
     // Test with invalid code to see error format
-    const response = await fetch(`${SERVER_URL}/oauth/callback?code=test_invalid_code`);
+    const response = await fetch(`${SERVER_URL}/callback?code=test_invalid_code`);
     const data = await response.json() as any;
 
     // Even on error, response should be JSON
