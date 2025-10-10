@@ -58,7 +58,7 @@ export function createGitHubHandler() {
       const github = new GitHub(
         c.env.GITHUB_CLIENT_ID,
         c.env.GITHUB_CLIENT_SECRET,
-        `${new URL(c.req.url).origin}/oauth/callback`
+        `${new URL(c.req.url).origin}/callback`
       );
 
       // Generate state with MCP OAuth request encoded in it
@@ -107,7 +107,7 @@ export function createGitHubHandler() {
       const github = new GitHub(
         c.env.GITHUB_CLIENT_ID,
         c.env.GITHUB_CLIENT_SECRET,
-        `${new URL(c.req.url).origin}/oauth/callback`
+        `${new URL(c.req.url).origin}/callback`
       );
 
       // Validate callback and exchange code for tokens using Arctic

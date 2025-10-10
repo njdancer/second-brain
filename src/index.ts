@@ -50,12 +50,13 @@ export default new OAuthProvider({
   apiHandler: MCPHandler as any,
 
   // Default handler for OAuth UI (GitHub authentication)
-  // Handles /oauth/authorize and /oauth/callback endpoints
+  // Handles /authorize and /callback endpoints
   defaultHandler: GitHubHandler as any,
 
   // OAuth endpoints (library manages these automatically with PKCE)
-  authorizeEndpoint: '/oauth/authorize',
-  tokenEndpoint: '/oauth/token',
+  // Must match the routes in GitHubHandler (oauth-ui-handler.ts)
+  authorizeEndpoint: '/authorize',
+  tokenEndpoint: '/token',
   clientRegistrationEndpoint: '/register',
 
   // Token TTL configuration
