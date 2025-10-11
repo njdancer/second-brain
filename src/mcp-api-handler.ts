@@ -44,28 +44,6 @@ export async function mcpApiHandler(
   });
 
   try {
-    // MCP protocol only supports POST requests
-    if (request.method !== 'POST') {
-      logger.warn('Invalid method for MCP endpoint', { method: request.method });
-      return new Response(
-        JSON.stringify({
-          jsonrpc: '2.0',
-          error: {
-            code: -32600,
-            message: 'Invalid Request - MCP requires POST',
-          },
-          id: null,
-        }),
-        {
-          status: 405,
-          headers: {
-            'Content-Type': 'application/json',
-            'Allow': 'POST'
-          },
-        }
-      );
-    }
-
     // Get user ID from props (set by OAuthProvider after token validation)
     const props = (ctx as any).props as MCPProps | undefined;
     const userId = props?.userId;
@@ -94,13 +72,19 @@ export async function mcpApiHandler(
       githubLogin: props.githubLogin,
     });
 
-    // Parse JSON-RPC request
-    const body = await request.json() as any;
-    const isInitialize = isInitializeRequest(body);
+    // Parse JSON body only for POST requests
+    // GET is used for SSE streaming, DELETE for session termination
+    let body: any = undefined;
+    if (request.method === 'POST') {
+      body = await request.json();
+    }
+
+    const isInitialize = body ? isInitializeRequest(body) : false;
 
     userLogger.info('MCP request authenticated', {
-      method: body.method,
-      requestId: body.id,
+      httpMethod: request.method,
+      method: body?.method,
+      requestId: body?.id,
       isInitialize,
     });
 
@@ -133,7 +117,7 @@ export async function mcpApiHandler(
               remaining: rateLimitResult.remaining,
             },
           },
-          id: body.id || null,
+          id: body?.id || null,
         }),
         {
           status: 429,
@@ -161,7 +145,7 @@ export async function mcpApiHandler(
             code: -32600,
             message: 'Invalid session or missing session ID',
           },
-          id: body.id || null,
+          id: body?.id || null,
         }),
         {
           status: 400,

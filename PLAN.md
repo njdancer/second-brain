@@ -1,160 +1,62 @@
 # Implementation Plan
 
 **Project:** MCP Server for Building a Second Brain (BASB)
-**Status:** ✅ Production Ready - Phase 14 Complete
-**Version:** v1.2.7
+**Status:** ✅ Production Ready - Phase 15A Complete
+**Version:** v1.2.8 (ready to release)
 **Last Updated:** 2025-10-11
 
 ---
 
 ## Current Status
 
-**Deployed:** 🔴 v1.2.7 BROKEN - Rejecting valid MCP GET requests
+**Code:** ✅ Fixed - Ready for v1.2.8 release
+**Deployed:** 🔴 v1.2.7 still deployed (BROKEN)
 **CI/CD:** ✅ Operational (GitHub Actions, 37s test cycle)
-**Test Coverage:** ✅ 258 tests, 79% coverage
+**Test Coverage:** ✅ 258 tests passing, 79% coverage
 **Architecture:** Direct Fetch API handlers, no frameworks
 **Release Process:** ✅ Automated release script ready
 
-**CRITICAL ISSUE - v1.2.7:**
-Production is broken. The MCP handler incorrectly rejects GET requests with 405 Method Not Allowed.
-
-**What went wrong:**
-1. Production logs showed "Unexpected end of JSON input" errors from GET requests
-2. Attempted fix in v1.2.7: Added method validation to reject non-POST requests
-3. **This was wrong!** The MCP protocol uses:
-   - **GET** - for SSE (Server-Sent Events) streaming
-   - **POST** - for JSON-RPC messages
-   - **DELETE** - for session termination
-4. Claude desktop clients send GET requests for SSE streams, now all failing with 405
-
-**Root cause:**
-The actual bug was at `src/mcp-api-handler.ts:76` where we call `await request.json()`
-unconditionally for ALL request methods. GET requests don't have bodies, causing the parse error.
-
-**Correct fix needed:**
-```typescript
-// WRONG (current v1.2.7 - deployed):
-if (request.method !== 'POST') {
-  return new Response(/* 405 error */);
-}
-
-// CORRECT (what we need):
-// Only parse JSON for POST requests
-let body: any = undefined;
-if (request.method === 'POST') {
-  body = await request.json();
-  const isInitialize = isInitializeRequest(body);
-  // ... rest of POST-specific logic
-}
-
-// Then pass request through to transport.handleRequest()
-// The transport knows how to handle GET (SSE), POST (JSON-RPC), DELETE (terminate)
-await transport.handleRequest(request as any, nodeResponse as any, body);
-```
-
-**Why this matters:**
-The `StreamableHTTPServerTransport` from MCP SDK is designed to handle all three methods:
-- It has `handleGetRequest()` for SSE streaming
-- It has `handlePostRequest()` for JSON-RPC
-- It has `handleDeleteRequest()` for termination
-
-We should NOT be filtering methods - we should let the transport handle routing.
-
 **Recent Completions:**
-- ✅ **v1.2.5:** Fixed method chaining in nodeResponse mock
+- ✅ **Phase 15A:** Fixed MCP method handling
+  - Removed incorrect POST-only restriction
+  - Only parse JSON body for POST requests
+  - GET/DELETE requests now properly handled
+  - All tests passing, type check clean
 - ✅ **v1.2.6:** Added /health endpoint for deployment verification
-- 🔴 **v1.2.7:** BROKEN - Incorrectly rejects GET requests (needs immediate rollback/fix)
+- 🔴 **v1.2.7:** BROKEN in production - rejects GET requests (fix ready)
+
+**Next:** Release v1.2.8 to fix production
 
 ---
 
-## URGENT: Phase 15A - Fix v1.2.7 MCP Method Handling
+## Phase 15 - Release v1.2.8 (URGENT)
 
-**Priority:** CRITICAL - Production is broken
-
-### Tasks
-
-1. **Revert v1.2.7 method validation**
-   - Remove the `if (request.method !== 'POST')` check
-   - This was the wrong fix
-
-2. **Fix JSON parsing**
-   - Only call `await request.json()` for POST requests
-   - GET and DELETE don't have request bodies
-   - Pass undefined body for non-POST to transport
-
-3. **Update mcp-api-handler.ts logic:**
-   ```typescript
-   // Parse body only for POST requests
-   let body: any = undefined;
-   if (request.method === 'POST') {
-     body = await request.json();
-   }
-
-   // Check initialization only for POST with body
-   const isInitialize = body ? isInitializeRequest(body) : false;
-
-   // Get or create transport based on session
-   const transport = getOrCreateTransport(sessionId || undefined, isInitialize);
-
-   // Let transport handle all methods (GET/POST/DELETE)
-   await transport.handleRequest(request as any, nodeResponse as any, body);
-   ```
-
-4. **Test all methods work:**
-   - POST with JSON-RPC (tool calls)
-   - GET for SSE streaming (session management)
-   - DELETE for session termination
-   - Unauthenticated requests still blocked by OAuthProvider
-
-5. **Deploy v1.2.8 with proper fix**
-
-**Files to change:**
-- `src/mcp-api-handler.ts` - Fix method handling and JSON parsing
-
-**Rollback option:**
-If fix takes time, rollback to v1.2.6:
-```bash
-git checkout v1.2.6
-pnpm run deploy  # Manual emergency deployment
-# Then fix properly and release v1.2.8
-```
-
----
-
-## Next Up: Phase 15 - Release & Deployment
-
-**Goal:** Deploy v1.2.4 to production and verify functionality
+**Goal:** Deploy v1.2.8 to fix broken production
 
 ### Tasks
 
-**Release v1.2.4:**
-- [ ] Run release script: `pnpm run release` (requires user interaction for CHANGELOG)
-- [ ] Push release: `git push origin main --tags`
-- [ ] Monitor GitHub Actions deployment
-- [ ] Verify deployment successful
+1. **Release v1.2.8:**
+   - Run: `EDITOR=true pnpm run release` (auto-generate changelog)
+   - Push: `git push origin main --tags`
+   - Monitor GitHub Actions deployment
+   - Verify deployment successful
 
-**Post-Deployment Verification:**
-- [ ] Run E2E smoke tests against production: `pnpm run test:e2e:smoke`
-- [ ] Check Cloudflare Logs for structured JSON output
-- [ ] Verify OAuth flow works end-to-end
-- [ ] Test all tools (read, write, edit, glob, grep)
-
-**Polish (Optional):**
-- [ ] Add storage quota warnings (MonitoringService)
-- [ ] Review and update any stale documentation
-- [ ] Clean up any remaining TODOs in code
+2. **Post-Deployment Verification:**
+   - Check Cloudflare Logs for successful GET requests
+   - Verify SSE streaming works
+   - Test POST JSON-RPC requests
+   - Verify DELETE session termination
 
 **Commands:**
 ```bash
-# Create release
-pnpm run release        # Creates v1.2.4, commits, tags
+# Create release (auto-generate changelog)
+EDITOR=true pnpm run release
 
 # Deploy
-git push origin main --tags  # Triggers GitHub Actions deployment
+git push origin main --tags
 
 # Verify
-pnpm run test:e2e:smoke     # Smoke tests against production
-pnpm wrangler tail --format pretty  # Check logs
+pnpm wrangler tail --format pretty
 ```
 
 ---
