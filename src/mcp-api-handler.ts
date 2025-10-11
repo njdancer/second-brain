@@ -13,6 +13,7 @@ import {
 } from './mcp-transport';
 import { StorageService } from './storage';
 import { RateLimiter } from './rate-limiting';
+import { Logger, generateRequestId } from './logger';
 import { Env } from './index';
 
 /**
@@ -42,10 +43,20 @@ export function createMCPHandler() {
    * Handle authenticated MCP JSON-RPC requests
    */
   app.post('/mcp', async (c) => {
+    const requestId = generateRequestId();
+    const logger = new Logger({ requestId });
+    const startTime = Date.now();
+
+    logger.info('MCP request started', {
+      method: c.req.method,
+      url: c.req.url,
+    });
+
     try {
       // Get user ID from props (set by OAuthProvider after token validation)
       const userId = c.env.props?.userId;
       if (!userId) {
+        logger.warn('Unauthorized MCP request - missing user ID');
         return c.json(
           {
             jsonrpc: '2.0',
@@ -59,15 +70,21 @@ export function createMCPHandler() {
         );
       }
 
+      // Create child logger with user context
+      const userLogger = logger.child({
+        userId,
+        githubLogin: c.env.props.githubLogin,
+      });
+
       // Parse JSON-RPC request
       const body = await c.req.json();
       const isInitialize = isInitializeRequest(body);
 
-      console.log('MCP POST request received (authenticated)');
-      console.log('Request method:', body.method);
-      console.log('Request ID:', body.id);
-      console.log('User ID:', userId);
-      console.log('GitHub Login:', c.env.props.githubLogin);
+      userLogger.info('MCP request authenticated', {
+        method: body.method,
+        requestId: body.id,
+        isInitialize,
+      });
 
       // Initialize services
       const storage = new StorageService(c.env.SECOND_BRAIN_BUCKET);
@@ -76,6 +93,11 @@ export function createMCPHandler() {
       // Check rate limit (check minute window - most strict)
       const rateLimitResult = await rateLimiter.checkRateLimit(userId, 'minute');
       if (!rateLimitResult.allowed) {
+        userLogger.warn('Rate limit exceeded', {
+          window: 'minute',
+          limit: rateLimitResult.limit,
+          retryAfter: rateLimitResult.retryAfter,
+        });
         return c.json(
           {
             jsonrpc: '2.0',
@@ -99,13 +121,13 @@ export function createMCPHandler() {
 
       // Extract session ID from headers
       const sessionId = c.req.header('mcp-session-id');
-      console.log('Session ID:', sessionId || 'none');
+      userLogger.debug('Session extracted', { sessionId: sessionId || 'none' });
 
       // Get or create transport
       const transport = getOrCreateTransport(sessionId, isInitialize);
 
       if (!transport) {
-        console.log('No transport - invalid session or not initialize request');
+        userLogger.warn('Invalid transport - missing session or not initialize request');
         return c.json(
           {
             jsonrpc: '2.0',
@@ -119,11 +141,12 @@ export function createMCPHandler() {
         );
       }
 
-      console.log('Transport created/retrieved, session:', transport.sessionId);
+      const sessionLogger = userLogger.child({ sessionId: transport.sessionId });
+      sessionLogger.debug('Transport created/retrieved');
 
       // Create MCP server instance
       const server = createMCPServerInstance(storage, rateLimiter, c.env.ANALYTICS, userId);
-      console.log('MCP server instance created for user:', userId);
+      sessionLogger.debug('MCP server instance created');
 
       // Store session if this is a new initialize request
       if (isInitialize && transport.sessionId) {
@@ -142,11 +165,11 @@ export function createMCPHandler() {
       const nodeResponse = {
         statusCode: 200,
         setHeader: (name: string, value: string) => {
-          console.log('setHeader called:', name, value);
+          sessionLogger.debug('Response header set', { name, value });
           responseHeaders.set(name, value);
         },
         writeHead: (statusCode: number, headers?: Record<string, string>) => {
-          console.log('writeHead called:', statusCode, headers);
+          sessionLogger.debug('Response writeHead called', { statusCode });
           responseStatus = statusCode;
           if (headers) {
             Object.entries(headers).forEach(([key, value]) => {
@@ -155,43 +178,44 @@ export function createMCPHandler() {
           }
         },
         write: (chunk: string) => {
-          console.log('write called, chunk length:', chunk?.length);
+          sessionLogger.debug('Response chunk written', { chunkLength: chunk?.length });
           responseChunks.push(chunk);
           return true;
         },
         end: (data?: string) => {
-          console.log('end called, data length:', data?.length);
+          sessionLogger.debug('Response end called', { dataLength: data?.length });
           if (data) {
             responseChunks.push(data);
           }
         },
         flushHeaders: () => {
-          console.log('flushHeaders called');
           // No-op in our implementation
         },
         on: (event: string, callback: (...args: any[]) => void) => {
-          console.log('on called for event:', event);
           // No-op in our implementation, but return this for chaining
           return nodeResponse;
         },
       };
 
-      console.log('About to call transport.handleRequest');
-      console.log('transport:', !!transport, 'nodeResponse:', !!nodeResponse, 'body:', !!body);
+      sessionLogger.debug('Handling MCP transport request');
 
       // Handle the request
       try {
         await transport.handleRequest(c.req.raw as any, nodeResponse as any, body);
       } catch (err) {
-        console.error('transport.handleRequest error:', err);
+        sessionLogger.error('Transport handleRequest failed', err as Error);
         throw err;
       }
 
       // Get the response body after transport.handleRequest has called end()
       const responseBody = responseChunks.join('');
+      const duration = Date.now() - startTime;
 
-      console.log('MCP Response status:', responseStatus);
-      console.log('MCP Response body:', responseBody.substring(0, 500));
+      sessionLogger.info('MCP request completed', {
+        status: responseStatus,
+        bodyLength: responseBody.length,
+        duration,
+      });
 
       // Return the response
       return new Response(responseBody, {
@@ -199,7 +223,8 @@ export function createMCPHandler() {
         headers: responseHeaders,
       });
     } catch (error) {
-      console.error('MCP API handler error:', error);
+      const duration = Date.now() - startTime;
+      logger.error('MCP API handler error', error as Error, { duration });
       return c.json(
         {
           jsonrpc: '2.0',
@@ -232,7 +257,8 @@ export class MCPHandler {
     // OAuthProvider injects props into ctx.props (ExecutionContext)
     const props = ctx.props || { userId: '', githubLogin: '' };
 
-    console.log('MCP request authenticated for user:', props.userId, props.githubLogin);
+    const logger = new Logger({ userId: props.userId, githubLogin: props.githubLogin });
+    logger.debug('MCP request authenticated via OAuthProvider');
 
     // Create extended environment with props
     const extendedEnv: MCPEnv = {
