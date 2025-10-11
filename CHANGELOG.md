@@ -18,11 +18,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.2.4] - 2025-10-08
+## [1.2.4] - 2025-10-11
 
-### Summary
+### Added
+- Automated release process with version management script
+- Release commands in package.json (release, release:minor, release:major)
 
-**CRITICAL RELEASE:** E2E Testing Infrastructure & Production Bug Fixes
+### Changed
+- Deployment documentation updated to reflect tag-based workflow
+- PLAN.md streamlined with release process status
+
+### Fixed
+- macOS compatibility for release script (awk instead of sed)
 
 This release implements comprehensive E2E testing to prevent deploying broken code to production. Includes fixes for two critical bugs that were deployed 3 times due to insufficient testing.
 
