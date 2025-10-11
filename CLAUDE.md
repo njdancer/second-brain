@@ -75,26 +75,40 @@ MCP server for Building a Second Brain (BASB) methodology running on Cloudflare 
 6. **Update PLAN.md** - Mark task complete, update status
 7. **Commit the change** - Include both code and PLAN.md update
 8. **Push to GitHub** - `git push origin main`
-9. **Deploy via GitHub Actions** - CI/CD pipeline runs automatically on push
-10. Manual testing in deployed environment
+9. Manual testing in development environment
 
-### Deployment Strategy
-**CRITICAL: ALWAYS deploy via GitHub Actions. NEVER use `pnpm deploy` directly.**
+### Release & Deployment Strategy
+**CRITICAL: ALWAYS deploy via GitHub Actions using the release process. NEVER use `pnpm deploy` directly.**
 
-Production deployments are triggered by pushing commits to the `main` branch:
+Production deployments are triggered by git tags, not by regular commits. Use the release script:
+
 ```bash
-# After committing changes with PLAN.md update
-git push origin main
+# Release process (creates version bump, changelog, git tag in one operation)
+pnpm run release        # Patch version (1.2.3 -> 1.2.4)
+pnpm run release:minor  # Minor version (1.2.3 -> 1.3.0)
+pnpm run release:major  # Major version (1.2.3 -> 2.0.0)
+
+# The script will:
+# 1. Run all tests and type checking
+# 2. Update version in package.json, PLAN.md
+# 3. Update CHANGELOG.md (opens editor for release notes)
+# 4. Commit changes with tag
+# 5. Prompt you to push: git push origin main --tags
+
+# Push to deploy
+git push origin main --tags
 
 # GitHub Actions will:
 # 1. Run all tests
 # 2. Run type checking
 # 3. Deploy to production automatically
+# 4. Create GitHub release
 ```
 
 The development environment (`pnpm run deploy:dev`) can be used for quick testing, but all production deployments MUST go through GitHub Actions to ensure:
 - All tests pass before deployment
 - Type checking is successful
+- Version is properly tracked across all files
 - Deployment is tracked in CI/CD history
 - Rollback is possible via GitHub
 
@@ -112,9 +126,12 @@ pnpm run test:coverage      # Coverage report
 pnpm run type-check         # TypeScript check (or: mise run build)
 pnpm run dev                # Local dev server (or: mise run dev)
 
-# Deployment
+# Release & Deployment
+pnpm run release            # Create release (patch: 1.2.3 -> 1.2.4)
+pnpm run release:minor      # Minor release (1.2.3 -> 1.3.0)
+pnpm run release:major      # Major release (1.2.3 -> 2.0.0)
+git push origin main --tags # Deploy release to production
 pnpm run deploy:dev         # Deploy to development (for quick testing only)
-# NEVER use 'pnpm deploy' - always deploy via GitHub Actions (git push)
 
 # Running single test
 pnpm test -- path/to/test.test.ts
