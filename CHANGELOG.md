@@ -18,6 +18,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.12] - 2025-10-11
+
+### Fixed
+- Enhanced structured logging for better observability in production
+  - Logger now uses appropriate console methods (`console.log`, `console.debug`, `console.warn`, `console.error`) based on log level for better categorization in Cloudflare Workers Logs
+  - Added robust error handling and serialization fallbacks in logger to prevent silent failures
+  - Added comprehensive request header logging in mcp-api-handler for debugging session ID issues
+  - Session ID extraction now checks multiple header variants (`mcp-session-id`, `x-mcp-session-id`, `session-id`)
+  - Added detailed debug context when session ID is missing to identify where Claude.ai sends the session ID
+  - All tests passing (263/263), 85.33% coverage maintained
+
+---
+
+
 ## [1.2.11] - 2025-10-11
 
 ### Fixed
