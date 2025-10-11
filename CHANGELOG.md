@@ -18,6 +18,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.5] - 2025-10-11
+
+### Fixed
+- Critical OAuth flow bug: Method chaining support in nodeResponse mock for StreamableHTTPServerTransport
+  - StreamableHTTPServerTransport uses method chaining like `res.writeHead(406).end(...)`
+  - Mock nodeResponse was not returning `this` from methods, causing "Cannot read properties of undefined (reading 'end')" errors
+  - This was breaking OAuth token exchange for Claude.ai clients after successful authentication
+
+---
+
+
 ## [1.2.4] - 2025-10-11
 
 ### Added
