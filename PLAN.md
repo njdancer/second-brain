@@ -238,14 +238,14 @@ export async function mcpApiHandler(request: Request, env: Env, ctx: ExecutionCo
 - [x] Add request tracing to oauth-ui-handler.ts (authorize, callback) (COMPLETE - 2025-10-11)
 - [x] Pass logger instance to tool executors (COMPLETE - 2025-10-11)
 - [x] Update tests to verify logging behavior (COMPLETE - 2025-10-11)
-- [ ] Verify requestId appears in all logs for a single request
+- [x] Verify requestId appears in all logs for a single request (COMPLETE - 2025-10-11)
 
 **Success Criteria:**
-- Every request generates a unique requestId
-- RequestId appears in all logs for that request
-- Duration tracking works correctly
-- User context (userId, githubLogin) propagates to all logs
-- Tests verify logging at request boundaries
+- ✅ Every request generates a unique requestId
+- ✅ RequestId appears in all logs for that request
+- ✅ Duration tracking works correctly
+- ✅ User context (userId, githubLogin) propagates to all logs
+- ✅ Tests verify logging at request boundaries
 
 ---
 
