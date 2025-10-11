@@ -18,6 +18,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.13] - 2025-10-11
+
+### Added
+- Comprehensive test coverage for MCP transport handlers
+  - Tool call handler tests (rate limits, errors, bootstrap integration)
+  - Prompt handler tests (capture-note, weekly-review, research-summary)
+  - Session initialization tests for Durable Objects
+  - Function coverage improved from 74.71% to 85.05%
+
+### Fixed
+- **CRITICAL:** Rate limit double-increment bug in mcp-transport.ts
+  - `checkRateLimit()` already increments the minute counter automatically
+  - Manual increment in transport handler was causing double-counting
+  - Removed duplicate minute increment (hour/day increments remain correct)
+  - Added clarifying comment about auto-increment behavior
+
+### Changed
+- Improved test isolation in mcp-transport.test.ts using unique user IDs and fresh instances
+
+---
+
+
 ## [1.2.12] - 2025-10-11
 
 ### Fixed
