@@ -44,6 +44,28 @@ export async function mcpApiHandler(
   });
 
   try {
+    // MCP protocol only supports POST requests
+    if (request.method !== 'POST') {
+      logger.warn('Invalid method for MCP endpoint', { method: request.method });
+      return new Response(
+        JSON.stringify({
+          jsonrpc: '2.0',
+          error: {
+            code: -32600,
+            message: 'Invalid Request - MCP requires POST',
+          },
+          id: null,
+        }),
+        {
+          status: 405,
+          headers: {
+            'Content-Type': 'application/json',
+            'Allow': 'POST'
+          },
+        }
+      );
+    }
+
     // Get user ID from props (set by OAuthProvider after token validation)
     const props = (ctx as any).props as MCPProps | undefined;
     const userId = props?.userId;
