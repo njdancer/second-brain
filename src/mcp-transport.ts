@@ -222,8 +222,8 @@ Let the structure emerge naturally through use. Create folders as needed by crea
         logger,
       });
 
-      // Increment rate limit counter
-      await rateLimiter.incrementRateLimit(userId, 'minute');
+      // Increment rate limit counter for hour and day windows
+      // Note: minute window is already incremented by checkRateLimit()
       await rateLimiter.incrementRateLimit(userId, 'hour');
       await rateLimiter.incrementRateLimit(userId, 'day');
 
