@@ -30,7 +30,7 @@ class_name = "MCPSessionDurableObject"
 # Durable Objects migrations
 [[migrations]]
 tag = "v1"
-new_classes = ["MCPSessionDurableObject"]
+new_sqlite_classes = ["MCPSessionDurableObject"]
 
 # Cron triggers for daily backup
 [triggers]
@@ -65,3 +65,11 @@ id = "b39b7475acd0425ab46881ab1d701226"
 [[env.development.kv_namespaces]]
 binding = "RATE_LIMIT_KV"
 id = "6f08a90245f34ff5afc335a3105a57d3"
+
+[[env.development.analytics_engine_datasets]]
+binding = "ANALYTICS"
+dataset = "second-brain-analytics-dev"
+
+[[env.development.durable_objects.bindings]]
+name = "MCP_SESSIONS"
+class_name = "MCPSessionDurableObject"
