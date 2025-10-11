@@ -9,19 +9,115 @@
 
 ## Current Status
 
-**Deployed:** ⚠️ Not deployed (deployment workflow issue discovered)
+**Deployed:** 🔴 v1.2.7 BROKEN - Rejecting valid MCP GET requests
 **CI/CD:** ✅ Operational (GitHub Actions, 37s test cycle)
 **Test Coverage:** ✅ 258 tests, 79% coverage
 **Architecture:** Direct Fetch API handlers, no frameworks
 **Release Process:** ✅ Automated release script ready
 
+**CRITICAL ISSUE - v1.2.7:**
+Production is broken. The MCP handler incorrectly rejects GET requests with 405 Method Not Allowed.
+
+**What went wrong:**
+1. Production logs showed "Unexpected end of JSON input" errors from GET requests
+2. Attempted fix in v1.2.7: Added method validation to reject non-POST requests
+3. **This was wrong!** The MCP protocol uses:
+   - **GET** - for SSE (Server-Sent Events) streaming
+   - **POST** - for JSON-RPC messages
+   - **DELETE** - for session termination
+4. Claude desktop clients send GET requests for SSE streams, now all failing with 405
+
+**Root cause:**
+The actual bug was at `src/mcp-api-handler.ts:76` where we call `await request.json()`
+unconditionally for ALL request methods. GET requests don't have bodies, causing the parse error.
+
+**Correct fix needed:**
+```typescript
+// WRONG (current v1.2.7 - deployed):
+if (request.method !== 'POST') {
+  return new Response(/* 405 error */);
+}
+
+// CORRECT (what we need):
+// Only parse JSON for POST requests
+let body: any = undefined;
+if (request.method === 'POST') {
+  body = await request.json();
+  const isInitialize = isInitializeRequest(body);
+  // ... rest of POST-specific logic
+}
+
+// Then pass request through to transport.handleRequest()
+// The transport knows how to handle GET (SSE), POST (JSON-RPC), DELETE (terminate)
+await transport.handleRequest(request as any, nodeResponse as any, body);
+```
+
+**Why this matters:**
+The `StreamableHTTPServerTransport` from MCP SDK is designed to handle all three methods:
+- It has `handleGetRequest()` for SSE streaming
+- It has `handlePostRequest()` for JSON-RPC
+- It has `handleDeleteRequest()` for termination
+
+We should NOT be filtering methods - we should let the transport handle routing.
+
 **Recent Completions:**
-- **Phase 14:** Removed Hono, added structured logging, MonitoringService integration
-- **Release Process:** Created automated release script (`pnpm run release`)
-  - Updates package.json, PLAN.md, CHANGELOG.md in one operation
-  - Runs tests and type checking before release
-  - Creates git tag automatically
-  - Fixed deployment workflow documentation (tag-based, not push-based)
+- ✅ **v1.2.5:** Fixed method chaining in nodeResponse mock
+- ✅ **v1.2.6:** Added /health endpoint for deployment verification
+- 🔴 **v1.2.7:** BROKEN - Incorrectly rejects GET requests (needs immediate rollback/fix)
+
+---
+
+## URGENT: Phase 15A - Fix v1.2.7 MCP Method Handling
+
+**Priority:** CRITICAL - Production is broken
+
+### Tasks
+
+1. **Revert v1.2.7 method validation**
+   - Remove the `if (request.method !== 'POST')` check
+   - This was the wrong fix
+
+2. **Fix JSON parsing**
+   - Only call `await request.json()` for POST requests
+   - GET and DELETE don't have request bodies
+   - Pass undefined body for non-POST to transport
+
+3. **Update mcp-api-handler.ts logic:**
+   ```typescript
+   // Parse body only for POST requests
+   let body: any = undefined;
+   if (request.method === 'POST') {
+     body = await request.json();
+   }
+
+   // Check initialization only for POST with body
+   const isInitialize = body ? isInitializeRequest(body) : false;
+
+   // Get or create transport based on session
+   const transport = getOrCreateTransport(sessionId || undefined, isInitialize);
+
+   // Let transport handle all methods (GET/POST/DELETE)
+   await transport.handleRequest(request as any, nodeResponse as any, body);
+   ```
+
+4. **Test all methods work:**
+   - POST with JSON-RPC (tool calls)
+   - GET for SSE streaming (session management)
+   - DELETE for session termination
+   - Unauthenticated requests still blocked by OAuthProvider
+
+5. **Deploy v1.2.8 with proper fix**
+
+**Files to change:**
+- `src/mcp-api-handler.ts` - Fix method handling and JSON parsing
+
+**Rollback option:**
+If fix takes time, rollback to v1.2.6:
+```bash
+git checkout v1.2.6
+pnpm run deploy  # Manual emergency deployment
+# Then fix properly and release v1.2.8
+```
 
 ---
 
