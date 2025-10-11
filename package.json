@@ -38,7 +38,6 @@
     "@modelcontextprotocol/sdk": "^1.19.1",
     "@octokit/rest": "^22.0.0",
     "arctic": "^3.7.0",
-    "hono": "^4.9.10",
     "zod": "^4.1.12"
   },
   "devDependencies": {
