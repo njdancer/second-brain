@@ -25,6 +25,7 @@ module.exports = {
     '!**/test/archive/**'  // Exclude archived tests
   ],
   moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/src/$1'
+    '^@/(.*)$': '<rootDir>/src/$1',
+    '^cloudflare:workers$': '<rootDir>/test/mocks/cloudflare-workers.ts'
   }
 };
