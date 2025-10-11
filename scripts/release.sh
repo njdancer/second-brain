@@ -123,16 +123,17 @@ CHANGELOG_ENTRY="## [$NEW_VERSION] - $TODAY
 
 # Insert after the header (assumes ## [Unreleased] or similar at top)
 if grep -q "## \[Unreleased\]" CHANGELOG.md; then
-  # Insert after Unreleased section
-  sed -i '' "/## \[Unreleased\]/a\\
-\\
-$CHANGELOG_ENTRY
-" CHANGELOG.md
+  # Insert after Unreleased section using temp file (macOS sed compatibility)
+  awk -v entry="$CHANGELOG_ENTRY" '
+    /^## \[Unreleased\]/ { print; print ""; print entry; next }
+    { print }
+  ' CHANGELOG.md > CHANGELOG.md.tmp && mv CHANGELOG.md.tmp CHANGELOG.md
 else
   # Insert at the beginning of changelog entries
-  sed -i '' "1,/^## /s/\(^## \)/\\
-$CHANGELOG_ENTRY\\
-\1/" CHANGELOG.md
+  awk -v entry="$CHANGELOG_ENTRY" '
+    /^## / && !inserted { print entry; inserted=1 }
+    { print }
+  ' CHANGELOG.md > CHANGELOG.md.tmp && mv CHANGELOG.md.tmp CHANGELOG.md
 fi
 
 echo -e "${GREEN}  ✓ All files updated${NC}"
