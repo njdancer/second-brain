@@ -174,6 +174,7 @@ export async function mcpApiHandler(
       setHeader: (name: string, value: string) => {
         sessionLogger.debug('Response header set', { name, value });
         responseHeaders.set(name, value);
+        return nodeResponse; // Return this for method chaining
       },
       writeHead: (statusCode: number, headers?: Record<string, string>) => {
         sessionLogger.debug('Response writeHead called', { statusCode });
@@ -183,6 +184,7 @@ export async function mcpApiHandler(
             responseHeaders.set(key, value);
           });
         }
+        return nodeResponse; // Return this for method chaining
       },
       write: (chunk: string) => {
         sessionLogger.debug('Response chunk written', { chunkLength: chunk?.length });
@@ -194,9 +196,11 @@ export async function mcpApiHandler(
         if (data) {
           responseChunks.push(data);
         }
+        return nodeResponse; // Return this for method chaining
       },
       flushHeaders: () => {
         // No-op in our implementation
+        return nodeResponse; // Return this for method chaining
       },
       on: (event: string, callback: (...args: any[]) => void) => {
         // No-op in our implementation, but return this for chaining
