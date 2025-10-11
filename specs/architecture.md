@@ -154,10 +154,11 @@ SSE stream established through same stateful transport
 
 **Cost Considerations:**
 
-- Workers Paid plan required ($5/month per account)
-- Included: 1M Durable Object requests, 400K GB-s duration
+- **Free tier includes Durable Objects!** (as of 2024)
+- Free limits: 100K requests/day, 13K GB-sec duration/day, 5GB storage
 - Personal use case: Well within free tier limits
-- Automatic hibernation when idle (no duration charges)
+- Automatic hibernation when idle reduces duration usage
+- No upgrade needed for this project
 
 ---
 

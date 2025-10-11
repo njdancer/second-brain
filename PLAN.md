@@ -37,9 +37,11 @@
 
 **Why:** Cloudflare Workers are stateless. Each request can go to a different Worker instance, so in-memory `Map<sessionId, transport>` doesn't persist. The MCP `StreamableHTTPServerTransport` requires stateful sessions for SSE streaming and request continuity.
 
-**Prerequisites:**
-- [ ] Upgrade Cloudflare account to Workers Paid ($5/month)
-- [ ] This enables Durable Objects across all projects (account-wide)
+**Good News:** Durable Objects are included in Cloudflare's free tier!
+- 100,000 requests/day (more than enough for personal use)
+- 13,000 GB-sec duration/day
+- 5GB storage
+- No upgrade needed ✅
 
 ### Tasks
 
