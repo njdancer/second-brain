@@ -18,6 +18,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.7] - 2025-10-11
+
+### Fixed
+- Method validation for `/mcp` endpoint
+  - Now rejects non-POST requests with 405 Method Not Allowed
+  - Prevents "Unexpected end of JSON input" errors from GET requests
+  - Returns proper JSON-RPC error response for invalid methods
+
+---
+
+
 ## [1.2.6] - 2025-10-11
 
 ### Added

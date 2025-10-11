@@ -2,7 +2,7 @@
 
 **Project:** MCP Server for Building a Second Brain (BASB)
 **Status:** ✅ Production Ready - Phase 14 Complete
-**Version:** v1.2.6
+**Version:** v1.2.7
 **Last Updated:** 2025-10-11
 
 ---
