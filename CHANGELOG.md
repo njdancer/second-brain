@@ -18,6 +18,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.6] - 2025-10-11
+
+### Added
+- Health check endpoint at `/health` for deployment verification
+  - Returns JSON with status, timestamp, and service name
+  - Used by GitHub Actions to verify successful deployments
+
+---
+
+
 ## [1.2.5] - 2025-10-11
 
 ### Fixed
