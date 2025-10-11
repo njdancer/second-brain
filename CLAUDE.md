@@ -6,13 +6,58 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 MCP server for Building a Second Brain (BASB) methodology running on Cloudflare Workers with R2 storage. Enables Claude to act as a personal knowledge management assistant.
 
-**Status:** ✅ Production-ready (v1.2.4 deployed)
+**Status:** ❌ BROKEN - MCP initialize endpoint not working (see PLAN.md)
+
+**THE ONLY GOAL:** Get MCP server working in Claude desktop/web
 
 **Stack:** Cloudflare Workers, R2, OAuthProvider, Arctic, MCP SDK
 
 **Architecture:** Direct Fetch API handlers (no web framework)
 
 ## Critical Non-Negotiables
+
+### The Prime Directive: End-to-End Validation
+**NEVER claim the MCP server works without running the full OAuth test script successfully.**
+
+**The OAuth test script (`scripts/test-mcp-with-oauth.ts`) is THE validation tool:**
+- It simulates the EXACT flow Claude desktop/web uses
+- It validates OAuth 2.1 + PKCE works correctly
+- It validates MCP initialize, tools/list, and tool execution
+- **Unit tests passing DOES NOT mean the server works**
+- **Deployment succeeding DOES NOT mean the server works**
+- **ONLY the OAuth test script passing means the server works**
+
+**Before ANY deployment or claim of "working":**
+```bash
+# 1. Run the full OAuth test script
+pnpm run test:mcp:oauth
+
+# 2. It must complete ALL steps successfully:
+#    ✅ Client registration
+#    ✅ PKCE challenge generation
+#    ✅ Browser OAuth flow
+#    ✅ Token exchange
+#    ✅ Token saving to .env.test
+#    ✅ MCP initialize request
+#    ✅ Session ID received
+#    ✅ Subsequent requests with session ID
+#    ✅ Tool calls working
+
+# 3. If ANY step fails, the server is BROKEN
+# 4. Update PLAN.md to reflect broken state
+# 5. DO NOT deploy until fixed
+```
+
+**Current State of Test Script:**
+- ⚠️ Token saving is NOT implemented (line 296-297 has TODO)
+- ⚠️ Script shows "Unexpected end of JSON input" on initialize
+- ⚠️ This means server is BROKEN and needs fixing
+
+**When fixing the test script:**
+- Implement token saving to `.env.test` file
+- Test that all steps complete successfully
+- Only then can you test the actual MCP endpoint
+- Document any failures in PLAN.md
 
 ### Package Manager
 **MUST use `pnpm` exclusively.** Never use `npm` or `yarn`. The project uses `"packageManager": "pnpm@9.0.0"` in package.json for corepack.
@@ -256,20 +301,45 @@ All spec files are in [specs/](specs/) directory. Read them before implementing 
 
 ### Testing OAuth
 
-```bash
-# Test complete OAuth flow
-pnpm run test:mcp:oauth
+**CRITICAL: The OAuth test script is NOT optional. It is THE validation tool.**
 
-# Interactive OAuth inspector
+```bash
+# REQUIRED: Full OAuth flow test (simulates Claude desktop/web)
+pnpm run test:mcp:oauth
+# Must complete ALL 9 steps successfully:
+# 1. Client registration
+# 2. PKCE challenge generation
+# 3. Local callback server
+# 4. OAuth URL generation
+# 5. Browser authentication
+# 6. OAuth callback handling
+# 7. MCP initialize request
+# 8. GET /mcp with session ID
+# 9. Subsequent POST with session ID
+
+# Quick test (uses saved token from .env.test)
+pnpm run test:mcp:quick
+# Only works if OAuth test has saved token successfully
+
+# Interactive OAuth inspector (for manual testing)
 pnpm run inspect
 
-# E2E tests (includes OAuth)
-pnpm run test:e2e
+# Unit tests (NOT sufficient for validation)
+pnpm test
 ```
+
+**Validation Requirements:**
+1. Run `pnpm run test:mcp:oauth` after ANY change to:
+   - OAuth code (index.ts, oauth-ui-handler.ts)
+   - MCP endpoint code (mcp-api-handler.ts, mcp-session-do.ts)
+   - Transport code (mcp-transport.ts)
+2. If script fails at ANY step, server is BROKEN
+3. Update PLAN.md immediately with broken state
+4. Do NOT deploy until script passes completely
 
 **See also:**
 - [specs/security.md](specs/security.md) - OAuth architecture details
-- [PLAN.md Phase 13](PLAN.md#phase-13-oauth-library-migration-next---urgent) - Migration plan
+- [scripts/test-mcp-with-oauth.ts](scripts/test-mcp-with-oauth.ts) - Test implementation
 
 ## Project Structure
 
