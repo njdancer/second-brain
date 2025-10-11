@@ -18,6 +18,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.9] - 2025-10-11
+
+### Added
+- **Durable Objects session management** - Phase 16 complete
+  - MCPSessionDurableObject class for stateful session persistence
+  - Each session ID maps to dedicated Durable Object instance
+  - Automatic session cleanup after 30 minutes of inactivity
+  - Free tier compatible using new_sqlite_classes
+
+### Changed
+- **Session architecture** - Migrated from in-memory to Durable Objects
+  - mcp-api-handler.ts now routes to Durable Object stubs
+  - mcp-transport.ts simplified (removed in-memory storage functions)
+  - Sessions persist across Worker instances (fixes stateless issue)
+  - Development environment bindings added for Durable Objects and Analytics
+
+### Fixed
+- **Session persistence** - Sessions now survive across requests to different Worker instances
+  - Previously: in-memory Map lost when different Worker handled subsequent request
+  - Now: Durable Object maintains state throughout session lifecycle
+  - Resolves the core session management issue identified in v1.2.8
+
+---
+
+
 ## [1.2.8] - 2025-10-11
 
 ### Fixed
