@@ -7,6 +7,7 @@
 import type { OAuthHelpers } from '@cloudflare/workers-oauth-provider';
 import { GitHub } from 'arctic';
 import { Hono } from 'hono';
+import { Logger, generateRequestId } from './logger';
 import { Env } from './index';
 
 /**
@@ -36,21 +37,26 @@ export function createGitHubHandler() {
    * Handle /oauth/authorize - Parse MCP OAuth request and redirect to GitHub
    */
   app.get('/authorize', async (c) => {
+    const requestId = generateRequestId();
+    const logger = new Logger({ requestId });
+
+    logger.info('OAuth authorize request started');
+
     try {
       // Parse the OAuth authorization request from MCP client
       const oauthReqInfo = await c.env.OAUTH_PROVIDER.parseAuthRequest(c.req.raw);
 
-      console.log('OAuth authorize request:', {
+      logger.info('OAuth request parsed', {
         clientId: oauthReqInfo.clientId,
         redirectUri: oauthReqInfo.redirectUri,
         scope: oauthReqInfo.scope,
-        codeChallenge: oauthReqInfo.codeChallenge,
-        codeChallengeMethod: oauthReqInfo.codeChallengeMethod,
+        hasPkce: !!oauthReqInfo.codeChallenge,
       });
 
       // Validate client exists
       const client = await c.env.OAUTH_PROVIDER.lookupClient(oauthReqInfo.clientId);
       if (!client) {
+        logger.warn('Invalid OAuth client', { clientId: oauthReqInfo.clientId });
         return c.text('Invalid client', 400);
       }
 
@@ -69,11 +75,11 @@ export function createGitHubHandler() {
       // Arctic automatically handles PKCE for the GitHub flow
       const authUrl = github.createAuthorizationURL(state, ['read:user']);
 
-      console.log('Redirecting to GitHub:', authUrl.toString());
+      logger.info('Redirecting to GitHub for authorization');
 
       return Response.redirect(authUrl.toString(), 302);
     } catch (error) {
-      console.error('OAuth authorize error:', error);
+      logger.error('OAuth authorize failed', error as Error);
       return c.text('Failed to initiate OAuth flow', 500);
     }
   });
@@ -82,6 +88,11 @@ export function createGitHubHandler() {
    * Handle /oauth/callback - Process GitHub auth and complete MCP OAuth
    */
   app.get('/callback', async (c) => {
+    const requestId = generateRequestId();
+    const logger = new Logger({ requestId });
+
+    logger.info('OAuth callback received');
+
     try {
       const code = c.req.query('code');
       const state = c.req.query('state');
@@ -89,19 +100,18 @@ export function createGitHubHandler() {
 
       // Handle GitHub OAuth errors
       if (error) {
-        console.error('GitHub OAuth error:', error);
+        logger.error('GitHub OAuth error', new Error(error));
         return c.text(`GitHub authorization failed: ${error}`, 400);
       }
 
       if (!code || !state) {
+        logger.warn('Missing OAuth callback parameters');
         return c.text('Missing code or state parameter', 400);
       }
 
-      console.log('OAuth callback received');
-
       // Decode the original MCP OAuth request from state
       const oauthReqInfo = JSON.parse(atob(state));
-      console.log('Retrieved MCP auth request:', oauthReqInfo);
+      logger.debug('Retrieved MCP auth request from state');
 
       // Initialize Arctic GitHub client
       const github = new GitHub(
@@ -114,7 +124,7 @@ export function createGitHubHandler() {
       // Arctic handles token exchange, validation, and refresh token management
       const tokens = await github.validateAuthorizationCode(code);
 
-      console.log('GitHub tokens received');
+      logger.debug('GitHub tokens received');
 
       // Get GitHub user info using the access token
       const userResponse = await fetch('https://api.github.com/user', {
@@ -126,20 +136,25 @@ export function createGitHubHandler() {
       });
 
       if (!userResponse.ok) {
-        console.error('GitHub user fetch failed:', userResponse.status);
+        logger.error('GitHub user fetch failed', new Error(`Status ${userResponse.status}`));
         return c.text('Failed to fetch GitHub user info', 500);
       }
 
       const githubUser = await userResponse.json() as GitHubUser;
-      console.log('GitHub user:', { id: githubUser.id, login: githubUser.login });
+      const userLogger = logger.child({
+        userId: githubUser.id.toString(),
+        githubLogin: githubUser.login
+      });
+
+      userLogger.info('GitHub user authenticated');
 
       // Check if user is authorized (allowlist)
       if (githubUser.id.toString() !== c.env.GITHUB_ALLOWED_USER_ID) {
-        console.log('User not authorized:', githubUser.id);
+        userLogger.warn('User not in allowlist');
         return c.text('Unauthorized user', 403);
       }
 
-      console.log('User authorized, completing MCP OAuth flow');
+      userLogger.info('User authorized, completing MCP OAuth flow');
 
       // Complete the MCP OAuth authorization using OAuthProvider
       // This creates the MCP authorization code and redirects back to the MCP client
@@ -160,12 +175,12 @@ export function createGitHubHandler() {
         },
       });
 
-      console.log('MCP OAuth completed, redirecting to:', redirectTo);
+      userLogger.info('MCP OAuth completed, redirecting to client');
 
       // Redirect back to MCP client with authorization code (includes PKCE validation)
       return Response.redirect(redirectTo, 302);
     } catch (error) {
-      console.error('OAuth callback error:', error);
+      logger.error('OAuth callback failed', error as Error);
       return c.text(`Failed to complete OAuth flow: ${error instanceof Error ? error.message : 'Unknown error'}`, 500);
     }
   });

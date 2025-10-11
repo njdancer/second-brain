@@ -235,7 +235,7 @@ export async function mcpApiHandler(request: Request, env: Env, ctx: ExecutionCo
 
 **Tasks:**
 - [x] Add request tracing to mcp-api-handler.ts (COMPLETE - 2025-10-11)
-- [ ] Add request tracing to oauth-ui-handler.ts (authorize, callback)
+- [x] Add request tracing to oauth-ui-handler.ts (authorize, callback) (COMPLETE - 2025-10-11)
 - [ ] Pass logger instance to tool executors
 - [ ] Update tests to verify logging behavior
 - [ ] Verify requestId appears in all logs for a single request
