@@ -1,14 +1,12 @@
 /**
  * MCP Transport tests
- * Tests for Streamable HTTP transport integration
+ * Tests for MCP server instance creation and utilities
+ * Session management is now handled by Durable Objects (see mcp-session-do.ts)
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import {
   createMCPServerInstance,
-  getOrCreateTransport,
-  storeSession,
-  getServer,
   isInitializeRequest,
 } from '../../src/mcp-transport';
 import { MockR2Bucket } from '../mocks/r2';
@@ -122,65 +120,4 @@ describe('MCP Transport', () => {
     });
   });
 
-  describe('getOrCreateTransport', () => {
-    it('should create new transport for initialize request', () => {
-      const transport = getOrCreateTransport(undefined, true);
-
-      expect(transport).toBeDefined();
-      expect(transport).not.toBeNull();
-    });
-
-    it('should not create transport for non-initialize request without session', () => {
-      const transport = getOrCreateTransport(undefined, false);
-
-      expect(transport).toBeNull();
-    });
-
-    it('should retrieve existing transport by session ID', () => {
-      // Create initial transport
-      const transport1 = getOrCreateTransport(undefined, true);
-      expect(transport1).not.toBeNull();
-
-      // Use a mock session ID since sessionId is not set until connection
-      const sessionId = 'test-session-id';
-
-      // Store it
-      const server = createMCPServerInstance(
-        storage,
-        rateLimiter,
-        analytics,
-        'test-user',
-        logger
-      );
-      storeSession(sessionId, transport1!, server);
-
-      // Retrieve it
-      const transport2 = getOrCreateTransport(sessionId, false);
-      expect(transport2).toBe(transport1);
-    });
-  });
-
-  describe('session management', () => {
-    it('should store and retrieve session', () => {
-      const transport = getOrCreateTransport(undefined, true);
-      const server = createMCPServerInstance(
-        storage,
-        rateLimiter,
-        analytics,
-        'test-user',
-        logger
-      );
-
-      const sessionId = 'test-session-id';
-      storeSession(sessionId, transport!, server);
-
-      const retrievedServer = getServer(sessionId);
-      expect(retrievedServer).toBe(server);
-    });
-
-    it('should return undefined for non-existent session', () => {
-      const server = getServer('non-existent-session');
-      expect(server).toBeUndefined();
-    });
-  });
 });

@@ -1,7 +1,7 @@
 # Implementation Plan
 
 **Project:** MCP Server for Building a Second Brain (BASB)
-**Status:** ✅ Production Ready - v1.2.8 Deployed
+**Status:** 🚧 In Progress - Phase 16 (Durable Objects)
 **Version:** v1.2.8
 **Last Updated:** 2025-10-11
 
@@ -43,50 +43,22 @@
 - 5GB storage
 - No upgrade needed ✅
 
-### Tasks
+### Progress
 
-1. **Update wrangler.toml configuration:**
-   - Add Durable Objects binding
-   - Configure `MCP_SESSIONS` namespace
-   - Update migrations if needed
+- ✅ **Task 1-5:** Core implementation complete
+  - wrangler.toml configured with Durable Objects binding and migrations
+  - MCPSessionDurableObject class created with session management
+  - MCP API handler refactored to route to Durable Objects
+  - mcp-transport.ts cleaned up (removed in-memory session storage)
+  - Env type updated with MCP_SESSIONS binding
+  - All tests passing (253/253) ✅
+  - Type checking passing ✅
 
-2. **Create Durable Object class** (`src/mcp-session-do.ts`):
-   - Implement `MCPSessionDurableObject` extends `DurableObject`
-   - Hold `StreamableHTTPServerTransport` and `Server` instances
-   - Implement `fetch()` method to handle MCP requests
-   - Handle initialize, GET (SSE), POST (JSON-RPC), DELETE (terminate)
-   - Implement session timeout/cleanup logic
-
-3. **Update MCP API handler** (`src/mcp-api-handler.ts`):
-   - Remove in-memory session Map
-   - Extract session ID from header or generate for initialize
-   - Get Durable Object stub: `env.MCP_SESSIONS.idFromName(sessionId)`
-   - Forward entire request to Durable Object
-   - Simplify to pure routing layer
-
-4. **Refactor MCP transport** (`src/mcp-transport.ts`):
-   - Move `getOrCreateTransport` logic into Durable Object
-   - Keep `createMCPServerInstance` for Durable Object to use
-   - Remove global session storage
-
-5. **Update Env type** (`src/index.ts`):
-   - Add `MCP_SESSIONS: DurableObjectNamespace` to Env interface
-
-6. **Testing:**
-   - Test initialize creates new Durable Object
-   - Test GET with session ID routes to existing Durable Object
-   - Test POST with session ID works across multiple requests
-   - Test DELETE terminates session
-   - Test session isolation (different sessions don't interfere)
-
-7. **Local development:**
-   - Update `wrangler dev` to support Durable Objects
-   - Test with `pnpm run dev`
-
-8. **Deployment:**
-   - Deploy to development first: `pnpm run deploy:dev`
-   - Verify sessions persist across requests
-   - Deploy to production: `pnpm run release`
+- 🔨 **Task 6-8:** Testing and deployment (IN PROGRESS)
+  - Local development ready (wrangler dev supports Durable Objects)
+  - Need to test end-to-end session persistence
+  - Need to deploy to development and verify
+  - Need to deploy to production
 
 **Files to create:**
 - `src/mcp-session-do.ts` - New Durable Object class

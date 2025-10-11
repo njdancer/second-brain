@@ -22,6 +22,16 @@ id = "40096f26b84842c3a160501230ca74ca"
 binding = "ANALYTICS"
 dataset = "second-brain-analytics"
 
+# Durable Objects binding
+[[durable_objects.bindings]]
+name = "MCP_SESSIONS"
+class_name = "MCPSessionDurableObject"
+
+# Durable Objects migrations
+[[migrations]]
+tag = "v1"
+new_classes = ["MCPSessionDurableObject"]
+
 # Cron triggers for daily backup
 [triggers]
 crons = ["0 2 * * *"]

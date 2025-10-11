@@ -8,6 +8,9 @@ import OAuthProvider from '@cloudflare/workers-oauth-provider';
 import { GitHubHandler } from './oauth-ui-handler';
 import { MCPHandler } from './mcp-api-handler';
 
+// Export Durable Object class for Cloudflare Workers runtime
+export { MCPSessionDurableObject } from './mcp-session-do';
+
 /**
  * Environment bindings
  */
@@ -21,6 +24,9 @@ export interface Env {
 
   // Analytics Engine binding
   ANALYTICS: AnalyticsEngineDataset;
+
+  // Durable Objects binding
+  MCP_SESSIONS: DurableObjectNamespace;
 
   // Secrets
   GITHUB_CLIENT_ID: string;

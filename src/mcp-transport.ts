@@ -20,14 +20,8 @@ import { Logger } from './logger';
 import { Env } from './index';
 
 /**
- * Transport session storage
- * Maps session IDs to transport instances
- */
-const transports = new Map<string, StreamableHTTPServerTransport>();
-const servers = new Map<string, Server>();
-
-/**
  * Create MCP server with tool and prompt handlers
+ * Used by Durable Object to create server instances
  */
 export function createMCPServerInstance(
   storage: StorageService,
@@ -404,63 +398,6 @@ Please:
   });
 
   return server;
-}
-
-/**
- * Create or retrieve transport for session
- */
-export function getOrCreateTransport(
-  sessionId: string | undefined,
-  isInitialize: boolean
-): StreamableHTTPServerTransport | null {
-  // If we have a session ID, try to retrieve existing transport
-  if (sessionId && transports.has(sessionId)) {
-    return transports.get(sessionId)!;
-  }
-
-  // Only create new transport for initialize requests
-  if (!isInitialize) {
-    return null;
-  }
-
-  // Create new transport
-  const transport = new StreamableHTTPServerTransport({
-    sessionIdGenerator: () => {
-      // Generate session ID (UUID-like)
-      const array = new Uint8Array(16);
-      crypto.getRandomValues(array);
-      return Array.from(array, (byte) => byte.toString(16).padStart(2, '0')).join('');
-    },
-    onsessioninitialized: (sessionId: string) => {
-      console.log('MCP session initialized:', sessionId);
-    },
-    onsessionclosed: (sessionId: string) => {
-      console.log('MCP session closed:', sessionId);
-      transports.delete(sessionId);
-      servers.delete(sessionId);
-    },
-  });
-
-  return transport;
-}
-
-/**
- * Store transport and server for session
- */
-export function storeSession(
-  sessionId: string,
-  transport: StreamableHTTPServerTransport,
-  server: Server
-): void {
-  transports.set(sessionId, transport);
-  servers.set(sessionId, server);
-}
-
-/**
- * Get server for session
- */
-export function getServer(sessionId: string): Server | undefined {
-  return servers.get(sessionId);
 }
 
 /**

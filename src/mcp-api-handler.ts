@@ -1,16 +1,11 @@
 /**
  * MCP API Handler
  * Handles authenticated MCP requests after OAuth validation by OAuthProvider
+ * Routes requests to Durable Objects for stateful session management
  * Direct Fetch API handler (no Hono)
  */
 
-import {
-  createMCPServerInstance,
-  getOrCreateTransport,
-  storeSession,
-  isInitializeRequest,
-} from './mcp-transport';
-import { StorageService } from './storage';
+import { isInitializeRequest } from './mcp-transport';
 import { RateLimiter } from './rate-limiting';
 import { MonitoringService } from './monitoring';
 import { Logger, generateRequestId } from './logger';
@@ -89,7 +84,6 @@ export async function mcpApiHandler(
     });
 
     // Initialize services
-    const storage = new StorageService(env.SECOND_BRAIN_BUCKET);
     const rateLimiter = new RateLimiter(env.RATE_LIMIT_KV);
     const monitoring = new MonitoringService(env.ANALYTICS);
 
@@ -129,21 +123,25 @@ export async function mcpApiHandler(
       );
     }
 
-    // Extract session ID from headers
-    const sessionId = request.headers.get('mcp-session-id');
-    userLogger.debug('Session extracted', { sessionId: sessionId || 'none' });
+    // Extract or generate session ID
+    let sessionId = request.headers.get('mcp-session-id');
 
-    // Get or create transport
-    const transport = getOrCreateTransport(sessionId || undefined, isInitialize);
+    // For initialize requests without a session ID, generate one
+    if (isInitialize && !sessionId) {
+      const array = new Uint8Array(16);
+      crypto.getRandomValues(array);
+      sessionId = Array.from(array, (byte) => byte.toString(16).padStart(2, '0')).join('');
+      userLogger.info('Generated new session ID for initialize request', { sessionId });
+    }
 
-    if (!transport) {
-      userLogger.warn('Invalid transport - missing session or not initialize request');
+    if (!sessionId) {
+      userLogger.warn('Missing session ID for non-initialize request');
       return new Response(
         JSON.stringify({
           jsonrpc: '2.0',
           error: {
             code: -32600,
-            message: 'Invalid session or missing session ID',
+            message: 'Missing session ID. Initialize a session first.',
           },
           id: body?.id || null,
         }),
@@ -154,91 +152,42 @@ export async function mcpApiHandler(
       );
     }
 
-    const sessionLogger = userLogger.child({ sessionId: transport.sessionId });
-    sessionLogger.debug('Transport created/retrieved');
+    const sessionLogger = userLogger.child({ sessionId });
 
-    // Create MCP server instance
-    const server = createMCPServerInstance(storage, rateLimiter, env.ANALYTICS, userId, sessionLogger);
-    sessionLogger.debug('MCP server instance created');
+    // Get Durable Object stub for this session
+    const durableObjectId = env.MCP_SESSIONS.idFromName(sessionId);
+    const durableObject = env.MCP_SESSIONS.get(durableObjectId);
 
-    // Store session if this is a new initialize request
-    if (isInitialize && transport.sessionId) {
-      storeSession(transport.sessionId, transport, server);
-    }
+    sessionLogger.info('Routing to Durable Object', {
+      durableObjectId: durableObjectId.toString(),
+    });
 
-    // Connect server to transport if not already connected
-    await server.connect(transport);
+    // Create new request with props in header (for Durable Object)
+    const propsHeader = JSON.stringify({
+      userId,
+      githubLogin: props.githubLogin,
+    });
 
-    // Handle the request through the transport
-    // Create a Node.js-compatible response wrapper
-    const responseChunks: string[] = [];
-    const responseHeaders = new Headers();
-    let responseStatus = 200;
-
-    const nodeResponse = {
-      statusCode: 200,
-      setHeader: (name: string, value: string) => {
-        sessionLogger.debug('Response header set', { name, value });
-        responseHeaders.set(name, value);
-        return nodeResponse; // Return this for method chaining
+    const durableRequest = new Request(request.url, {
+      method: request.method,
+      headers: {
+        ...Object.fromEntries(request.headers.entries()),
+        'x-mcp-props': propsHeader,
       },
-      writeHead: (statusCode: number, headers?: Record<string, string>) => {
-        sessionLogger.debug('Response writeHead called', { statusCode });
-        responseStatus = statusCode;
-        if (headers) {
-          Object.entries(headers).forEach(([key, value]) => {
-            responseHeaders.set(key, value);
-          });
-        }
-        return nodeResponse; // Return this for method chaining
-      },
-      write: (chunk: string) => {
-        sessionLogger.debug('Response chunk written', { chunkLength: chunk?.length });
-        responseChunks.push(chunk);
-        return true;
-      },
-      end: (data?: string) => {
-        sessionLogger.debug('Response end called', { dataLength: data?.length });
-        if (data) {
-          responseChunks.push(data);
-        }
-        return nodeResponse; // Return this for method chaining
-      },
-      flushHeaders: () => {
-        // No-op in our implementation
-        return nodeResponse; // Return this for method chaining
-      },
-      on: (event: string, callback: (...args: any[]) => void) => {
-        // No-op in our implementation, but return this for chaining
-        return nodeResponse;
-      },
-    };
+      body: request.method === 'POST' ? JSON.stringify(body) : undefined,
+    });
 
-    sessionLogger.debug('Handling MCP transport request');
+    // Forward request to Durable Object
+    const response = await durableObject.fetch(durableRequest);
 
-    // Handle the request
-    try {
-      await transport.handleRequest(request as any, nodeResponse as any, body);
-    } catch (err) {
-      sessionLogger.error('Transport handleRequest failed', err as Error);
-      throw err;
-    }
-
-    // Get the response body after transport.handleRequest has called end()
-    const responseBody = responseChunks.join('');
     const duration = Date.now() - startTime;
 
     sessionLogger.info('MCP request completed', {
-      status: responseStatus,
-      bodyLength: responseBody.length,
+      status: response.status,
       duration,
     });
 
-    // Return the response
-    return new Response(responseBody, {
-      status: responseStatus,
-      headers: responseHeaders,
-    });
+    return response;
   } catch (error) {
     const duration = Date.now() - startTime;
     logger.error('MCP API handler error', error as Error, { duration });
