@@ -497,9 +497,9 @@ if (quota.totalBytes > quota.maxBytes * 0.8) {  // 80% threshold
 ```
 
 **Tasks:**
-- [ ] Review MonitoringService methods
-- [ ] Add recordRateLimitHit calls in mcp-api-handler.ts
-- [ ] Add recordOAuthEvent calls in oauth-ui-handler.ts
+- [x] Review MonitoringService methods (COMPLETE - 2025-10-11)
+- [x] Add recordRateLimitHit calls in mcp-api-handler.ts (COMPLETE - 2025-10-11)
+- [x] Add recordOAuthEvent calls in oauth-ui-handler.ts (COMPLETE - 2025-10-11)
 - [ ] Add storage warning checks in storage.ts
 - [ ] Add tests for monitoring integration
 - [ ] Verify Analytics Engine data points are being written

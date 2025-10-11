@@ -12,6 +12,7 @@ import {
 } from './mcp-transport';
 import { StorageService } from './storage';
 import { RateLimiter } from './rate-limiting';
+import { MonitoringService } from './monitoring';
 import { Logger, generateRequestId } from './logger';
 import { Env } from './index';
 
@@ -84,6 +85,7 @@ export async function mcpApiHandler(
     // Initialize services
     const storage = new StorageService(env.SECOND_BRAIN_BUCKET);
     const rateLimiter = new RateLimiter(env.RATE_LIMIT_KV);
+    const monitoring = new MonitoringService(env.ANALYTICS);
 
     // Check rate limit (check minute window - most strict)
     const rateLimitResult = await rateLimiter.checkRateLimit(userId, 'minute');
@@ -93,6 +95,10 @@ export async function mcpApiHandler(
         limit: rateLimitResult.limit,
         retryAfter: rateLimitResult.retryAfter,
       });
+
+      // Record rate limit hit to Analytics Engine
+      await monitoring.recordRateLimitHit(userId, 'minute', rateLimitResult.limit);
+
       return new Response(
         JSON.stringify({
           jsonrpc: '2.0',

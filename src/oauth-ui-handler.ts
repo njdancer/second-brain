@@ -7,6 +7,7 @@
 
 import type { OAuthHelpers } from '@cloudflare/workers-oauth-provider';
 import { GitHub } from 'arctic';
+import { MonitoringService } from './monitoring';
 import { Logger, generateRequestId } from './logger';
 import { Env } from './index';
 
@@ -140,6 +141,11 @@ async function handleCallback(request: Request, env: OAuthEnv, logger: Logger): 
     // Check if user is authorized (allowlist)
     if (githubUser.id.toString() !== env.GITHUB_ALLOWED_USER_ID) {
       userLogger.warn('User not in allowlist');
+
+      // Record failed OAuth event
+      const monitoring = new MonitoringService(env.ANALYTICS);
+      await monitoring.recordOAuthEvent(githubUser.id.toString(), 'failure');
+
       return new Response('Unauthorized user', { status: 403 });
     }
 
@@ -166,10 +172,19 @@ async function handleCallback(request: Request, env: OAuthEnv, logger: Logger): 
 
     userLogger.info('MCP OAuth completed, redirecting to client');
 
+    // Record successful OAuth event
+    const monitoring = new MonitoringService(env.ANALYTICS);
+    await monitoring.recordOAuthEvent(githubUser.id.toString(), 'success');
+
     // Redirect back to MCP client with authorization code (includes PKCE validation)
     return Response.redirect(redirectTo, 302);
   } catch (error) {
     logger.error('OAuth callback failed', error as Error);
+
+    // Record failed OAuth event (with no user ID since auth failed)
+    const monitoring = new MonitoringService(env.ANALYTICS);
+    await monitoring.recordOAuthEvent(undefined, 'failure');
+
     return new Response(`Failed to complete OAuth flow: ${error instanceof Error ? error.message : 'Unknown error'}`, { status: 500 });
   }
 }
