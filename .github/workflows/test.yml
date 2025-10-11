@@ -1,11 +1,5 @@
 name: Test
 
-# TEMPORARILY DISABLED: GitHub Actions runners hanging after type-check step
-# Tests pass locally in 3 seconds but CI hangs indefinitely
-# Root cause: GitHub Actions infrastructure issue (not code issue)
-# Workaround: Run tests locally before pushing (pnpm test)
-# TODO: Re-enable when GitHub fixes runner issues or switch to different CI
-
 on:
   push:
     branches: [main]
@@ -14,9 +8,9 @@ on:
 
 jobs:
   test:
-    if: false  # DISABLED - see comment above
     name: Run Tests
-    runs-on: ubuntu-22.04  # Use 22.04 instead of latest (24.04) due to runner issues
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Checkout code
@@ -49,11 +43,15 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run type check
-        run: pnpm run type-check
+        timeout-minutes: 3
+        run: |
+          echo "Starting type-check..."
+          pnpm run type-check
+          echo "Type-check completed successfully!"
 
       - name: Run tests
         timeout-minutes: 5
-        run: npx jest --coverage --ci --maxWorkers=2 --forceExit
+        run: pnpm test -- --coverage --ci
 
       - name: Check coverage thresholds
         run: |
