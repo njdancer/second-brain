@@ -170,9 +170,9 @@ export function generateRequestId(): string {
 ```
 
 **Tasks:**
-- [ ] Create `src/logger.ts` with Logger class
-- [ ] Add tests for Logger class (`test/unit/logger.test.ts`)
-- [ ] Update tsconfig.json if needed for crypto.randomUUID()
+- [x] Create `src/logger.ts` with Logger class (COMPLETE - 2025-10-11)
+- [x] Add tests for Logger class (`test/unit/logger.test.ts`) (COMPLETE - 21/21 tests passing)
+- [x] Update tsconfig.json if needed for crypto.randomUUID() (NOT NEEDED - already supported)
 - [ ] Document Logger usage in implementation.md
 
 **Success Criteria:**
