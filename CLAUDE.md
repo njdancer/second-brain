@@ -28,23 +28,29 @@ MCP server for Building a Second Brain (BASB) methodology running on Cloudflare 
 ### Task Management via PLAN.md
 **MUST use PLAN.md as the single source of truth for task tracking.** Do NOT use TodoWrite or other task management tools.
 
-PLAN.md is a living document that you should actively update throughout development:
-- Update status after completing each phase/sub-task
-- Mark deliverables with checkboxes and completion dates
-- Note any blockers or issues that arise
-- Update version number and last updated timestamp
-- Add new tasks as they emerge during implementation
-- Remove obsolete tasks that no longer matter
-- Reorganize sections as the project evolves
-- **ALWAYS update PLAN.md BEFORE committing** - Include it in the same commit as the code changes
+**PLAN.md is a LEAN, FORWARD-LOOKING planning document:**
+- Focus on UPCOMING work (next 1-2 phases max)
+- Keep historical detail MINIMAL (git history is the archive)
+- Add detail ITERATIVELY as work approaches
+- Remove completed phases once their context is no longer needed
+- Target length: ~200 lines max
+
+**What to include:**
+- ✅ Current phase status and immediate next steps
+- ✅ Upcoming phase overview (high-level only)
+- ✅ Relevant context for upcoming tasks
+- ✅ Active blockers or decisions needed
+- ❌ Detailed completion notes for finished phases
+- ❌ Comprehensive historical logs
+- ❌ Information better suited for specs/ directory
 
 **When to update PLAN.md:**
-- After completing any deliverable
-- When discovering new work that needs to be done
-- When pivoting or changing approach
-- After encountering blockers
-- Before starting a new phase
-- When realizing tasks are no longer needed
+- After completing a phase: Archive detail, add next phase
+- When discovering new work: Add to upcoming tasks
+- When pivoting: Update current phase plan
+- **ALWAYS update BEFORE committing** - Include in the same commit
+
+**Keep it lean:** If PLAN.md exceeds ~300 lines, archive completed work to git history.
 
 ### Dead Code Management
 **MUST delete dead code, never archive it.** Git history is the archive.
