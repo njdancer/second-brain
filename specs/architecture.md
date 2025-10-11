@@ -9,6 +9,7 @@
 - **OAuth SERVER**: `@cloudflare/workers-oauth-provider` v0.0.11 (issues MCP tokens with PKCE)
 - **OAuth CLIENT**: Arctic v3.7.0 (GitHub authentication for user verification)
 - **Storage**: Cloudflare R2 (single bucket, configured via wrangler)
+- **Session Management**: Cloudflare Durable Objects (stateful MCP transport sessions)
 - **Transport**: Streamable HTTP (MCP protocol version 2025-03-26)
 - **Observability**: Structured JSON logging + Cloudflare Analytics Engine
 
@@ -21,7 +22,13 @@ Claude/MCP Client
     ↓ (OAuth 2.1 + PKCE)
     ↓ [MCP tokens issued by us]
 Worker (OAuthProvider)
-    ├─→ /mcp endpoint (authenticated) → MCP Server → R2 Storage
+    ├─→ /mcp endpoint (authenticated)
+    │       ↓
+    │   Durable Object (per session)
+    │       ├─→ StreamableHTTPServerTransport (stateful)
+    │       ├─→ MCP Server
+    │       └─→ R2 Storage
+    │
     └─→ /oauth/* (GitHub flow)
             ↓ (OAuth 2.0 + PKCE)
             ↓ [GitHub tokens consumed by us via Arctic]
@@ -33,6 +40,12 @@ Worker (OAuthProvider)
 **Dual OAuth Architecture:**
 - **Flow 1**: Claude authenticates WITH US (we issue MCP tokens via OAuthProvider)
 - **Flow 2**: We authenticate WITH GitHub (we verify user identity via Arctic)
+
+**Session Management:**
+- Each MCP session runs in its own Durable Object instance
+- Session ID is used as Durable Object ID for routing
+- Provides stateful storage for StreamableHTTPServerTransport
+- Enables SSE (Server-Sent Events) streaming across multiple HTTP requests
 
 ---
 
@@ -86,6 +99,68 @@ No enforced hierarchy - structure emerges from user's file paths.
 
 ---
 
+## Durable Objects Session Management
+
+**Why Durable Objects?**
+
+Cloudflare Workers are stateless - each request can go to a different Worker instance. However, the MCP `StreamableHTTPServerTransport` requires stateful session management:
+- Maintains internal state (`_streamMapping`, `_requestToStreamMapping`, etc.)
+- Handles SSE (Server-Sent Events) streaming connections
+- Associates multiple HTTP requests with the same session
+
+Durable Objects provide strongly-consistent, stateful storage per session, solving the session persistence problem.
+
+**Architecture:**
+
+```
+POST /mcp (initialize) → Worker
+    ↓
+Worker creates Durable Object stub with session ID
+    ↓
+Durable Object initializes StreamableHTTPServerTransport
+    ↓
+Returns session ID to client
+
+GET /mcp (with session ID) → Worker
+    ↓
+Worker gets existing Durable Object stub by session ID
+    ↓
+Durable Object processes request with existing transport
+    ↓
+SSE stream established through same stateful transport
+```
+
+**Implementation Details:**
+
+1. **Durable Object Class** (`MCPSessionDurableObject`):
+   - One instance per MCP session
+   - Holds `StreamableHTTPServerTransport` and `Server` instances
+   - Lifecycle tied to session (initialize → use → terminate)
+
+2. **Worker routing**:
+   - Extract session ID from `mcp-session-id` header or initialize
+   - Get or create Durable Object stub: `env.MCP_SESSIONS.get(id)`
+   - Forward request to Durable Object
+
+3. **Session ID as Durable Object ID**:
+   - MCP session ID directly maps to Durable Object ID
+   - Ensures requests with same session ID always route to same instance
+   - No external session storage needed (KV, D1)
+
+4. **Session cleanup**:
+   - DELETE request triggers session termination
+   - Durable Object can implement automatic timeout (e.g., 1 hour idle)
+   - Closed sessions are garbage collected by Cloudflare
+
+**Cost Considerations:**
+
+- Workers Paid plan required ($5/month per account)
+- Included: 1M Durable Object requests, 400K GB-s duration
+- Personal use case: Well within free tier limits
+- Automatic hibernation when idle (no duration charges)
+
+---
+
 ## Components
 
 ### 1. Worker Entry Point (`src/index.ts`)
@@ -105,47 +180,54 @@ No enforced hierarchy - structure emerges from user's file paths.
 ### 3. MCP API Handler (`src/mcp-api-handler.ts`)
 - Authenticated MCP requests (token validation by OAuthProvider)
 - Rate limiting enforcement
-- MCP transport initialization and request routing
-- Session management
+- Session ID extraction from headers
+- Durable Object routing (forwards to session-specific DO)
 - Direct Fetch API handlers (no framework layer)
 
-### 4. MCP Transport (`src/mcp-transport.ts`)
+### 4. MCP Session Durable Object (`src/mcp-session-do.ts`) **NEW**
+- Stateful session management (one instance per MCP session)
+- Holds StreamableHTTPServerTransport and Server instances
+- Handles all MCP protocol requests for a session
+- Processes GET (SSE), POST (JSON-RPC), DELETE (terminate)
+- Automatic session cleanup on termination
+
+### 5. MCP Transport (`src/mcp-transport.ts`)
 - MCP protocol implementation
-- StreamableHTTPServerTransport adapter for Cloudflare Workers
+- StreamableHTTPServerTransport initialization
 - Tool registration and dispatch
 - Server metadata (name, description, version)
 - Prompt registration
 
-### 5. Tool Implementations (`src/tools/`)
+### 6. Tool Implementations (`src/tools/`)
 - `read.ts` - File reading with range support
 - `write.ts` - File creation/overwrite
 - `edit.ts` - String replacement, move, rename, delete
 - `glob.ts` - Pattern-based file search
 - `grep.ts` - Content search with regex
 
-### 6. Storage Service (`src/storage.ts`)
+### 7. Storage Service (`src/storage.ts`)
 - R2 API wrapper
 - Error handling and retries
 - Storage limit checks
 - Metadata management
 
-### 7. Rate Limiting (`src/rate-limiting.ts`)
+### 8. Rate Limiting (`src/rate-limiting.ts`)
 - Per-user rate limit tracking
 - KV-based counters with TTL
 - Multiple time windows (minute, hour, day)
 - Storage quota enforcement
 
-### 8. Bootstrap (`src/bootstrap.ts`)
+### 9. Bootstrap (`src/bootstrap.ts`)
 - Initial file creation logic
 - README and PARA directory structure
 - Idempotent execution (check for existing files)
 
-### 9. Backup (`src/backup.ts`)
+### 10. Backup (`src/backup.ts`)
 - R2 to S3 sync via cron trigger
 - Incremental backup logic
 - Retention management (30 days)
 
-### 10. Observability (`src/logger.ts`, `src/monitoring.ts`)
+### 11. Observability (`src/logger.ts`, `src/monitoring.ts`)
 - **Logger**: Structured JSON logging with request correlation
 - **Monitoring**: Analytics Engine integration, metric collection
 - Request tracing, error tracking, performance metrics
