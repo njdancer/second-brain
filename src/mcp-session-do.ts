@@ -178,6 +178,19 @@ export class MCPSessionDurableObject extends DurableObject {
       const responseHeaders = new Headers();
       let responseStatus = 200;
 
+      // Create Node.js-compatible request object
+      // The MCP SDK expects http.IncomingMessage properties
+      const nodeRequest = {
+        method: request.method,
+        url: new URL(request.url).pathname + new URL(request.url).search,
+        headers: Object.fromEntries(request.headers.entries()), // Convert Headers to plain object
+        httpVersion: '1.1',
+        on: () => nodeRequest,
+        once: () => nodeRequest,
+        emit: () => false,
+        removeListener: () => nodeRequest,
+      };
+
       const nodeResponse = {
         statusCode: 200,
         setHeader: (name: string, value: string) => {
@@ -208,7 +221,7 @@ export class MCPSessionDurableObject extends DurableObject {
       };
 
       // Handle request through transport
-      await this.transport.handleRequest(request as any, nodeResponse as any, body);
+      await this.transport.handleRequest(nodeRequest as any, nodeResponse as any, body);
 
       const responseBody = responseChunks.join('');
 
