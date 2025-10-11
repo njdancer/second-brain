@@ -18,6 +18,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.8] - 2025-10-11
+
+### Fixed
+- **CRITICAL:** Reverted v1.2.7 POST-only restriction that broke MCP protocol
+  - MCP protocol requires GET (SSE streaming), POST (JSON-RPC), and DELETE (session termination)
+  - v1.2.7 incorrectly rejected all GET requests with 405 Method Not Allowed
+  - Now only parses JSON body for POST requests; GET/DELETE pass undefined body to transport
+  - StreamableHTTPServerTransport handles all three methods internally
+  - This restores functionality for Claude desktop clients using SSE streams
+
+---
+
+
 ## [1.2.7] - 2025-10-11
 
 ### Fixed
