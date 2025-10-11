@@ -712,8 +712,9 @@ export class NodeResponseAdapter {
 - [x] Update specs/architecture.md (COMPLETE)
 - [x] Update specs/implementation.md (COMPLETE)
 - [x] Update CLAUDE.md (COMPLETE)
+- [x] Update README.md version and status (COMPLETE - 2025-10-11)
+- [x] Add Logger usage examples to docs (COMPLETE - in implementation.md)
 - [ ] Review specs/monitoring.md for observability details
-- [ ] Add Logger usage examples to docs
 - [ ] Update PLAN.md with Phase 14 completion status
 
 **Success Criteria:**

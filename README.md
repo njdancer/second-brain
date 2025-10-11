@@ -2,8 +2,8 @@
 
 A Model Context Protocol server that enables Claude to act as your personal knowledge management assistant using the Building a Second Brain (BASB) methodology.
 
-**Version:** 1.0.0-rc1
-**Status:** Release Candidate - Phase 6 Complete (Testing & QA)
+**Version:** 1.2.4
+**Status:** Production Ready - Phase 14 In Progress (Observability & Simplification)
 **Platform:** Cloudflare Workers
 
 ---
