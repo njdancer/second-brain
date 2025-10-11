@@ -2,13 +2,22 @@
 set -e
 
 # Release script for second-brain-mcp
-# Usage: ./scripts/release.sh [patch|minor|major|<version>]
+# Usage: ./scripts/release.sh [patch|minor|major|<version>] [--no-edit]
 # Example: ./scripts/release.sh patch  # 1.2.3 -> 1.2.4
 # Example: ./scripts/release.sh minor  # 1.2.3 -> 1.3.0
 # Example: ./scripts/release.sh major  # 1.2.3 -> 2.0.0
 # Example: ./scripts/release.sh 1.5.0  # explicit version
+# Example: ./scripts/release.sh patch --no-edit  # skip CHANGELOG editor
 
 VERSION_TYPE="${1:-patch}"
+NO_EDIT=false
+
+# Check for --no-edit flag
+for arg in "$@"; do
+  if [ "$arg" = "--no-edit" ]; then
+    NO_EDIT=true
+  fi
+done
 
 # Colors
 RED='\033[0;31m'
@@ -111,13 +120,15 @@ echo -e "${YELLOW}  → CHANGELOG.md${NC}"
 CHANGELOG_ENTRY="## [$NEW_VERSION] - $TODAY
 
 ### Added
--
+- Automated release process with version management script
+- Release commands in package.json (release, release:minor, release:major)
 
 ### Changed
--
+- Deployment documentation updated to reflect tag-based workflow
+- PLAN.md streamlined with release process status
 
 ### Fixed
--
+- macOS compatibility for release script (awk instead of sed)
 
 "
 
@@ -139,12 +150,17 @@ fi
 echo -e "${GREEN}  ✓ All files updated${NC}"
 
 echo ""
-echo -e "${YELLOW}📝 Please update CHANGELOG.md with release notes${NC}"
-echo -e "${YELLOW}Opening CHANGELOG.md in your editor...${NC}"
-sleep 2
+if [ "$NO_EDIT" = false ]; then
+  echo -e "${YELLOW}📝 Please update CHANGELOG.md with release notes${NC}"
+  echo -e "${YELLOW}Opening CHANGELOG.md in your editor...${NC}"
+  sleep 2
 
-# Open CHANGELOG.md in editor
-${EDITOR:-vim} CHANGELOG.md
+  # Open CHANGELOG.md in editor
+  ${EDITOR:-vim} CHANGELOG.md
+else
+  echo -e "${YELLOW}📝 Skipping CHANGELOG.md editor (--no-edit flag)${NC}"
+  echo -e "${YELLOW}CHANGELOG.md updated with template - edit manually if needed${NC}"
+fi
 
 echo ""
 echo -e "${YELLOW}📝 Committing changes...${NC}"
