@@ -173,7 +173,7 @@ export function generateRequestId(): string {
 - [x] Create `src/logger.ts` with Logger class (COMPLETE - 2025-10-11)
 - [x] Add tests for Logger class (`test/unit/logger.test.ts`) (COMPLETE - 21/21 tests passing)
 - [x] Update tsconfig.json if needed for crypto.randomUUID() (NOT NEEDED - already supported)
-- [ ] Document Logger usage in implementation.md
+- [x] Document Logger usage in implementation.md (COMPLETE - 2025-10-11)
 
 **Success Criteria:**
 - Logger class supports DEBUG, INFO, WARN, ERROR levels
@@ -413,7 +413,7 @@ export default new OAuthProvider({
 - [x] Update all tests to work without Hono (COMPLETE - no changes needed)
 - [x] Verify all 258 tests still pass (COMPLETE - 2025-10-11)
 - [x] Run type-check to ensure no TypeScript errors (COMPLETE - 2025-10-11)
-- [ ] Update implementation.md to remove Hono references
+- [x] Update implementation.md to remove Hono references (COMPLETE - already done in previous update)
 
 **Success Criteria:**
 - ✅ All Hono imports removed
