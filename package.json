@@ -21,10 +21,10 @@
     "inspect": "tsx scripts/mcp-inspector.ts",
     "lint": "eslint src/**/*.ts",
     "type-check": "tsc --noEmit",
-    "release": "bash scripts/release.sh",
-    "release:patch": "bash scripts/release.sh patch",
-    "release:minor": "bash scripts/release.sh minor",
-    "release:major": "bash scripts/release.sh major"
+    "release": "tsx scripts/release.ts",
+    "release:patch": "tsx scripts/release.ts patch",
+    "release:minor": "tsx scripts/release.ts minor",
+    "release:major": "tsx scripts/release.ts major"
   },
   "keywords": [
     "mcp",
