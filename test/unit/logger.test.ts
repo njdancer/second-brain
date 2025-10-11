@@ -2,13 +2,22 @@ import { Logger, generateRequestId, type LogContext } from '../../src/logger';
 
 describe('Logger', () => {
   let consoleLogSpy: jest.SpyInstance;
+  let consoleDebugSpy: jest.SpyInstance;
+  let consoleWarnSpy: jest.SpyInstance;
+  let consoleErrorSpy: jest.SpyInstance;
 
   beforeEach(() => {
     consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    consoleDebugSpy = jest.spyOn(console, 'debug').mockImplementation(() => {});
+    consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
   });
 
   afterEach(() => {
     consoleLogSpy.mockRestore();
+    consoleDebugSpy.mockRestore();
+    consoleWarnSpy.mockRestore();
+    consoleErrorSpy.mockRestore();
   });
 
   describe('constructor', () => {
@@ -78,7 +87,7 @@ describe('Logger', () => {
     it('should log DEBUG level', () => {
       logger.debug('debug message', { foo: 'bar' });
 
-      const logOutput = JSON.parse(consoleLogSpy.mock.calls[0][0]);
+      const logOutput = JSON.parse(consoleDebugSpy.mock.calls[0][0]);
       expect(logOutput.level).toBe('DEBUG');
       expect(logOutput.message).toBe('debug message');
       expect(logOutput.foo).toBe('bar');
@@ -96,7 +105,7 @@ describe('Logger', () => {
     it('should log WARN level', () => {
       logger.warn('warn message', { foo: 'bar' });
 
-      const logOutput = JSON.parse(consoleLogSpy.mock.calls[0][0]);
+      const logOutput = JSON.parse(consoleWarnSpy.mock.calls[0][0]);
       expect(logOutput.level).toBe('WARN');
       expect(logOutput.message).toBe('warn message');
       expect(logOutput.foo).toBe('bar');
@@ -106,7 +115,7 @@ describe('Logger', () => {
       const error = new Error('Test error');
       logger.error('error message', error, { foo: 'bar' });
 
-      const logOutput = JSON.parse(consoleLogSpy.mock.calls[0][0]);
+      const logOutput = JSON.parse(consoleErrorSpy.mock.calls[0][0]);
       expect(logOutput.level).toBe('ERROR');
       expect(logOutput.message).toBe('error message');
       expect(logOutput.error).toBe('Test error');
@@ -117,7 +126,7 @@ describe('Logger', () => {
     it('should log ERROR level without error object', () => {
       logger.error('error message', undefined, { foo: 'bar' });
 
-      const logOutput = JSON.parse(consoleLogSpy.mock.calls[0][0]);
+      const logOutput = JSON.parse(consoleErrorSpy.mock.calls[0][0]);
       expect(logOutput.level).toBe('ERROR');
       expect(logOutput.message).toBe('error message');
       expect(logOutput.foo).toBe('bar');
@@ -206,7 +215,7 @@ describe('Logger', () => {
       const error = new Error('Something went wrong');
       logger.error('Operation failed', error);
 
-      const logOutput = JSON.parse(consoleLogSpy.mock.calls[0][0]);
+      const logOutput = JSON.parse(consoleErrorSpy.mock.calls[0][0]);
       expect(logOutput.error).toBe('Something went wrong');
       expect(logOutput.stack).toBeDefined();
       expect(logOutput.stack).toContain('Error: Something went wrong');
@@ -219,7 +228,7 @@ describe('Logger', () => {
 
       logger.error('Operation failed', error, { customProp: 'value' });
 
-      const logOutput = JSON.parse(consoleLogSpy.mock.calls[0][0]);
+      const logOutput = JSON.parse(consoleErrorSpy.mock.calls[0][0]);
       expect(logOutput.error).toBe('Custom error');
       expect(logOutput.customProp).toBe('value');
     });

@@ -54,13 +54,37 @@ export class Logger {
 
   private log(level: LogLevel, message: string, data?: LogContext): void {
     // JSON structured logging for Cloudflare Workers Logs
-    console.log(JSON.stringify({
+    const logObject = {
       timestamp: new Date().toISOString(),
       level,
       message,
       ...this.context,
       ...data,
-    }));
+    };
+
+    // Use appropriate console method for the log level
+    const consoleMethod = level === 'ERROR' ? console.error :
+                         level === 'WARN' ? console.warn :
+                         level === 'DEBUG' ? console.debug :
+                         console.log;
+
+    try {
+      // Try to serialize the full object
+      const jsonString = JSON.stringify(logObject);
+      consoleMethod(jsonString);
+    } catch (error) {
+      // Fallback: log what we can + error info
+      console.error(JSON.stringify({
+        timestamp: new Date().toISOString(),
+        level: 'ERROR',
+        message: 'Logger serialization failed',
+        originalMessage: message,
+        originalLevel: level,
+        serializationError: error instanceof Error ? error.message : String(error),
+      }));
+      // Also log the original message so it's not lost
+      console.error(message, data);
+    }
   }
 }
 

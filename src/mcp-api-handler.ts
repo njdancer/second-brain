@@ -33,9 +33,14 @@ export async function mcpApiHandler(
   const logger = new Logger({ requestId });
   const startTime = Date.now();
 
+  // Log request with all headers for debugging session ID issue
+  // Use Object.fromEntries to ensure serializable object
+  const headers = Object.fromEntries(request.headers.entries());
+
   logger.info('MCP request started', {
     method: request.method,
     url: request.url,
+    headers,
   });
 
   try {
@@ -124,7 +129,17 @@ export async function mcpApiHandler(
     }
 
     // Extract or generate session ID
-    let sessionId = request.headers.get('mcp-session-id');
+    // Check multiple possible locations where client might send it
+    let sessionId = request.headers.get('mcp-session-id') ||
+                    request.headers.get('x-mcp-session-id') ||
+                    request.headers.get('session-id');
+
+    userLogger.info('Session ID extraction', {
+      foundInHeaders: !!sessionId,
+      headerName: sessionId ? 'mcp-session-id or variant' : null,
+      isInitialize,
+      allHeaderKeys: Object.keys(Object.fromEntries(request.headers.entries())),
+    });
 
     // For initialize requests without a session ID, generate one
     if (isInitialize && !sessionId) {
@@ -135,7 +150,20 @@ export async function mcpApiHandler(
     }
 
     if (!sessionId) {
-      userLogger.warn('Missing session ID for non-initialize request');
+      // Log comprehensive debug info to figure out where Claude sends session ID
+      const debugInfo = {
+        httpMethod: request.method,
+        mcpMethod: body?.method,
+        mcpId: body?.id,
+        isInitialize,
+        expectedHeader: 'mcp-session-id',
+        allHeaders: Object.fromEntries(request.headers.entries()),
+        bodyKeys: body ? Object.keys(body) : [],
+        bodyPreview: body ? JSON.stringify(body).substring(0, 200) : null,
+      };
+
+      userLogger.warn('Missing session ID for non-initialize request', debugInfo);
+
       return new Response(
         JSON.stringify({
           jsonrpc: '2.0',

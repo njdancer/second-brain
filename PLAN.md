@@ -16,6 +16,12 @@
 **Release Process:** ✅ Automated release script working perfectly
 
 **Recent Completions:**
+- ✅ **v1.2.11+:** Enhanced logging for debugging session ID issues
+  - Logger now uses appropriate console methods (log/debug/warn/error)
+  - Added comprehensive header logging in mcp-api-handler
+  - Added session ID extraction debugging with multiple header variants
+  - Improved error handling and serialization fallbacks in logger
+  - All tests passing (263/263), 85.33% coverage maintained
 - ✅ **v1.2.9:** Migrated to Durable Objects for session persistence
   - MCPSessionDurableObject class manages stateful sessions
   - Each session ID maps to dedicated Durable Object instance
