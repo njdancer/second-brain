@@ -14,27 +14,40 @@ second-brain-mcp/
 │       ├── test.yml             # CI testing
 │       └── rollback.yml         # Rollback workflow
 ├── src/
-│   ├── index.ts                 # Worker entrypoint
-│   ├── oauth-handler.ts         # GitHub OAuth flow
-│   ├── mcp-server.ts            # MCP protocol implementation
-│   ├── tools/                   # Individual tool implementations
+│   ├── index.ts                 # OAuthProvider root handler
+│   ├── oauth-ui-handler.ts      # GitHub OAuth CLIENT (Arctic)
+│   ├── mcp-api-handler.ts       # Authenticated MCP endpoint
+│   ├── mcp-transport.ts         # MCP protocol + tool registration
+│   ├── logger.ts                # Structured logging (NEW)
+│   ├── monitoring.ts            # Analytics Engine integration
+│   ├── tools/                   # Tool implementations
 │   │   ├── read.ts
 │   │   ├── write.ts
 │   │   ├── edit.ts
 │   │   ├── glob.ts
 │   │   └── grep.ts
 │   ├── storage.ts               # R2 operations abstraction
+│   ├── rate-limiting.ts         # KV-based rate limiting
 │   ├── backup.ts                # S3 backup integration
-│   ├── monitoring.ts            # Metrics and logging
-│   └── bootstrap.ts             # Initial file creation
+│   ├── bootstrap.ts             # Initial file creation
+│   └── archive/                 # Archived implementations
+│       └── oauth-handler-v1.2.3.ts  # Old hand-rolled OAuth
 ├── test/
 │   ├── unit/                    # Unit tests for each module
 │   ├── integration/             # Integration tests
-│   └── fixtures/                # Test data
+│   ├── fixtures/                # Test data
+│   └── archive/                 # Archived tests
+├── specs/                       # Technical documentation
 ├── wrangler.toml                # Cloudflare configuration
 ├── package.json
 └── README.md
 ```
+
+**Key Changes from Previous Architecture:**
+- Removed Hono dependency (direct Fetch API handlers)
+- Added `logger.ts` for structured logging
+- Separated OAuth UI handler (`oauth-ui-handler.ts`) from API handler (`mcp-api-handler.ts`)
+- Created `archive/` for deleted code (git history recovery)
 
 ---
 
@@ -43,11 +56,10 @@ second-brain-mcp/
 ```json
 {
   "dependencies": {
-    "@cloudflare/workers-oauth-provider": "1.0.0",
-    "@modelcontextprotocol/sdk": "1.0.0",
+    "@cloudflare/workers-oauth-provider": "0.0.11",
+    "@modelcontextprotocol/sdk": "1.0.4",
     "@aws-sdk/client-s3": "3.600.0",
-    "hono": "4.5.0",
-    "octokit": "3.2.0",
+    "arctic": "3.7.0",
     "zod": "3.23.0"
   },
   "devDependencies": {
@@ -61,7 +73,16 @@ second-brain-mcp/
 }
 ```
 
-**Note:** Exact versions specified to prevent breaking changes during PoC phase.
+**Key Libraries:**
+- **OAuthProvider** - OAuth 2.1 server with PKCE (Cloudflare official)
+- **Arctic** - OAuth 2.0 client for GitHub authentication
+- **MCP SDK** - Model Context Protocol implementation
+- **Zod** - Runtime type validation for tool parameters
+- **AWS SDK** - S3 backup integration
+
+**Removed Dependencies:**
+- `hono` - Replaced with direct Fetch API handlers (unnecessary abstraction)
+- `octokit` - Replaced with Arctic for GitHub OAuth
 
 ---
 
@@ -217,60 +238,89 @@ All secrets listed above in "Secrets Configuration" section.
 ## Module Responsibilities
 
 ### `src/index.ts`
-- Hono app initialization
-- Route registration
-- MCP SSE endpoint
-- OAuth callback handlers
+- OAuthProvider configuration and export (root handler)
+- OAuth endpoint configuration (`/authorize`, `/token`, `/register`)
+- Routes `/mcp` to MCP API handler
+- Routes default to GitHub OAuth UI handler
 - Cron trigger handler (backup)
-- Error middleware
 
-### `src/oauth-handler.ts`
-- GitHub OAuth flow
-- Token generation and validation
-- User authorization check (against allowed list)
-- Token storage and retrieval from KV
-- Refresh token logic
+### `src/oauth-ui-handler.ts`
+- GitHub OAuth CLIENT flow (Arctic library)
+- `/authorize` - Parse MCP request, redirect to GitHub
+- `/callback` - Exchange code, verify user, complete MCP OAuth
+- User authorization check against allowlist
+- State management (encodes MCP OAuth params)
+- Direct Fetch API handlers (no framework)
 
-### `src/mcp-server.ts`
+### `src/mcp-api-handler.ts`
+- Authenticated MCP request handling
+- Props extraction from OAuthProvider context
+- Rate limiting enforcement
+- MCP transport initialization
+- Session management
+- Request logging with correlation IDs
+- Direct Fetch API handlers (no framework)
+
+### `src/mcp-transport.ts`
 - MCP protocol implementation
+- StreamableHTTPServerTransport adapter for Workers
 - Tool registration (read, write, edit, glob, grep)
 - Prompt registration (capture-note, weekly-review, research-summary)
 - Server metadata
 - Request/response formatting
+
+### `src/logger.ts` (NEW)
+- Structured JSON logging
+- Request correlation (requestId generation)
+- Log level filtering (DEBUG, INFO, WARN, ERROR)
+- Context propagation (userId, requestId)
+- Child logger creation for component-specific logging
+- Integration with Cloudflare Workers Logs
+
+### `src/monitoring.ts`
+- Analytics Engine integration
+- Metric recording helpers (tool calls, OAuth events, rate limits)
+- Error tracking
+- Performance metrics (duration tracking)
+- Storage quota monitoring
 
 ### `src/tools/*.ts`
 Each tool module exports:
 - Tool specification (name, description, parameters schema)
 - Handler function
 - Input validation (using Zod)
-- R2 operations
-- Error handling
+- R2 operations via StorageService
+- Structured error handling (preserves stack traces)
+- Logging integration
 
 ### `src/storage.ts`
 - R2 API wrapper
 - CRUD operations (get, put, delete, list)
 - Metadata handling
-- Error handling and retries
+- Error handling and retries with exponential backoff
 - Storage quota checks
+- Logging with request correlation
+
+### `src/rate-limiting.ts`
+- Per-user rate limit tracking
+- KV-based counters with TTL
+- Multiple time windows (minute, hour, day)
+- Storage quota enforcement
+- Logging when limits are hit or approaching
 
 ### `src/backup.ts`
 - S3 client initialization
 - R2 to S3 sync logic
 - Incremental backup (ETag comparison)
-- Retention management
-- Logging and metrics
-
-### `src/monitoring.ts`
-- Analytics Engine integration
-- Metric recording helpers
-- Error logging
-- Performance tracking
+- Retention management (30 days)
+- Logging and metrics integration
 
 ### `src/bootstrap.ts`
 - Bootstrap file generation
 - Idempotency check (README.md existence)
 - PARA directory structure creation
 - Initial README files
+- Logging of bootstrap operations
 
 ---
 

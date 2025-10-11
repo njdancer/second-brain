@@ -5,12 +5,12 @@
 ## Stack
 
 - **Platform**: Cloudflare Workers
-- **Framework**: Hono (for HTTP routing)
 - **Protocol**: Model Context Protocol (MCP) via `@modelcontextprotocol/sdk`
 - **OAuth SERVER**: `@cloudflare/workers-oauth-provider` v0.0.11 (issues MCP tokens with PKCE)
 - **OAuth CLIENT**: Arctic v3.7.0 (GitHub authentication for user verification)
 - **Storage**: Cloudflare R2 (single bucket, configured via wrangler)
 - **Transport**: Streamable HTTP (MCP protocol version 2025-03-26)
+- **Observability**: Structured JSON logging + Cloudflare Analytics Engine
 
 ---
 
@@ -89,26 +89,29 @@ No enforced hierarchy - structure emerges from user's file paths.
 ## Components
 
 ### 1. Worker Entry Point (`src/index.ts`)
-- OAuthProvider instance configuration and export
-- Configures OAuth endpoints (`/oauth/authorize`, `/oauth/token`, `/register`)
+- OAuthProvider instance configuration and export (root handler)
+- Configures OAuth endpoints (`/authorize`, `/token`, `/register`)
 - Routes `/mcp` to authenticated API handler
-- Routes `/oauth/*` to GitHub UI handler
+- Routes default to GitHub OAuth UI handler
 
 ### 2. GitHub OAuth UI Handler (`src/oauth-ui-handler.ts`)
 - GitHub OAuth CLIENT flow using Arctic library
-- `/oauth/authorize` - Parse MCP request, redirect to GitHub
-- `/oauth/callback` - Exchange code for GitHub token, verify user, complete MCP OAuth
+- `/authorize` - Parse MCP request, redirect to GitHub
+- `/callback` - Exchange code for GitHub token, verify user, complete MCP OAuth
 - User authorization check against `GITHUB_ALLOWED_USER_ID`
 - State management (encodes MCP OAuth request in GitHub state parameter)
+- Direct Fetch API handlers (no framework layer)
 
 ### 3. MCP API Handler (`src/mcp-api-handler.ts`)
 - Authenticated MCP requests (token validation by OAuthProvider)
 - Rate limiting enforcement
-- MCP server instantiation and request routing
-- Session management for MCP transport
+- MCP transport initialization and request routing
+- Session management
+- Direct Fetch API handlers (no framework layer)
 
-### 4. MCP Server (`src/mcp-server.ts`)
+### 4. MCP Transport (`src/mcp-transport.ts`)
 - MCP protocol implementation
+- StreamableHTTPServerTransport adapter for Cloudflare Workers
 - Tool registration and dispatch
 - Server metadata (name, description, version)
 - Prompt registration
@@ -120,7 +123,7 @@ No enforced hierarchy - structure emerges from user's file paths.
 - `glob.ts` - Pattern-based file search
 - `grep.ts` - Content search with regex
 
-### 6. Storage Abstraction (`src/storage.ts`)
+### 6. Storage Service (`src/storage.ts`)
 - R2 API wrapper
 - Error handling and retries
 - Storage limit checks
@@ -142,10 +145,10 @@ No enforced hierarchy - structure emerges from user's file paths.
 - Incremental backup logic
 - Retention management (30 days)
 
-### 10. Monitoring (`src/monitoring.ts`)
-- Analytics Engine integration
-- Metric collection helpers
-- Error logging
+### 10. Observability (`src/logger.ts`, `src/monitoring.ts`)
+- **Logger**: Structured JSON logging with request correlation
+- **Monitoring**: Analytics Engine integration, metric collection
+- Request tracing, error tracking, performance metrics
 
 ---
 
@@ -166,6 +169,80 @@ No enforced hierarchy - structure emerges from user's file paths.
 
 ---
 
+## Observability Architecture
+
+### Structured Logging
+
+**JSON-formatted logs** for efficient querying in Cloudflare Workers Logs:
+
+```typescript
+{
+  "timestamp": "2025-10-11T12:34:56.789Z",
+  "level": "INFO",  // DEBUG, INFO, WARN, ERROR
+  "message": "MCP request completed",
+  "requestId": "uuid-v4",
+  "userId": "github-user-id",
+  "tool": "read",
+  "duration": 125,  // milliseconds
+  "success": true
+}
+```
+
+**Request Correlation:**
+- Every request gets a unique `requestId` (UUID v4)
+- Passed through all layers (OAuthProvider → MCP handler → tools → storage)
+- All logs include `requestId` for tracing complete request lifecycle
+
+**Log Levels:**
+- `DEBUG` - Detailed execution flow (disabled in production)
+- `INFO` - Request lifecycle, tool execution, OAuth events
+- `WARN` - Rate limits approaching, storage quota warnings
+- `ERROR` - Failures with full context (preserved stack traces)
+
+### Metrics Collection
+
+**Analytics Engine** for high-cardinality metrics:
+
+```typescript
+// Tool execution metrics
+await analytics.writeDataPoint({
+  blobs: [toolName, userId],       // Dimensions (unlimited cardinality)
+  doubles: [duration, 1],           // Metrics [duration_ms, count]
+  indexes: [toolName]               // Indexed for fast queries
+});
+
+// OAuth events
+await monitoring.recordOAuthEvent(userId, 'success' | 'failure');
+
+// Rate limiting
+await monitoring.recordRateLimitHit(userId, window, limit);
+
+// Storage usage
+await monitoring.recordStorageMetrics(userId, totalBytes, totalFiles);
+```
+
+**Real-time Monitoring:**
+- Tool execution times (p50, p95, p99)
+- OAuth success/failure rates
+- Rate limit hit rates
+- Storage quota utilization
+- Error rates by type
+
+### Error Tracking
+
+**Error Context Preservation:**
+- Original stack traces preserved through tool execution chain
+- Error types categorized (user error vs system error)
+- Structured error logging with full context
+- No PII in logs (user IDs anonymized in analytics)
+
+**Monitoring Integration:**
+- All errors sent to Analytics Engine
+- Categorized by HTTP status code
+- Includes user context for debugging (without exposing PII)
+
+---
+
 ## Related Documentation
 
 - [Overview](./overview.md) - Project background and philosophy
@@ -173,3 +250,4 @@ No enforced hierarchy - structure emerges from user's file paths.
 - [Implementation](./implementation.md) - Project structure and dependencies
 - [Security](./security.md) - Authentication and authorization details
 - [Deployment](./deployment.md) - Setup and configuration
+- [Monitoring](./monitoring.md) - Observability implementation details

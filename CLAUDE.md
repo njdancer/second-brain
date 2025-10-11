@@ -6,9 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 MCP server for Building a Second Brain (BASB) methodology running on Cloudflare Workers with R2 storage. Enables Claude to act as a personal knowledge management assistant.
 
-**Status:** Pre-implementation (specs complete, no source code yet)
+**Status:** ✅ Production-ready (v1.2.4 deployed)
 
-**Stack:** Cloudflare Workers, R2, Hono, MCP SDK, GitHub OAuth
+**Stack:** Cloudflare Workers, R2, OAuthProvider, Arctic, MCP SDK
+
+**Architecture:** Direct Fetch API handlers (no web framework)
 
 ## Critical Non-Negotiables
 
@@ -166,29 +168,43 @@ All spec files are in [specs/](specs/) directory. Read them before implementing 
 ### Key Files
 
 `/src/index.ts` - **OAuthProvider Configuration**
-- Exports OAuthProvider instance (replaces Hono app)
-- Configures OAuth SERVER endpoints (`/oauth/authorize`, `/oauth/token`, `/register`)
+- Exports OAuthProvider instance (root handler)
+- Configures OAuth SERVER endpoints (`/authorize`, `/token`, `/register`)
 - Routes `/mcp` to authenticated API handler
 - Routes default to GitHub OAuth UI handler
 - All OAuth SERVER logic handled by `@cloudflare/workers-oauth-provider`
 
 `/src/oauth-ui-handler.ts` - **GitHub OAuth CLIENT**
 - GitHub authentication flow using Arctic library
-- `/oauth/authorize` - Parse MCP request, redirect to GitHub
-- `/oauth/callback` - Exchange code, verify user, complete MCP OAuth
+- Direct Fetch API handler (no framework)
+- `/authorize` - Parse MCP request, redirect to GitHub
+- `/callback` - Exchange code, verify user, complete MCP OAuth
 - User allowlist check (`GITHUB_ALLOWED_USER_ID`)
 - State management (encodes MCP OAuth request)
 
 `/src/mcp-api-handler.ts` - **Authenticated MCP Endpoint**
 - Handles `/mcp` requests after OAuthProvider validates token
+- Direct Fetch API handler (no framework)
+- Props extraction from OAuthProvider context
 - Rate limiting enforcement
-- MCP server instantiation and request routing
-- Session management for MCP transport
+- MCP transport initialization and request routing
+- Session management
+
+`/src/mcp-transport.ts` - **MCP Protocol Implementation**
+- Tool and prompt registration
+- StreamableHTTPServerTransport adapter for Workers
+- Handles MCP JSON-RPC requests
+
+`/src/logger.ts` - **Structured Logging (NEW)**
+- JSON-formatted logs for Cloudflare Workers Logs
+- Request correlation with UUID requestId
+- Log levels: DEBUG, INFO, WARN, ERROR
+- Context propagation (userId, requestId, tool, etc.)
 
 `/src/archive/oauth-handler-v1.2.3.ts` - **Archived**
 - Old hand-rolled OAuth implementation (513 lines)
 - Replaced in Phase 13 with library-based approach
-- Kept for reference only
+- Kept for git history recovery only
 
 ### Common Pitfalls
 
@@ -198,13 +214,19 @@ All spec files are in [specs/](specs/) directory. Read them before implementing 
 - Manually implement OAuth logic (both libraries handle it automatically)
 - Return GitHub tokens to MCP clients (security boundary violation)
 - Mock OAuthProvider or Arctic in tests (let libraries handle OAuth internally)
+- Add framework dependencies like Hono (we use direct Fetch API)
+- Use unstructured console.log (use Logger class for structured logging)
+- Keep dead code commented out (delete it, use git history)
 
 ✅ **DO:**
 - Understand we have TWO OAuth roles (server AND client)
 - Trust library implementations for PKCE, token management, security
 - Check specs/security.md for OAuth architecture overview
 - Test OAuth changes with `pnpm run test:mcp:oauth`
-- Review archived oauth-handler-v1.2.3.ts if you need to understand old implementation
+- Use structured logging (Logger class) for all new code
+- Include requestId in all logs for request correlation
+- Delete dead code instead of commenting it out (use git history)
+- Use direct Fetch API handlers (Request/Response) instead of frameworks
 
 ### Testing OAuth
 
@@ -227,17 +249,18 @@ pnpm run test:e2e
 
 ```
 src/
-├── index.ts              # OAuthProvider configuration (OAuth SERVER)
-├── oauth-ui-handler.ts   # GitHub OAuth CLIENT flow (Arctic)
-├── mcp-api-handler.ts    # Authenticated MCP endpoint
-├── mcp-server.ts         # MCP protocol + tool/prompt registration
+├── index.ts              # OAuthProvider root handler (OAuth SERVER)
+├── oauth-ui-handler.ts   # GitHub OAuth CLIENT (Arctic, direct Fetch API)
+├── mcp-api-handler.ts    # Authenticated MCP endpoint (direct Fetch API)
+├── mcp-transport.ts      # MCP protocol + tool/prompt registration
+├── logger.ts             # Structured JSON logging (NEW)
+├── monitoring.ts         # Analytics Engine integration
 ├── storage.ts            # R2 wrapper with quotas
 ├── rate-limiting.ts      # KV-based rate limiting
 ├── bootstrap.ts          # Initial PARA structure
 ├── backup.ts             # Daily R2→S3 sync
-├── monitoring.ts         # Analytics Engine
 ├── tools/                # Tool implementations (read, write, edit, glob, grep)
-└── archive/              # Archived implementations (oauth-handler-v1.2.3.ts, etc)
+└── archive/              # Archived implementations (git history recovery)
 
 test/
 ├── unit/                 # Mirrors src/ structure
