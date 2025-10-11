@@ -2,60 +2,63 @@
 
 **Project:** MCP Server for Building a Second Brain (BASB)
 **Status:** ✅ Production Ready - Phase 14 Complete
-**Version:** v1.2.4
+**Version:** v1.2.3 (v1.2.4 release pending)
 **Last Updated:** 2025-10-11
 
 ---
 
 ## Current Status
 
-**Deployed:** ✅ Production (v1.2.4)
+**Deployed:** ⚠️ Not deployed (deployment workflow issue discovered)
 **CI/CD:** ✅ Operational (GitHub Actions, 37s test cycle)
 **Test Coverage:** ✅ 258 tests, 79% coverage
 **Architecture:** Direct Fetch API handlers, no frameworks
+**Release Process:** ✅ Automated release script ready
 
-**Recent Completions (Phase 14):**
-- Removed Hono dependency (~300 lines removed)
-- Implemented structured JSON logging (Logger class)
-- Wired up MonitoringService for OAuth and rate limiting
-- Fixed CI test output suppression issue
+**Recent Completions:**
+- **Phase 14:** Removed Hono, added structured logging, MonitoringService integration
+- **Release Process:** Created automated release script (`pnpm run release`)
+  - Updates package.json, PLAN.md, CHANGELOG.md in one operation
+  - Runs tests and type checking before release
+  - Creates git tag automatically
+  - Fixed deployment workflow documentation (tag-based, not push-based)
 
 ---
 
-## Next Up: Phase 15 - Verification & Polish
+## Next Up: Phase 15 - Release & Deployment
 
-**Goal:** Verify production deployment and complete Phase 14 loose ends
+**Goal:** Deploy v1.2.4 to production and verify functionality
 
 ### Tasks
 
-**Smoke Tests:**
-- [ ] Run E2E OAuth flow test against production
-- [ ] Verify Claude.ai MCP integration works
-- [ ] Test all tools (read, write, edit, glob, grep)
-- [ ] Verify rate limiting is enforced
+**Release v1.2.4:**
+- [ ] Run release script: `pnpm run release` (requires user interaction for CHANGELOG)
+- [ ] Push release: `git push origin main --tags`
+- [ ] Monitor GitHub Actions deployment
+- [ ] Verify deployment successful
 
-**Monitoring Verification:**
+**Post-Deployment Verification:**
+- [ ] Run E2E smoke tests against production: `pnpm run test:e2e:smoke`
 - [ ] Check Cloudflare Logs for structured JSON output
-- [ ] Verify Analytics Engine data points are being written
-- [ ] Confirm OAuth events are logged
-- [ ] Validate request correlation (requestId) works
+- [ ] Verify OAuth flow works end-to-end
+- [ ] Test all tools (read, write, edit, glob, grep)
 
-**Polish:**
+**Polish (Optional):**
 - [ ] Add storage quota warnings (MonitoringService)
 - [ ] Review and update any stale documentation
 - [ ] Clean up any remaining TODOs in code
-- [ ] Consider extracting response adapter (low priority)
 
 **Commands:**
 ```bash
-# Test OAuth flow
-pnpm run test:mcp:oauth
+# Create release
+pnpm run release        # Creates v1.2.4, commits, tags
 
-# Check logs
-pnpm wrangler tail --format pretty
+# Deploy
+git push origin main --tags  # Triggers GitHub Actions deployment
 
-# E2E smoke tests (requires deployed server)
-pnpm run test:e2e
+# Verify
+pnpm run test:e2e:smoke     # Smoke tests against production
+pnpm wrangler tail --format pretty  # Check logs
 ```
 
 ---
