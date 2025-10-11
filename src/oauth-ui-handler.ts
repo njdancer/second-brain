@@ -211,6 +211,17 @@ export async function githubOAuthHandler(
     return handleCallback(request, env, logger);
   }
 
+  if (url.pathname === '/health') {
+    return new Response(JSON.stringify({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      service: 'second-brain-mcp'
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+
   logger.warn('Unknown OAuth route', { pathname: url.pathname });
   return new Response('Not Found', { status: 404 });
 }
