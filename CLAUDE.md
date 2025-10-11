@@ -34,7 +34,7 @@ PLAN.md is a living document that you should actively update throughout developm
 - Note any blockers or issues that arise
 - Update version number and last updated timestamp
 - Add new tasks as they emerge during implementation
-- Remove or archive obsolete tasks that no longer matter
+- Remove obsolete tasks that no longer matter
 - Reorganize sections as the project evolves
 - **ALWAYS update PLAN.md BEFORE committing** - Include it in the same commit as the code changes
 
@@ -45,6 +45,14 @@ PLAN.md is a living document that you should actively update throughout developm
 - After encountering blockers
 - Before starting a new phase
 - When realizing tasks are no longer needed
+
+### Dead Code Management
+**MUST delete dead code, never archive it.** Git history is the archive.
+- Delete unused files immediately when they become obsolete
+- Do NOT create `archive/` directories or rename files with version suffixes
+- Do NOT keep commented-out code "just in case"
+- Use `git log` and `git show` to recover deleted code if needed
+- Trust git history - it's designed for this purpose
 
 ### Testing Requirements
 - **95%+ code coverage** required (configured in jest.config.js)
@@ -201,11 +209,6 @@ All spec files are in [specs/](specs/) directory. Read them before implementing 
 - Log levels: DEBUG, INFO, WARN, ERROR
 - Context propagation (userId, requestId, tool, etc.)
 
-`/src/archive/oauth-handler-v1.2.3.ts` - **Archived**
-- Old hand-rolled OAuth implementation (513 lines)
-- Replaced in Phase 13 with library-based approach
-- Kept for git history recovery only
-
 ### Common Pitfalls
 
 ❌ **DON'T:**
@@ -259,15 +262,13 @@ src/
 ├── rate-limiting.ts      # KV-based rate limiting
 ├── bootstrap.ts          # Initial PARA structure
 ├── backup.ts             # Daily R2→S3 sync
-├── tools/                # Tool implementations (read, write, edit, glob, grep)
-└── archive/              # Archived implementations (git history recovery)
+└── tools/                # Tool implementations (read, write, edit, glob, grep)
 
 test/
 ├── unit/                 # Mirrors src/ structure
 ├── integration/          # End-to-end tests
 ├── fixtures/             # Test data
-├── mocks/                # R2, KV, GitHub mocks
-└── archive/              # Archived tests from previous implementations
+└── mocks/                # R2, KV, GitHub mocks
 ```
 
 ## When Stuck

@@ -600,18 +600,18 @@ export async function executeTool(
 3. **Any other dead code identified**
 
 **Tasks:**
-- [ ] Verify src/oauth-handler.ts is not imported anywhere
-- [ ] Delete src/oauth-handler.ts if safe (already in archive/)
-- [ ] Check if src/mcp-server.ts is used
-- [ ] Delete src/mcp-server.ts if unused
-- [ ] Run tests to verify nothing breaks
-- [ ] Commit with message "refactor: delete dead code (use git history for recovery)"
+- [x] Verify src/oauth-handler.ts is not imported anywhere (COMPLETE - 2025-10-11)
+- [x] Delete src/oauth-handler.ts and src/mcp-server.ts (COMPLETE - 2025-10-11)
+- [x] Delete src/archive/ directory - git is the archive (COMPLETE - 2025-10-11)
+- [x] Delete test/unit/mcp-server.test.ts (COMPLETE - 2025-10-11)
+- [x] Run tests to verify nothing breaks (COMPLETE - 258/258 passing)
+- [x] Add Dead Code Management to CLAUDE.md non-negotiables (COMPLETE - 2025-10-11)
 
 **Success Criteria:**
 - All dead code removed from src/
-- All tests still pass (259/259)
-- Git history preserves deleted code
-- archive/ directory contains archived implementations for reference
+- All tests still pass (258/258)
+- Git history preserves deleted code for recovery
+- No archive/ directories - use git history instead
 
 ---
 
