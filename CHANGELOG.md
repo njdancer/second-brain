@@ -18,6 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.10] - 2025-10-11
+
+### Fixed
+- Return `mcp-session-id` header in response for client session tracking. Clients were receiving "Missing session ID for non-initialize request" errors because the session ID wasn't being returned in response headers after initialization.
+
+---
+
+
 ## [1.2.9] - 2025-10-11
 
 ### Added
