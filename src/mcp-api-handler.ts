@@ -187,7 +187,15 @@ export async function mcpApiHandler(
       duration,
     });
 
-    return response;
+    // Add session ID to response headers for client to use in subsequent requests
+    const responseHeaders = new Headers(response.headers);
+    responseHeaders.set('mcp-session-id', sessionId);
+
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: responseHeaders,
+    });
   } catch (error) {
     const duration = Date.now() - startTime;
     logger.error('MCP API handler error', error as Error, { duration });
