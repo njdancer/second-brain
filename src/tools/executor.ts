@@ -5,6 +5,7 @@
 
 import { StorageService } from '../storage';
 import { RateLimiter } from '../rate-limiting';
+import { Logger } from '../logger';
 import { readTool } from './read';
 import { writeTool } from './write';
 import { editTool } from './edit';
@@ -15,6 +16,7 @@ export interface ToolContext {
   storage: StorageService;
   rateLimiter: RateLimiter;
   userId: string;
+  logger: Logger;
 }
 
 /**
@@ -25,39 +27,52 @@ export async function executeTool(
   args: Record<string, any>,
   context: ToolContext
 ): Promise<string> {
-  const { storage, userId } = context;
+  const { storage, userId, logger } = context;
+  const toolLogger = logger.child({ tool: toolName });
+  const startTime = Date.now();
 
-  let result: { content: string; isError: boolean };
+  toolLogger.debug('Tool execution started', { args });
 
-  switch (toolName) {
-    case 'read':
-      result = await readTool(args as any, storage);
-      break;
+  try {
+    let result: { content: string; isError: boolean };
 
-    case 'write':
-      result = await writeTool(args as any, storage, userId);
-      break;
+    switch (toolName) {
+      case 'read':
+        result = await readTool(args as any, storage);
+        break;
 
-    case 'edit':
-      result = await editTool(args as any, storage);
-      break;
+      case 'write':
+        result = await writeTool(args as any, storage, userId);
+        break;
 
-    case 'glob':
-      result = await globTool(args as any, storage);
-      break;
+      case 'edit':
+        result = await editTool(args as any, storage);
+        break;
 
-    case 'grep':
-      result = await grepTool(args as any, storage);
-      break;
+      case 'glob':
+        result = await globTool(args as any, storage);
+        break;
 
-    default:
-      throw new Error(`Unknown tool: ${toolName}`);
+      case 'grep':
+        result = await grepTool(args as any, storage);
+        break;
+
+      default:
+        throw new Error(`Unknown tool: ${toolName}`);
+    }
+
+    // If the tool returned an error, throw it
+    if (result.isError) {
+      throw new Error(result.content);
+    }
+
+    const duration = Date.now() - startTime;
+    toolLogger.info('Tool execution succeeded', { duration });
+
+    return result.content;
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    toolLogger.error('Tool execution failed', error as Error, { args, duration });
+    throw error;
   }
-
-  // If the tool returned an error, throw it
-  if (result.isError) {
-    throw new Error(result.content);
-  }
-
-  return result.content;
 }

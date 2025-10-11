@@ -15,6 +15,7 @@ import { MockR2Bucket } from '../mocks/r2';
 import { MockKVNamespace } from '../mocks/kv';
 import { StorageService } from '../../src/storage';
 import { RateLimiter } from '../../src/rate-limiting';
+import { Logger } from '../../src/logger';
 
 describe('MCP Transport', () => {
   let mockBucket: MockR2Bucket;
@@ -22,6 +23,7 @@ describe('MCP Transport', () => {
   let rateLimitKV: MockKVNamespace;
   let rateLimiter: RateLimiter;
   let analytics: AnalyticsEngineDataset;
+  let logger: Logger;
 
   beforeEach(() => {
     mockBucket = new MockR2Bucket();
@@ -31,6 +33,7 @@ describe('MCP Transport', () => {
     analytics = {
       writeDataPoint: jest.fn(),
     } as any;
+    logger = new Logger({ userId: 'test-user', requestId: 'test-request' });
   });
 
   describe('createMCPServerInstance', () => {
@@ -39,7 +42,8 @@ describe('MCP Transport', () => {
         storage,
         rateLimiter,
         analytics,
-        'test-user'
+        'test-user',
+        logger
       );
 
       expect(server).toBeInstanceOf(Server);
@@ -50,7 +54,8 @@ describe('MCP Transport', () => {
         storage,
         rateLimiter,
         analytics,
-        'test-user'
+        'test-user',
+        logger
       );
 
       // Create a mock transport
@@ -70,7 +75,8 @@ describe('MCP Transport', () => {
         storage,
         rateLimiter,
         analytics,
-        'test-user'
+        'test-user',
+        logger
       );
 
       expect(server).toBeDefined();
@@ -143,7 +149,8 @@ describe('MCP Transport', () => {
         storage,
         rateLimiter,
         analytics,
-        'test-user'
+        'test-user',
+        logger
       );
       storeSession(sessionId, transport1!, server);
 
@@ -160,7 +167,8 @@ describe('MCP Transport', () => {
         storage,
         rateLimiter,
         analytics,
-        'test-user'
+        'test-user',
+        logger
       );
 
       const sessionId = 'test-session-id';

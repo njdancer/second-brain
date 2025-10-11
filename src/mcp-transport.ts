@@ -16,6 +16,7 @@ import { RateLimiter } from './rate-limiting';
 import { MonitoringService } from './monitoring';
 import { bootstrapSecondBrain } from './bootstrap';
 import { executeTool } from './tools/executor';
+import { Logger } from './logger';
 import { Env } from './index';
 
 /**
@@ -32,7 +33,8 @@ export function createMCPServerInstance(
   storage: StorageService,
   rateLimiter: RateLimiter,
   analytics: AnalyticsEngineDataset,
-  userId: string
+  userId: string,
+  logger: Logger
 ): Server {
   const monitoring = new MonitoringService(analytics);
   const server = new Server(
@@ -223,6 +225,7 @@ Let the structure emerge naturally through use. Create folders as needed by crea
         storage,
         rateLimiter,
         userId,
+        logger,
       });
 
       // Increment rate limit counter

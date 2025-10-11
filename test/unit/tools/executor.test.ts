@@ -8,12 +8,14 @@ import { MockR2Bucket } from '../../mocks/r2';
 import { MockKVNamespace } from '../../mocks/kv';
 import { StorageService } from '../../../src/storage';
 import { RateLimiter } from '../../../src/rate-limiting';
+import { Logger } from '../../../src/logger';
 
 describe('Tool Executor', () => {
   let mockBucket: MockR2Bucket;
   let storage: StorageService;
   let rateLimitKV: MockKVNamespace;
   let rateLimiter: RateLimiter;
+  let logger: Logger;
   let context: ToolContext;
 
   beforeEach(() => {
@@ -21,10 +23,12 @@ describe('Tool Executor', () => {
     storage = new StorageService(mockBucket as any);
     rateLimitKV = new MockKVNamespace();
     rateLimiter = new RateLimiter(rateLimitKV as any);
+    logger = new Logger({ userId: 'test-user', requestId: 'test-request' });
     context = {
       storage,
       rateLimiter,
       userId: 'test-user',
+      logger,
     };
   });
 

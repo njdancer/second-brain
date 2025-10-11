@@ -145,7 +145,7 @@ export function createMCPHandler() {
       sessionLogger.debug('Transport created/retrieved');
 
       // Create MCP server instance
-      const server = createMCPServerInstance(storage, rateLimiter, c.env.ANALYTICS, userId);
+      const server = createMCPServerInstance(storage, rateLimiter, c.env.ANALYTICS, userId, sessionLogger);
       sessionLogger.debug('MCP server instance created');
 
       // Store session if this is a new initialize request
