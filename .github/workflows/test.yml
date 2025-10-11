@@ -51,7 +51,7 @@ jobs:
 
       - name: Run tests
         timeout-minutes: 5
-        run: pnpm test -- --coverage --ci
+        run: pnpm test -- --coverage --ci --silent
 
       - name: Check coverage thresholds
         run: |
