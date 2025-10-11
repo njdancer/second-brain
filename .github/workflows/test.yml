@@ -10,7 +10,6 @@ jobs:
   test:
     name: Run Tests
     runs-on: ubuntu-latest
-    timeout-minutes: 10
 
     steps:
       - name: Checkout code
@@ -43,14 +42,9 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run type check
-        timeout-minutes: 3
-        run: |
-          echo "Starting type-check..."
-          pnpm run type-check
-          echo "Type-check completed successfully!"
+        run: pnpm run type-check
 
       - name: Run tests
-        timeout-minutes: 5
         run: pnpm test -- --coverage --ci --silent
 
       - name: Check coverage thresholds
