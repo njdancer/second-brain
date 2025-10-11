@@ -18,6 +18,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.11] - 2025-10-11
+
+### Fixed
+- Convert Cloudflare Workers Headers to plain object for MCP SDK compatibility. The MCP transport was unable to read the Accept header causing 406 "Not Acceptable" errors. Created proper Node.js-compatible request adapter.
+- Updated OAuth test script to include proper `Accept: application/json, text/event-stream` headers and implement full OAuth 2.1 + PKCE flow for comprehensive testing.
+
+---
+
+
 ## [1.2.10] - 2025-10-11
 
 ### Fixed

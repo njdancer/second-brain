@@ -1,6 +1,6 @@
 {
   "name": "second-brain-mcp",
-  "version": "1.2.10",
+  "version": "1.2.11",
   "description": "Model Context Protocol server for Building a Second Brain methodology",
   "packageManager": "pnpm@9.0.0",
   "scripts": {
