@@ -18,6 +18,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.15] - 2025-10-12
+
+### Fixed
+- **CRITICAL:** MCP transport now returns JSON responses
+  - Enabled `enableJsonResponse: true` in StreamableHTTPServerTransport configuration
+  - Transport was using SSE (Server-Sent Events) mode by default, causing empty response bodies
+  - JSON mode provides direct request/response without streaming, which is what Claude clients expect
+  - This fixes the "Unexpected end of JSON input" and empty response errors
+  - All 278 tests passing
+
+---
+
+
 ## [1.2.14] - 2025-10-12
 
 ### Fixed
