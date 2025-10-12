@@ -19,15 +19,14 @@
 - ❌ **Claude desktop/web cannot connect to server**
 
 **What's Broken:**
-1. POST `/mcp` with initialize request returns "Unexpected end of JSON input"
-2. Test script `scripts/test-mcp-with-oauth.ts` has unimplemented TODO for token saving (line 296-297)
-3. No reliable way to validate server works before claiming it works
+1. POST `/mcp` with initialize request returns "Unexpected end of JSON input" or times out
+2. ~~Test script `scripts/test-mcp-with-oauth.ts` has unimplemented TODO for token saving~~ ✅ FIXED
 
 **What Needs to Happen (IN ORDER):**
-1. ✅ Fix test script to save tokens properly (so we can test)
-2. ✅ Debug and fix MCP initialize endpoint (the actual problem)
-3. ✅ Run full OAuth test script end-to-end successfully
-4. ✅ Test actual Claude desktop/web connection
+1. ✅ **COMPLETE** - Fix test script to save tokens properly (implemented saveTokenToEnv function)
+2. 🔨 **IN PROGRESS** - Debug and fix MCP initialize endpoint (the actual problem)
+3. ⏳ Run full OAuth test script end-to-end successfully
+4. ⏳ Test actual Claude desktop/web connection
 5. Only then can we claim "Production Ready"
 
 ---

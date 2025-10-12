@@ -18,6 +18,8 @@ import chalk from 'chalk';
 import dotenv from 'dotenv';
 import fetch from 'node-fetch';
 import crypto from 'crypto';
+import fs from 'fs/promises';
+import path from 'path';
 
 dotenv.config({ path: '.env.test' });
 
@@ -129,6 +131,34 @@ function generatePKCE(): { codeVerifier: string; codeChallenge: string } {
  */
 function generateState(): string {
   return crypto.randomBytes(32).toString('base64url');
+}
+
+/**
+ * Save access token to .env.test file
+ */
+async function saveTokenToEnv(token: string): Promise<void> {
+  const envPath = path.join(process.cwd(), '.env.test');
+
+  try {
+    // Read existing .env.test content
+    const content = await fs.readFile(envPath, 'utf-8');
+
+    // Update GITHUB_OAUTH_TOKEN line
+    const lines = content.split('\n');
+    const updatedLines = lines.map(line => {
+      if (line.startsWith('GITHUB_OAUTH_TOKEN=')) {
+        return `GITHUB_OAUTH_TOKEN=${token}`;
+      }
+      return line;
+    });
+
+    // Write back to file
+    await fs.writeFile(envPath, updatedLines.join('\n'), 'utf-8');
+    console.log(chalk.green('✅ Token saved to .env.test'));
+  } catch (error) {
+    console.error(chalk.red('Failed to save token to .env.test:'), error);
+    throw error;
+  }
 }
 
 /**
@@ -293,7 +323,7 @@ async function main() {
 
     // Save to .env.test
     console.log(chalk.blue('\n💾 Saving token to .env.test...'));
-    // TODO: Update .env.test file with the token
+    await saveTokenToEnv(result.accessToken);
     console.log(chalk.green('Token saved! You can now run: pnpm run test:mcp:quick'));
   }
 
