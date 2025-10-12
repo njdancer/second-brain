@@ -420,7 +420,21 @@ async function main() {
 
     const toolsData = await listToolsResponse.json() as any;
     console.log(chalk.gray('Tools response:'), JSON.stringify(toolsData, null, 2));
-    console.log(chalk.green('✅ Subsequent POST with session ID successful'));
+
+    // Check for JSON-RPC errors in the response
+    if (toolsData.error) {
+      console.log(chalk.red('❌ ERROR: tools/list returned error:'), toolsData.error);
+      console.log(chalk.red('This means session ID was not properly recognized by transport!'));
+      process.exit(1);
+    }
+
+    // Check that we got actual tools
+    if (!toolsData.result?.tools || toolsData.result.tools.length === 0) {
+      console.log(chalk.red('❌ ERROR: No tools returned in response!'));
+      process.exit(1);
+    }
+
+    console.log(chalk.green(`✅ Subsequent POST with session ID successful - received ${toolsData.result.tools.length} tools`));
 
     console.log(chalk.bold.green('\n✨ All tests passed! MCP server is working correctly.'));
   }

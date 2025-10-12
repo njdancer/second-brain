@@ -194,6 +194,7 @@ export async function mcpApiHandler(
     const propsHeader = JSON.stringify({
       userId,
       githubLogin: props.githubLogin,
+      sessionId, // Pass session ID so DO can use it consistently
     });
 
     const durableRequest = new Request(request.url, {

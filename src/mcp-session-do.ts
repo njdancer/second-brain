@@ -19,6 +19,7 @@ import { Env } from './index';
 interface SessionProps {
   userId: string;
   githubLogin: string;
+  sessionId: string; // Session ID from Worker (used as DO name)
 }
 
 /**
@@ -119,12 +120,12 @@ export class MCPSessionDurableObject extends DurableObject {
       if (isInitialize && !this.transport) {
         userLogger.info('Creating new transport and server for session');
 
-        // Get session ID from Durable Object ID (set by Worker via idFromName)
+        // Get session ID from Worker props (this is the same ID client receives in header)
         // This ensures the transport uses the SAME session ID that the client receives
-        const doSessionId = this.ctx.id.name || this.ctx.id.toString();
+        const doSessionId = props.sessionId;
         this.sessionId = doSessionId;
 
-        userLogger.info('Using session ID from Durable Object name', { sessionId: doSessionId });
+        userLogger.info('Using session ID from Worker props', { sessionId: doSessionId });
 
         // Get env from Durable Object context
         const env = this.env as Env;
