@@ -18,6 +18,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.14] - 2025-10-12
+
+### Fixed
+- **CRITICAL:** MCP initialize endpoint now works correctly
+  - Implemented proper event emitter for request body streaming in Durable Object
+  - The MCP SDK transport expects Node.js stream API (on/emit/once/removeListener)
+  - Previous stub implementation prevented transport from reading request body
+  - Now properly emits 'data' and 'end' events for request body streaming
+  - Fixes "Unexpected end of JSON input" error that broke Claude desktop/web connections
+- OAuth test script now saves tokens to .env.test file
+  - Implemented `saveTokenToEnv()` function for persistent token storage
+  - Enables quick testing with `pnpm run test:mcp:quick` after initial OAuth flow
+  - All 278 tests passing
+
+---
+
+
 ## [1.2.13] - 2025-10-11
 
 ### Added
