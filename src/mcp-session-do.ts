@@ -179,6 +179,12 @@ export class MCPSessionDurableObject extends DurableObject {
       const responseHeaders = new Headers();
       let responseStatus = 200;
 
+      // Create a promise that resolves when response.end() is called
+      let endResolver: () => void;
+      const endPromise = new Promise<void>((resolve) => {
+        endResolver = resolve;
+      });
+
       // Create Node.js-compatible request object
       // The MCP SDK expects http.IncomingMessage properties
       const nodeRequest = {
@@ -195,12 +201,10 @@ export class MCPSessionDurableObject extends DurableObject {
       const nodeResponse = {
         statusCode: 200,
         setHeader: (name: string, value: string) => {
-          userLogger.info('Response setHeader called', { name, value: value.substring(0, 50) });
           responseHeaders.set(name, value);
           return nodeResponse;
         },
         writeHead: (statusCode: number, headers?: Record<string, string>) => {
-          userLogger.info('Response writeHead called', { statusCode, headers });
           responseStatus = statusCode;
           if (headers) {
             Object.entries(headers).forEach(([key, value]) => {
@@ -210,27 +214,27 @@ export class MCPSessionDurableObject extends DurableObject {
           return nodeResponse;
         },
         write: (chunk: string) => {
-          userLogger.info('Response write called', { chunkLength: chunk?.length || 0 });
           responseChunks.push(chunk);
           return true;
         },
         end: (data?: string) => {
-          userLogger.info('Response end called', { dataLength: data?.length || 0 });
           if (data) {
             responseChunks.push(data);
           }
+          // Resolve the promise when end is called
+          endResolver();
           return nodeResponse;
         },
-        flushHeaders: () => {
-          userLogger.info('Response flushHeaders called');
-          return nodeResponse;
-        },
+        flushHeaders: () => nodeResponse,
         on: (event: string, callback: (...args: any[]) => void) => nodeResponse,
       };
 
       // Handle request through transport
       // Pass pre-parsed body as third parameter (per MCP SDK documentation)
-      await this.transport.handleRequest(nodeRequest as any, nodeResponse as any, body);
+      const handlePromise = this.transport.handleRequest(nodeRequest as any, nodeResponse as any, body);
+
+      // Wait for BOTH handleRequest to complete AND end() to be called
+      await Promise.all([handlePromise, endPromise]);
 
       const responseBody = responseChunks.join('');
 
