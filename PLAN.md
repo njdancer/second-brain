@@ -2,7 +2,7 @@
 
 **Project:** MCP Server for Building a Second Brain (BASB)
 **Status:** ❌ **BROKEN - MCP Initialize Endpoint Not Working**
-**Version:** v1.2.14
+**Version:** v1.2.15
 **Last Updated:** 2025-10-12
 
 ---
