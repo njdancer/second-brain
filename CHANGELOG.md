@@ -18,6 +18,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.18] - 2025-10-12
+
+### Fixed
+- **CRITICAL:** Session ID fix v2 - v1.2.17 didn't work
+  - **Problem with v1.2.17:** Attempted to extract session ID from Durable Object ID
+  - `ctx.id.name` was undefined, fallback to `toString()` returned hex representation instead of original name
+  - Worker generated: `a2680765622959f95ff55d65a566050e`
+  - DO used: `501319863e26024c9eec70ead89bbb85287ed1733f57c8321c95a7a610acc550`
+  - Still getting "Session not found" error code -32001
+
+  - **Correct Solution:** Pass session ID from Worker to Durable Object via props header
+  - Worker already has session ID (generates it for initialize requests)
+  - Added `sessionId` to `x-mcp-props` header alongside `userId`/`githubLogin`
+  - DO reads it from `props.sessionId` instead of trying to extract from `ctx.id`
+  - Ensures consistency: Worker → Client → DO all use same session ID
+
+  - **Test Script Fix:** Added proper error checking for JSON-RPC errors
+  - Was incorrectly marking "Session not found" as success
+  - Now checks `toolsData.error` and exits with error code
+  - Validates tools array exists and has items before reporting success
+
+---
+
+
 ## [1.2.17] - 2025-10-12
 
 ### Fixed
