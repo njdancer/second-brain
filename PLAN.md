@@ -18,14 +18,14 @@
 - ❌ Cannot validate server works because test script is broken
 - ❌ **Claude desktop/web cannot connect to server**
 
-**What's Broken:**
-1. POST `/mcp` with initialize request returns "Unexpected end of JSON input" or times out
+**What Was Broken:**
+1. ~~POST `/mcp` with initialize request returns "Unexpected end of JSON input"~~ ✅ FIXED - Implemented proper event emitter for request body streaming
 2. ~~Test script `scripts/test-mcp-with-oauth.ts` has unimplemented TODO for token saving~~ ✅ FIXED
 
 **What Needs to Happen (IN ORDER):**
 1. ✅ **COMPLETE** - Fix test script to save tokens properly (implemented saveTokenToEnv function)
-2. 🔨 **IN PROGRESS** - Debug and fix MCP initialize endpoint (the actual problem)
-3. ⏳ Run full OAuth test script end-to-end successfully
+2. ✅ **COMPLETE** - Debug and fix MCP initialize endpoint (fixed event emitter in Durable Object)
+3. 🔨 **IN PROGRESS** - Run full OAuth test script end-to-end successfully (deploy + test)
 4. ⏳ Test actual Claude desktop/web connection
 5. Only then can we claim "Production Ready"
 

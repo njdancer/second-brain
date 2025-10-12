@@ -178,17 +178,47 @@ export class MCPSessionDurableObject extends DurableObject {
       const responseHeaders = new Headers();
       let responseStatus = 200;
 
-      // Create Node.js-compatible request object
+      // Create Node.js-compatible request object with proper event emitter
       // The MCP SDK expects http.IncomingMessage properties
+      const requestListeners: Map<string, Array<(...args: any[]) => void>> = new Map();
+
       const nodeRequest = {
         method: request.method,
         url: new URL(request.url).pathname + new URL(request.url).search,
         headers: Object.fromEntries(request.headers.entries()), // Convert Headers to plain object
         httpVersion: '1.1',
-        on: () => nodeRequest,
-        once: () => nodeRequest,
-        emit: () => false,
-        removeListener: () => nodeRequest,
+        on: (event: string, callback: (...args: any[]) => void) => {
+          if (!requestListeners.has(event)) {
+            requestListeners.set(event, []);
+          }
+          requestListeners.get(event)!.push(callback);
+          return nodeRequest;
+        },
+        once: (event: string, callback: (...args: any[]) => void) => {
+          const onceCallback = (...args: any[]) => {
+            callback(...args);
+            nodeRequest.removeListener(event, onceCallback);
+          };
+          return nodeRequest.on(event, onceCallback);
+        },
+        emit: (event: string, ...args: any[]) => {
+          const listeners = requestListeners.get(event);
+          if (listeners) {
+            listeners.forEach(listener => listener(...args));
+            return true;
+          }
+          return false;
+        },
+        removeListener: (event: string, callback: (...args: any[]) => void) => {
+          const listeners = requestListeners.get(event);
+          if (listeners) {
+            const index = listeners.indexOf(callback);
+            if (index > -1) {
+              listeners.splice(index, 1);
+            }
+          }
+          return nodeRequest;
+        },
       };
 
       const nodeResponse = {
@@ -221,7 +251,22 @@ export class MCPSessionDurableObject extends DurableObject {
       };
 
       // Handle request through transport
-      await this.transport.handleRequest(nodeRequest as any, nodeResponse as any, body);
+      // Start the async handling
+      const handlePromise = this.transport.handleRequest(nodeRequest as any, nodeResponse as any);
+
+      // Emit body data after handleRequest starts listening
+      // Use setImmediate equivalent to ensure listeners are registered
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      if (body) {
+        const bodyString = JSON.stringify(body);
+        // Emit as string (Node.js streams accept both Buffer and string)
+        nodeRequest.emit('data', bodyString);
+      }
+      nodeRequest.emit('end');
+
+      // Wait for handling to complete
+      await handlePromise;
 
       const responseBody = responseChunks.join('');
 
