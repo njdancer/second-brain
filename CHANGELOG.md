@@ -18,6 +18,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.17] - 2025-10-12
+
+### Fixed
+- **CRITICAL:** Session ID consistency between Worker, Durable Object, and MCP transport
+  - **Problem:** Worker generated session ID (e.g., `d6f6...`) but transport generated different ID (e.g., `faf...`)
+  - Client received Worker's ID in header, sent it back in subsequent requests
+  - Transport rejected with "Session not found" because it expected different ID
+  - This caused tools/list and all subsequent MCP requests to fail
+  - **Solution:** Durable Object now extracts session ID from its own name (`ctx.id.name`)
+  - Worker creates DO with `idFromName(sessionId)`, DO uses that same ID for transport
+  - Ensures consistency: Worker → Client → Transport all use identical session ID
+  - **Impact:** Tools menu should now appear in Claude desktop/web clients
+
+---
+
+
 ## [1.2.16] - 2025-10-12
 
 ### Fixed
