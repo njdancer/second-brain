@@ -195,10 +195,12 @@ export class MCPSessionDurableObject extends DurableObject {
       const nodeResponse = {
         statusCode: 200,
         setHeader: (name: string, value: string) => {
+          userLogger.info('Response setHeader called', { name, value: value.substring(0, 50) });
           responseHeaders.set(name, value);
           return nodeResponse;
         },
         writeHead: (statusCode: number, headers?: Record<string, string>) => {
+          userLogger.info('Response writeHead called', { statusCode, headers });
           responseStatus = statusCode;
           if (headers) {
             Object.entries(headers).forEach(([key, value]) => {
@@ -208,16 +210,21 @@ export class MCPSessionDurableObject extends DurableObject {
           return nodeResponse;
         },
         write: (chunk: string) => {
+          userLogger.info('Response write called', { chunkLength: chunk?.length || 0 });
           responseChunks.push(chunk);
           return true;
         },
         end: (data?: string) => {
+          userLogger.info('Response end called', { dataLength: data?.length || 0 });
           if (data) {
             responseChunks.push(data);
           }
           return nodeResponse;
         },
-        flushHeaders: () => nodeResponse,
+        flushHeaders: () => {
+          userLogger.info('Response flushHeaders called');
+          return nodeResponse;
+        },
         on: (event: string, callback: (...args: any[]) => void) => nodeResponse,
       };
 
