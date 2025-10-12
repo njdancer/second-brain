@@ -119,23 +119,29 @@ export class MCPSessionDurableObject extends DurableObject {
       if (isInitialize && !this.transport) {
         userLogger.info('Creating new transport and server for session');
 
+        // Get session ID from Durable Object ID (set by Worker via idFromName)
+        // This ensures the transport uses the SAME session ID that the client receives
+        const doSessionId = this.ctx.id.name || this.ctx.id.toString();
+        this.sessionId = doSessionId;
+
+        userLogger.info('Using session ID from Durable Object name', { sessionId: doSessionId });
+
         // Get env from Durable Object context
         const env = this.env as Env;
 
         // Create transport with JSON response mode (instead of SSE)
+        // Return our session ID instead of generating a new one
         this.transport = new StreamableHTTPServerTransport({
           sessionIdGenerator: () => {
-            // Generate session ID (UUID-like)
-            const array = new Uint8Array(16);
-            crypto.getRandomValues(array);
-            return Array.from(array, (byte) => byte.toString(16).padStart(2, '0')).join('');
+            // Return the session ID from the Durable Object name
+            // This ensures consistency between client, Worker, and transport
+            return doSessionId;
           },
           onsessioninitialized: (sessionId: string) => {
-            this.sessionId = sessionId;
-            userLogger.info('Session initialized in Durable Object', { sessionId });
+            userLogger.info('Session initialized in transport', { sessionId });
           },
           onsessionclosed: (sessionId: string) => {
-            userLogger.info('Session closed in Durable Object', { sessionId });
+            userLogger.info('Session closed in transport', { sessionId });
             this.cleanup();
           },
           enableJsonResponse: true, // Use JSON responses instead of SSE streams

@@ -7,34 +7,61 @@
 
 ---
 
-## ✅ MCP Server WORKING - Ready for Claude Integration
+## ⚠️ MCP Server Initializes But Tools Not Appearing in Claude
 
 **Current State:**
 - ✅ OAuth flow works (client registration, PKCE, token exchange, token saving)
 - ✅ **MCP `/mcp` initialize endpoint WORKING** - returns valid JSON-RPC response
-- ✅ Server capabilities exposed (tools and prompts)
 - ✅ JSON response mode enabled
 - ✅ Response timing issue fixed (race condition resolved)
 - ✅ All 278 tests passing
+- ❌ **Tools menu empty in Claude** - No tools appearing despite successful initialization
 
 **What Was Fixed:**
-1. ✅ OAuth test script token saving implemented (`saveTokenToEnv` function)
-2. ✅ JSON response mode enabled in transport (`enableJsonResponse: true`)
-3. ✅ **CRITICAL FIX:** Race condition where `handleRequest()` resolved before transport wrote response
+1. ✅ OAuth test script token saving implemented (`saveTokenToEnv` function) - v1.2.14
+2. ✅ JSON response mode enabled in transport (`enableJsonResponse: true`) - v1.2.15
+3. ✅ **CRITICAL FIX:** Race condition where `handleRequest()` resolved before transport wrote response - v1.2.16
    - Transport writes response asynchronously after promise resolves
    - Added promise to wait for `response.end()` to be called
    - Now wait for both `handleRequest()` AND `end()` with `Promise.all()`
+   - Documented in specs/architecture.md
 
-**Verification:**
-```bash
-curl -X POST https://second-brain-mcp.nick-01a.workers.dev/mcp \
-  -H "Content-Type: application/json" \
-  -H "Accept: application/json, text/event-stream" \
-  -H "Authorization: Bearer <token>" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0.0"}}}'
+**What's Not Working:**
+
+The initialize request succeeds and returns a valid response:
+```json
+{
+  "result": {
+    "protocolVersion": "2024-11-05",
+    "capabilities": { "tools": {}, "prompts": {} },
+    "serverInfo": { "name": "second-brain", "version": "1.1.0" },
+    "instructions": "..."
+  },
+  "jsonrpc": "2.0",
+  "id": 1
+}
 ```
 
-Returns valid initialize response with server info, capabilities, and instructions.
+**BUT** tools menu in Claude is empty. Likely causes:
+1. **Session ID not being sent back by Claude in subsequent requests**
+   - Test shows: `tools/list` request fails with "Missing session ID. Initialize a session first."
+   - We return `mcp-session-id` header in initialize response
+   - Claude may not be reading/sending it back in subsequent requests
+
+2. **Tools not properly registered in capabilities**
+   - Initialize response shows `capabilities: { tools: {}, prompts: {} }` (empty objects)
+   - Should show tool count or tool list in capabilities
+   - May need to expose tools differently in capabilities object
+
+3. **Protocol version mismatch**
+   - Using protocol version `2024-11-05`
+   - May need different version for tool discovery
+
+**Next Steps:**
+- Investigate why tools aren't appearing in capabilities object
+- Test tools/list endpoint directly with session ID
+- Check Claude's actual requests (logs) to see if session ID is being sent
+- Verify tool registration in mcp-transport.ts
 
 ---
 

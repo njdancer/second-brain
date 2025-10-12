@@ -160,6 +160,51 @@ SSE stream established through same stateful transport
 - Automatic hibernation when idle reduces duration usage
 - No upgrade needed for this project
 
+**Critical Implementation Detail - Response Timing:**
+
+The MCP SDK's `StreamableHTTPServerTransport.handleRequest()` has an important async behavior that requires careful handling:
+
+1. **The Problem**: `handleRequest()` promise resolves BEFORE the transport writes the response
+   - Transport calls `response.write()` and `response.end()` asynchronously
+   - If you `await handleRequest()` and immediately return, response body will be empty
+   - This manifests as `bodyLength: 0` despite transport writing 1000+ bytes
+
+2. **The Solution**: Wait for BOTH the handleRequest promise AND response.end() to be called
+   ```typescript
+   // Create promise that resolves when end() is called
+   let endResolver: () => void;
+   const endPromise = new Promise<void>((resolve) => {
+     endResolver = resolve;
+   });
+
+   const nodeResponse = {
+     // ... other methods ...
+     end: (data?: string) => {
+       if (data) responseChunks.push(data);
+       endResolver(); // Resolve our promise
+       return nodeResponse;
+     },
+   };
+
+   // Wait for BOTH to complete
+   await Promise.all([
+     transport.handleRequest(nodeRequest, nodeResponse, body),
+     endPromise  // Critical: wait for end() to be called
+   ]);
+
+   const responseBody = responseChunks.join(''); // Now has data!
+   ```
+
+3. **Why This Happens**:
+   - The MCP SDK uses internal queueing/scheduling for response writing
+   - `handleRequest()` returns after setting up handlers, not after writing response
+   - Response data is written asynchronously via `res.write()` and `res.end()` calls
+   - This is normal Node.js HTTP behavior but requires explicit handling in Workers
+
+**Symptoms of this bug**: Empty response bodies, "Unexpected end of JSON input" errors, clients timing out waiting for response.
+
+**Reference**: Fixed in v1.2.16 (commit 41e02d3)
+
 ---
 
 ## Components
