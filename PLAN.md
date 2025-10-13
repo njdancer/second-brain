@@ -110,7 +110,11 @@
 ### Implementation Plan
 
 **Phase 17.1: Research & Setup** (2-3 hours)
-- [ ] Research MCP client libraries (Node.js)
+- [x] Research MCP client libraries (Node.js)
+  - Found: `@modelcontextprotocol/sdk` v1.20.0 has `StreamableHTTPClientTransport`
+  - Can import from: `@modelcontextprotocol/sdk/client/streamableHttp.js`
+  - Supports OAuth client implementation
+  - Current version: 1.19.1, should update to 1.20.0
 - [ ] Create mock GitHub OAuth server (Express/Hono)
 - [ ] Set up test environment configuration
 - [ ] Document how to run integration tests
@@ -155,6 +159,23 @@
 ---
 
 ## Parking Lot (Lower Priority)
+
+### Durable Object Alarm Cleanup (Bug)
+**Problem:** Alarms fire continuously every 5 minutes indefinitely, even after sessions are cleaned up.
+
+**Root Cause (`src/mcp-session-do.ts`):**
+1. Constructor schedules alarm on every DO instantiation (lines 39-45)
+2. `alarm()` unconditionally reschedules itself (line 62)
+3. `cleanup()` doesn't cancel alarms (missing `deleteAlarm()`)
+
+**Result:** Zombie alarms for terminated sessions fire forever, polluting logs.
+
+**Fix Required:**
+- Only schedule alarms when session is active
+- Cancel alarms in `cleanup()` method
+- Don't reschedule after session timeout
+
+**Priority:** Low (cosmetic log noise, no functional impact)
 
 ### Fix OAuth Test Script Timeout
 The current script times out at step 8 (GET request). This is lower priority now that:

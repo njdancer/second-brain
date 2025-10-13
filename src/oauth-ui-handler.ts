@@ -1,31 +1,36 @@
 /**
- * OAuth UI Handler with Arctic
- * Handles GitHub authentication flow using Arctic library
+ * OAuth UI Handler with Injectable GitHub Provider
+ * Handles GitHub authentication flow
  * Integrates with OAuthProvider for MCP token management
  * Direct Fetch API handler (no Hono)
  */
 
 import type { OAuthHelpers } from '@cloudflare/workers-oauth-provider';
-import { GitHub } from 'arctic';
 import { MonitoringService } from './monitoring';
 import { Logger, generateRequestId } from './logger';
 import { Env } from './index';
+import type { GitHubOAuthProvider, GitHubUser } from './github-oauth-provider';
 
 /**
  * Extended environment with OAuth helpers injected by OAuthProvider
  */
 interface OAuthEnv extends Env {
   OAUTH_PROVIDER: OAuthHelpers;
+  GITHUB_OAUTH?: GitHubOAuthProvider; // Optional injected provider for tests
 }
 
 /**
- * GitHub user response
+ * Create GitHub OAuth provider from environment
+ * Lazy-loaded to avoid importing Arctic in tests
  */
-interface GitHubUser {
-  id: number;
-  login: string;
-  name: string | null;
-  email: string | null;
+async function createGitHubProvider(env: OAuthEnv, request: Request): Promise<GitHubOAuthProvider> {
+  const { ArcticGitHubOAuthProvider } = await import('./github-oauth-provider-arctic');
+  const url = new URL(request.url);
+  return new ArcticGitHubOAuthProvider(
+    env.GITHUB_CLIENT_ID,
+    env.GITHUB_CLIENT_SECRET,
+    `${url.origin}/callback`
+  );
 }
 
 /**
@@ -52,19 +57,13 @@ async function handleAuthorize(request: Request, env: OAuthEnv, logger: Logger):
       return new Response('Invalid client', { status: 400 });
     }
 
-    // Initialize Arctic GitHub client
-    const github = new GitHub(
-      env.GITHUB_CLIENT_ID,
-      env.GITHUB_CLIENT_SECRET,
-      `${new URL(request.url).origin}/callback`
-    );
+    // Get GitHub OAuth provider (injected for tests, or create from env)
+    const github = env.GITHUB_OAUTH || await createGitHubProvider(env, request);
 
     // Generate state with MCP OAuth request encoded in it
-    // Arctic generates cryptographically secure state
     const state = btoa(JSON.stringify(oauthReqInfo));
 
-    // Create GitHub authorization URL with Arctic
-    // Arctic automatically handles PKCE for the GitHub flow
+    // Create GitHub authorization URL
     const authUrl = github.createAuthorizationURL(state, ['read:user']);
 
     logger.info('Redirecting to GitHub for authorization');
@@ -103,34 +102,16 @@ async function handleCallback(request: Request, env: OAuthEnv, logger: Logger): 
     const oauthReqInfo = JSON.parse(atob(state));
     logger.debug('Retrieved MCP auth request from state');
 
-    // Initialize Arctic GitHub client
-    const github = new GitHub(
-      env.GITHUB_CLIENT_ID,
-      env.GITHUB_CLIENT_SECRET,
-      `${url.origin}/callback`
-    );
+    // Get GitHub OAuth provider (injected for tests, or create from env)
+    const github = env.GITHUB_OAUTH || await createGitHubProvider(env, request);
 
-    // Validate callback and exchange code for tokens using Arctic
-    // Arctic handles token exchange, validation, and refresh token management
+    // Validate callback and exchange code for tokens
     const tokens = await github.validateAuthorizationCode(code);
 
     logger.debug('GitHub tokens received');
 
     // Get GitHub user info using the access token
-    const userResponse = await fetch('https://api.github.com/user', {
-      headers: {
-        'Authorization': `Bearer ${tokens.accessToken()}`,
-        'Accept': 'application/json',
-        'User-Agent': 'Second-Brain-MCP/1.0',
-      },
-    });
-
-    if (!userResponse.ok) {
-      logger.error('GitHub user fetch failed', new Error(`Status ${userResponse.status}`));
-      return new Response('Failed to fetch GitHub user info', { status: 500 });
-    }
-
-    const githubUser = await userResponse.json() as GitHubUser;
+    const githubUser = await github.getUserInfo(tokens.accessToken);
     const userLogger = logger.child({
       userId: githubUser.id.toString(),
       githubLogin: githubUser.login
@@ -166,7 +147,7 @@ async function handleCallback(request: Request, env: OAuthEnv, logger: Logger): 
         userId: githubUser.id.toString(),
         githubLogin: githubUser.login,
         // Store GitHub access token for potential future use
-        githubAccessToken: tokens.accessToken(),
+        githubAccessToken: tokens.accessToken,
       },
     });
 
