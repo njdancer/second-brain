@@ -11,8 +11,8 @@ module.exports = {
   testMatch: [
     '**/test/e2e/**/*.e2e.ts'
   ],
-  // E2E tests take longer
-  testTimeout: 30000,
+  // E2E tests take longer (especially with Worker startup)
+  testTimeout: 120000,
   // Don't run in parallel - they hit real API
   maxWorkers: 1,
   // Don't collect coverage - these are integration tests

@@ -49,14 +49,17 @@ export class MockGitHubOAuthProvider implements GitHubOAuthProvider {
   }
 
   async validateAuthorizationCode(code: string): Promise<GitHubTokens> {
-    // Validate that code exists
-    const state = this.authCodes.get(code);
-    if (!state) {
+    // For E2E tests, accept any code that looks like a mock code
+    // This works around the issue of provider instances not being shared
+    // between requests in the Worker environment
+    if (!code.startsWith('mock_code_')) {
       throw new Error('Invalid authorization code');
     }
 
-    // Remove used code
-    this.authCodes.delete(code);
+    // Note: In E2E tests, we can't validate the code against authCodes
+    // because each request creates a new MockGitHubOAuthProvider instance.
+    // This is acceptable for testing since we're testing the MCP server,
+    // not GitHub's OAuth implementation.
 
     return {
       accessToken: this.accessToken,
@@ -66,8 +69,9 @@ export class MockGitHubOAuthProvider implements GitHubOAuthProvider {
   }
 
   async getUserInfo(accessToken: string): Promise<GitHubUser> {
-    // Validate token
-    if (accessToken !== this.accessToken) {
+    // For E2E tests, accept any token that looks like a mock token
+    // This works around the issue of provider instances not being shared
+    if (!accessToken.startsWith('mock_github_token_')) {
       throw new Error('Invalid access token');
     }
 

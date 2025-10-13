@@ -5,6 +5,13 @@ main = "src/index.ts"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 
+# Environment variables for test mode
+[vars]
+TEST_MODE = "true"
+GITHUB_ALLOWED_USER_ID = "12345678"
+GITHUB_CLIENT_ID = "test_client"
+GITHUB_CLIENT_SECRET = "test_secret"
+
 # R2 bucket bindings (in-memory for tests)
 [[r2_buckets]]
 binding = "SECOND_BRAIN_BUCKET"

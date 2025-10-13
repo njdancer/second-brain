@@ -60,17 +60,17 @@ describe('MockGitHubOAuthProvider', () => {
       ).rejects.toThrow('Invalid authorization code');
     });
 
-    test('should reject code after it has been used', async () => {
+    test('should allow code reuse (for E2E testing)', async () => {
       const authUrl = provider.createAuthorizationURL('state', ['read:user']);
       const code = provider.extractTestCode(authUrl);
 
       // Use code once
-      await provider.validateAuthorizationCode(code);
+      const tokens1 = await provider.validateAuthorizationCode(code);
+      expect(tokens1.accessToken).toBeTruthy();
 
-      // Try to use again
-      await expect(
-        provider.validateAuthorizationCode(code)
-      ).rejects.toThrow('Invalid authorization code');
+      // Should allow reuse (for E2E tests where instances aren't shared)
+      const tokens2 = await provider.validateAuthorizationCode(code);
+      expect(tokens2.accessToken).toBeTruthy();
     });
   });
 
@@ -115,7 +115,8 @@ describe('MockGitHubOAuthProvider', () => {
 
   describe('custom access token', () => {
     test('should use provided access token', async () => {
-      const customToken = 'my_custom_token_123';
+      // Token must start with mock_github_token_ for validation
+      const customToken = 'mock_github_token_custom_123';
       const customProvider = new MockGitHubOAuthProvider({
         baseUrl: 'http://localhost:3000',
         userId: 12345,
