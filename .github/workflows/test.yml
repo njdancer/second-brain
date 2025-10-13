@@ -44,8 +44,11 @@ jobs:
       - name: Run type check
         run: pnpm run type-check
 
-      - name: Run tests
+      - name: Run unit tests
         run: pnpm test -- --coverage --ci --silent
+
+      - name: Run E2E tests
+        run: pnpm run test:e2e:mcp
 
       - name: Check coverage thresholds
         run: |
