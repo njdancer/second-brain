@@ -1,67 +1,170 @@
 # Implementation Plan
 
 **Project:** MCP Server for Building a Second Brain (BASB)
-**Status:** ✅ **WORKING - MCP Server Operational**
-**Version:** v1.2.18
+**Status:** 🎉 **PRODUCTION - Claude Integration Working!**
+**Version:** v1.2.18 (tagged: `v1.2.18-claude-working`)
 **Last Updated:** 2025-10-12
 
 ---
 
-## ⚠️ MCP Server Initializes But Tools Not Appearing in Claude
+## 🎉 MILESTONE: Claude Desktop Integration Working!
 
-**Current State:**
-- ✅ OAuth flow works (client registration, PKCE, token exchange, token saving)
-- ✅ **MCP `/mcp` initialize endpoint WORKING** - returns valid JSON-RPC response
-- ✅ JSON response mode enabled
-- ✅ Response timing issue fixed (race condition resolved)
-- ✅ All 278 tests passing
-- ❌ **Tools menu empty in Claude** - No tools appearing despite successful initialization
+**Confirmed Working (Manual Testing in Claude Desktop/Web):**
+- ✅ OAuth 2.1 + PKCE flow complete and functional
+- ✅ MCP initialize endpoint working
+- ✅ **All 5 tools operational in Claude:**
+  - `read` - File reading with range support
+  - `write` - File creation/overwrite
+  - `edit` - String replacement, move, rename, delete
+  - `glob` - Pattern-based file search
+  - `grep` - Regex content search
+- ✅ **Prompts detected in Claude** (assumed functional)
+- ✅ Session ID persistence working correctly
+- ✅ Tools menu appearing and tools executing successfully
 
-**What Was Fixed:**
-1. ✅ OAuth test script token saving implemented (`saveTokenToEnv` function) - v1.2.14
-2. ✅ JSON response mode enabled in transport (`enableJsonResponse: true`) - v1.2.15
-3. ✅ **CRITICAL FIX:** Race condition where `handleRequest()` resolved before transport wrote response - v1.2.16
-   - Transport writes response asynchronously after promise resolves
-   - Added promise to wait for `response.end()` to be called
-   - Now wait for both `handleRequest()` AND `end()` with `Promise.all()`
-   - Documented in specs/architecture.md
+**Reference Tag:** `v1.2.18-claude-working` - Use this as stable reference if future changes break integration
 
-**What's Not Working:**
+---
 
-The initialize request succeeds and returns a valid response:
-```json
-{
-  "result": {
-    "protocolVersion": "2024-11-05",
-    "capabilities": { "tools": {}, "prompts": {} },
-    "serverInfo": { "name": "second-brain", "version": "1.1.0" },
-    "instructions": "..."
-  },
-  "jsonrpc": "2.0",
-  "id": 1
-}
+## ⚠️ Critical Issue: Testing Infrastructure Inadequate
+
+### The Problem
+
+**We got lucky.** The server works, but our testing didn't catch multiple critical bugs:
+1. Session ID mismatch (Worker vs Transport generating different IDs)
+2. Race condition in response handling
+3. Test script reporting "Session not found" as success
+
+**Current Testing Situation:**
+
+✅ **Unit Tests (278 tests, 85% coverage)** - These work well
+- Test individual functions in isolation
+- Good coverage of business logic
+- Fast, reliable, comprehensive
+
+❌ **Integration/E2E Tests** - Ad-hoc mess:
+- `scripts/test-mcp-with-oauth.ts` - Requires browser interaction, times out, reported false positives
+- `test/e2e/` - Some smoke tests that don't cover MCP protocol
+- `test-session.sh` - Manual bash script
+- **None of these reliably test the actual MCP protocol flow that Claude uses**
+
+### Why This is Dangerous
+
+1. **No automated way to verify Claude integration** - Manual testing only
+2. **Can't refactor with confidence** - No tests defining correct behavior
+3. **Testing boundary is wrong** - We're testing GitHub OAuth when we shouldn't care
+4. **False confidence** - Tests pass but server was broken for weeks
+
+---
+
+## 📋 Phase 17: Proper Integration Test Suite (URGENT)
+
+**Goal:** Build comprehensive integration tests around the working implementation **WITHOUT changing the working code**.
+
+### Architecture Boundary
+
+```
+┌─────────────────────────────────────────┐
+│  Our MCP Server                         │
+│  ┌─────────────────┐  ┌──────────────┐ │
+│  │ OAuth Provider  │  │ MCP Protocol │ │
+│  │ (WE issue       │  │ (tools/      │ │
+│  │  tokens)        │  │  prompts)    │ │
+│  └────────┬────────┘  └──────────────┘ │
+└───────────┼─────────────────────────────┘
+            │
+            │ ← TEST THIS BOUNDARY
+            │    (Mock GitHub, Real MCP Client)
+            │
+    ┌───────▼────────┐
+    │ GitHub OAuth   │ ← DON'T TEST THIS
+    │ (External)     │   (Out of our control)
+    └────────────────┘
 ```
 
-**BUT** tools menu in Claude is empty. Likely causes:
-1. **Session ID not being sent back by Claude in subsequent requests**
-   - Test shows: `tools/list` request fails with "Missing session ID. Initialize a session first."
-   - We return `mcp-session-id` header in initialize response
-   - Claude may not be reading/sending it back in subsequent requests
+### Requirements
 
-2. **Tools not properly registered in capabilities**
-   - Initialize response shows `capabilities: { tools: {}, prompts: {} }` (empty objects)
-   - Should show tool count or tool list in capabilities
-   - May need to expose tools differently in capabilities object
+1. **Mock GitHub OAuth Server** (for testing only)
+   - Accepts OAuth authorize/callback requests
+   - Returns predictable user data
+   - No browser interaction required
+   - Can be started/stopped programmatically
 
-3. **Protocol version mismatch**
-   - Using protocol version `2024-11-05`
-   - May need different version for tool discovery
+2. **Real MCP Client Library**
+   - Supports OAuth 2.1 + PKCE (same as Claude)
+   - Can connect to our server
+   - Can send initialize, tools/list, tools/call requests
+   - Handles session IDs correctly
 
-**Next Steps:**
-- Investigate why tools aren't appearing in capabilities object
-- Test tools/list endpoint directly with session ID
-- Check Claude's actual requests (logs) to see if session ID is being sent
-- Verify tool registration in mcp-transport.ts
+3. **Integration Test Suite**
+   - Start mock GitHub server
+   - Start our MCP server (or use deployed dev environment)
+   - MCP client initiates connection
+   - OAuth flow completes automatically (via mock)
+   - Client receives token
+   - Client sends initialize, tools/list, tools/call
+   - Verify responses match expected schema
+   - Test all 5 tools + 3 prompts
+   - Test error cases (rate limits, invalid paths, etc.)
+
+### Implementation Plan
+
+**Phase 17.1: Research & Setup** (2-3 hours)
+- [ ] Research MCP client libraries (Node.js)
+- [ ] Create mock GitHub OAuth server (Express/Hono)
+- [ ] Set up test environment configuration
+- [ ] Document how to run integration tests
+
+**Phase 17.2: Core Integration Tests** (3-4 hours)
+- [ ] Test: Full OAuth flow (register, authorize, token exchange)
+- [ ] Test: MCP initialize (verify capabilities, serverInfo)
+- [ ] Test: tools/list (verify all 5 tools present with correct schemas)
+- [ ] Test: Each tool individually (read, write, edit, glob, grep)
+- [ ] Test: prompts/list and prompts/get
+
+**Phase 17.3: Edge Cases & Error Handling** (2-3 hours)
+- [ ] Test: Rate limiting (minute, hour, day windows)
+- [ ] Test: Session expiry and cleanup
+- [ ] Test: Invalid tool parameters
+- [ ] Test: Storage quota limits
+- [ ] Test: Concurrent requests
+
+**Phase 17.4: CI/CD Integration** (1-2 hours)
+- [ ] Add to GitHub Actions workflow
+- [ ] Run before deployment
+- [ ] Automatic rollback on failure
+
+### Success Criteria
+
+- ✅ Integration tests run without browser interaction
+- ✅ Tests complete in < 30 seconds
+- ✅ Zero false positives (if tests pass, Claude integration works)
+- ✅ Zero false negatives (if Claude works, tests pass)
+- ✅ Can run locally and in CI/CD
+- ✅ Covers all tools and prompts
+- ✅ Tests the EXACT flow Claude uses
+
+### Principles
+
+1. **Minimal code changes** - The server works, don't break it
+2. **Test the boundary** - Mock GitHub, real MCP client
+3. **Define correct behavior** - Tests become the specification
+4. **Fast feedback** - Tests should run quickly
+5. **No manual steps** - Fully automated
+
+---
+
+## Parking Lot (Lower Priority)
+
+### Fix OAuth Test Script Timeout
+The current script times out at step 8 (GET request). This is lower priority now that:
+- Claude integration is confirmed working
+- We'll replace this with proper integration tests
+
+### Additional Monitoring
+- Tool execution duration tracking
+- Error rate monitoring
+- Usage patterns analysis
 
 ---
 
