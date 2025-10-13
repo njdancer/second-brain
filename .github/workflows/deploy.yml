@@ -49,7 +49,7 @@ jobs:
         run: pnpm test -- --coverage --ci
 
       - name: Run E2E tests
-        run: pnpm run test:e2e:mcp
+        run: pnpm run test:e2e
 
       - name: Check coverage thresholds
         run: |
