@@ -22,10 +22,23 @@ interface OAuthEnv extends Env {
 /**
  * Create GitHub OAuth provider from environment
  * Lazy-loaded to avoid importing Arctic in tests
+ * Uses MockGitHubOAuthProvider if TEST_MODE=true
  */
 async function createGitHubProvider(env: OAuthEnv, request: Request): Promise<GitHubOAuthProvider> {
-  const { ArcticGitHubOAuthProvider } = await import('./github-oauth-provider-arctic');
   const url = new URL(request.url);
+
+  // Use mock provider in test mode (for E2E tests)
+  if ((env as any).TEST_MODE === 'true') {
+    const { MockGitHubOAuthProvider } = await import('../test/mocks/github-oauth-provider-mock');
+    return new MockGitHubOAuthProvider({
+      baseUrl: url.origin,
+      userId: parseInt(env.GITHUB_ALLOWED_USER_ID),
+      username: 'testuser',
+    });
+  }
+
+  // Use real Arctic provider in production
+  const { ArcticGitHubOAuthProvider } = await import('./github-oauth-provider-arctic');
   return new ArcticGitHubOAuthProvider(
     env.GITHUB_CLIENT_ID,
     env.GITHUB_CLIENT_SECRET,

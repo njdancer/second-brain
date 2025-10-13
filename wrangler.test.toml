@@ -1,0 +1,38 @@
+# Test configuration for E2E tests
+# Used by unstable_dev() for automated testing
+name = "second-brain-mcp-test"
+main = "src/index.ts"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+# R2 bucket bindings (in-memory for tests)
+[[r2_buckets]]
+binding = "SECOND_BRAIN_BUCKET"
+bucket_name = "test-bucket"
+preview_bucket_name = "test-bucket"
+
+# KV namespace bindings (in-memory for tests)
+[[kv_namespaces]]
+binding = "OAUTH_KV"
+id = "test-oauth-kv"
+preview_id = "test-oauth-kv"
+
+[[kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "test-rate-limit-kv"
+preview_id = "test-rate-limit-kv"
+
+# Analytics Engine binding (no-op for tests)
+[[analytics_engine_datasets]]
+binding = "ANALYTICS"
+dataset = "test-analytics"
+
+# Durable Objects binding (in-memory for tests)
+[[durable_objects.bindings]]
+name = "MCP_SESSIONS"
+class_name = "MCPSessionDurableObject"
+
+# Durable Objects migrations
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["MCPSessionDurableObject"]
