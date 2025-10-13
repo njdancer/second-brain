@@ -57,15 +57,17 @@
 
 ---
 
-## 📋 Phase 17: Proper Integration Test Suite (URGENT)
+## 📋 Phase 17: Proper Integration Test Suite (URGENT - NON-NEGOTIABLE)
 
-**Goal:** Build comprehensive integration tests around the working implementation **WITHOUT changing the working code**.
+**Goal:** Build comprehensive E2E integration tests around the working implementation. **WITHOUT changing the working code**.
+
+**CRITICAL REQUIREMENT:** These tests MUST be fully automated with NO manual steps, NO browser interaction, and NO human involvement. The tests must prove the full functionality of the MCP server.
 
 ### Architecture Boundary
 
 ```
 ┌─────────────────────────────────────────┐
-│  Our MCP Server                         │
+│  Our MCP Server (MUST TEST ALL OF THIS)│
 │  ┌─────────────────┐  ┌──────────────┐ │
 │  │ OAuth Provider  │  │ MCP Protocol │ │
 │  │ (WE issue       │  │ (tools/      │ │
@@ -77,35 +79,55 @@
             │    (Mock GitHub, Real MCP Client)
             │
     ┌───────▼────────┐
-    │ GitHub OAuth   │ ← DON'T TEST THIS
+    │ GitHub OAuth   │ ← ONLY MOCK THIS
     │ (External)     │   (Out of our control)
     └────────────────┘
 ```
 
-### Requirements
+### Non-Negotiable Requirements
 
-1. **Mock GitHub OAuth Server** (for testing only)
-   - Accepts OAuth authorize/callback requests
-   - Returns predictable user data
-   - No browser interaction required
-   - Can be started/stopped programmatically
+1. **Real MCP Client Library** - REQUIRED
+   - Use `@modelcontextprotocol/sdk` with `StreamableHTTPClientTransport`
+   - Must execute the EXACT same flow that Claude desktop/web uses
+   - Must support OAuth 2.1 + PKCE
+   - Must handle session IDs correctly
 
-2. **Real MCP Client Library**
-   - Supports OAuth 2.1 + PKCE (same as Claude)
-   - Can connect to our server
-   - Can send initialize, tools/list, tools/call requests
-   - Handles session IDs correctly
+2. **Real MCP Server** - REQUIRED
+   - Run actual Worker code (via unstable_dev or vitest-pool-workers)
+   - Mock Cloudflare bindings (KV, R2, DO, Analytics) - NOT the MCP server itself
+   - Use mock GitHub OAuth provider (already implemented)
+   - NO manual deployment, NO external dependencies
 
-3. **Integration Test Suite**
-   - Start mock GitHub server
-   - Start our MCP server (or use deployed dev environment)
-   - MCP client initiates connection
-   - OAuth flow completes automatically (via mock)
-   - Client receives token
-   - Client sends initialize, tools/list, tools/call
-   - Verify responses match expected schema
-   - Test all 5 tools + 3 prompts
-   - Test error cases (rate limits, invalid paths, etc.)
+3. **Comprehensive Test Coverage** - REQUIRED
+   - Full OAuth 2.1 + PKCE flow (register, authorize, token exchange)
+   - MCP initialize with session ID
+   - All 5 tools: read, write, edit, glob, grep
+   - All 3 prompts: capture-note, weekly-review, research-summary
+   - Error cases: rate limits, invalid auth, bad parameters
+   - ALL tests must run in < 30 seconds total
+   - ALL tests must be deterministic (no flaky tests)
+
+### What Can Be Mocked
+
+✅ **ALLOWED:**
+- GitHub OAuth endpoints (use MockGitHubOAuthProvider)
+- Cloudflare KV (in-memory)
+- Cloudflare R2 (in-memory)
+- Cloudflare Durable Objects (in-memory)
+- Analytics Engine (no-op)
+
+❌ **NOT ALLOWED:**
+- Mocking the MCP protocol itself
+- Mocking our OAuth Provider (must test real OAuthProvider)
+- Mocking our MCP transport (must test real transport)
+- Manual testing scripts
+- Browser-based testing
+
+### Implementation Approach
+
+**Use unstable_dev with proper binding mocks** OR **switch to vitest-pool-workers** - whichever works.
+
+The goal is automated E2E tests that run in CI/CD and prove the server works.
 
 ### Implementation Plan
 
@@ -113,47 +135,81 @@
 - [x] Research MCP client libraries (Node.js)
   - Found: `@modelcontextprotocol/sdk` v1.20.0 has `StreamableHTTPClientTransport`
   - Updated to v1.20.0
+  - Evaluated testing approaches: unstable_dev, vitest-pool-workers, unit tests
 - [x] Refactor GitHub OAuth to be injectable
   - Created `GitHubOAuthProvider` interface
   - Created `ArcticGitHubOAuthProvider` for production
   - Created `MockGitHubOAuthProvider` for tests
   - Updated oauth-ui-handler to accept injected provider
-  - All tests passing (278 tests)
-- [x] Create mock GitHub OAuth provider
+  - All tests passing (288 tests, +10 new)
+- [x] Create mock GitHub OAuth provider with comprehensive tests
   - Implemented in `test/mocks/github-oauth-provider-mock.ts`
-- [x] Create MCP client helper for tests
-  - Implemented in `test/integration/mcp-client-helper.ts`
-- [ ] Write integration tests using Miniflare
-- [ ] Document how to run integration tests
+  - Added unit tests in `test/unit/github-oauth-provider-mock.test.ts`
+  - Tests cover authorization, token exchange, user info, error cases
+- [x] Evaluate testing infrastructure options
+  - Researched: `unstable_dev`, `vitest-pool-workers`, direct Miniflare
+  - Decision: Will use one of the above for E2E tests (Phase 17.2)
+  - Unit tests: 288 passing, 85% coverage ✅
+  - E2E infrastructure: To be implemented in Phase 17.2
 
-**Phase 17.2: Core Integration Tests** (3-4 hours)
-- [ ] Test: Full OAuth flow (register, authorize, token exchange)
-- [ ] Test: MCP initialize (verify capabilities, serverInfo)
-- [ ] Test: tools/list (verify all 5 tools present with correct schemas)
-- [ ] Test: Each tool individually (read, write, edit, glob, grep)
-- [ ] Test: prompts/list and prompts/get
+**Phase 17.2: E2E Test Infrastructure** (IN PROGRESS)
+- [ ] Set up test environment with binding mocks
+  - Create wrangler.toml test configuration OR migrate to vitest-pool-workers
+  - Mock KV, R2, DO, Analytics bindings
+  - Inject MockGitHubOAuthProvider
+  - Ensure Worker starts properly in test mode
+- [ ] Create E2E test harness
+  - Set up unstable_dev or vitest-pool-workers
+  - Create MCP client using `@modelcontextprotocol/sdk`
+  - Implement automated OAuth flow with mock
+  - Handle session management
 
-**Phase 17.3: Edge Cases & Error Handling** (2-3 hours)
+**Phase 17.3: Core E2E Tests** (REQUIRED)
+- [ ] Test: Full OAuth 2.1 + PKCE flow
+  - Client registration
+  - Authorization with PKCE
+  - Token exchange
+  - Token validation
+- [ ] Test: MCP initialize
+  - Verify session ID returned
+  - Verify capabilities advertised
+  - Verify serverInfo correct
+- [ ] Test: All 5 tools
+  - tools/list returns all 5 tools
+  - read tool with various parameters
+  - write tool creates files
+  - edit tool modifies files
+  - glob tool finds files
+  - grep tool searches content
+- [ ] Test: All 3 prompts
+  - prompts/list returns all 3 prompts
+  - prompts/get for each prompt
+  - Verify prompt content correct
+
+**Phase 17.4: Error Cases & Edge Cases** (REQUIRED)
 - [ ] Test: Rate limiting (minute, hour, day windows)
-- [ ] Test: Session expiry and cleanup
+- [ ] Test: Invalid authentication
 - [ ] Test: Invalid tool parameters
-- [ ] Test: Storage quota limits
+- [ ] Test: Session expiry
 - [ ] Test: Concurrent requests
 
-**Phase 17.4: CI/CD Integration** (1-2 hours)
-- [ ] Add to GitHub Actions workflow
-- [ ] Run before deployment
-- [ ] Automatic rollback on failure
+**Phase 17.5: CI/CD Integration** (REQUIRED)
+- [ ] Add E2E tests to GitHub Actions
+- [ ] Run before every deployment
+- [ ] Fail CI if E2E tests fail
 
-### Success Criteria
+### Success Criteria (NON-NEGOTIABLE)
 
-- ✅ Integration tests run without browser interaction
-- ✅ Tests complete in < 30 seconds
-- ✅ Zero false positives (if tests pass, Claude integration works)
-- ✅ Zero false negatives (if Claude works, tests pass)
-- ✅ Can run locally and in CI/CD
-- ✅ Covers all tools and prompts
-- ✅ Tests the EXACT flow Claude uses
+- ✅ E2E tests run completely automated with ZERO manual steps
+- ✅ Tests complete in < 30 seconds total
+- ✅ Zero false positives (if tests pass, MCP server works)
+- ✅ Zero false negatives (if MCP server works, tests pass)
+- ✅ Can run locally AND in CI/CD
+- ✅ Covers ALL 5 tools + ALL 3 prompts + error cases
+- ✅ Tests the EXACT OAuth 2.1 + PKCE + MCP flow that Claude uses
+- ✅ Uses real MCP SDK client (not mocked)
+- ✅ Tests real Worker code (not mocked)
+- ✅ Only GitHub OAuth is mocked (everything else is real)
 
 ### Principles
 
