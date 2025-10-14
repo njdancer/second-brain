@@ -65,6 +65,39 @@ module.exports = {
 };
 ```
 
+### Future: vitest-pool-workers
+
+**Status: Blocked by CommonJS dependency compatibility (as of Jan 2025)**
+
+**What We'd Like:**
+
+Use `@cloudflare/vitest-pool-workers` to run tests in actual workerd runtime instead of Node.js. This would:
+- Test with production environment (Cloudflare Workers APIs)
+- Catch workerd-specific compatibility issues during testing
+- Eliminate differences between test and production runtimes
+
+**Why We Can't:**
+
+Our dependencies use CommonJS modules that import JSON files:
+- `ajv` (via `@modelcontextprotocol/sdk`) uses `require('./schema.json')`
+- `express` modules (via MCP SDK) use `require('./statuses.json')`
+- `@aws-sdk/client-s3` (in backup.ts) uses various CJS JSON imports
+
+workerd doesn't support CommonJS `require()`, so these fail with `SyntaxError: Unexpected token ':'` when JSON files are parsed as JavaScript.
+
+**Why Production Works:**
+
+Wrangler's bundler (esbuild) pre-processes everything before deployment:
+- Reads JSON files at build time and inlines them as JS objects
+- Transpiles CommonJS to ESM
+- Bundles into pure ESM that workerd can execute
+
+**When to Revisit:**
+
+- vitest-pool-workers improves CommonJS compatibility
+- Dependencies migrate to pure ESM (ajv v9+ is ESM-only)
+- We can pre-bundle dependencies for testing (similar to production)
+
 ### Mock Implementations
 
 **R2 Bucket Mock:**
