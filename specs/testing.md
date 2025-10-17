@@ -70,7 +70,9 @@ Mocks should mirror API contracts without implementing internal logic. Keep them
 
 ### Trend-Based Monitoring
 
-Use automated coverage tracking (Codecov, Coveralls, or similar) to monitor trends across commits. Visualize coverage history to identify patterns. Fail CI on significant drops unless manually overridden with justification. This creates accountability without mandating arbitrary absolutes.
+Automated coverage tracking via GitHub Actions monitors trends across commits, visualizes coverage history, and identifies patterns. The system fails CI on significant drops unless manually overridden with justification. This creates accountability without mandating arbitrary absolutes.
+
+**Architectural Decision**: Coverage tracking is implemented using GitHub Actions (e.g., `clearlyip/code-coverage-report-action`) rather than third-party services, keeping all CI/CD infrastructure within GitHub's ecosystem and avoiding external service dependencies.
 
 **Coverage drops fail CI by default**, requiring:
 - PR comment explaining the decrease
