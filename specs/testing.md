@@ -166,7 +166,7 @@ Maintain a lightweight checklist of critical flows to verify before major releas
 
 ### Test Framework
 
-The testing framework must support TypeScript with comprehensive coverage tooling, watch mode for test-driven development, and mature mocking capabilities. Configuration should prioritize speed through parallel execution and provide detailed coverage reporting with trend analysis.
+**Jest** provides the testing infrastructure with TypeScript support, comprehensive coverage tooling, watch mode for test-driven development, and mature mocking capabilities. Configuration prioritizes speed through parallel execution and provides detailed coverage reporting with trend analysis.
 
 ### Coverage Tracking
 
@@ -187,10 +187,6 @@ The testing system must support:
 ---
 
 ## Quality Gates
-
-### Pre-Commit
-
-Local pre-commit hook runs full test suite. Prevents committing broken code. Fast test execution makes this practical—slow tests would incentivize skipping the hook.
 
 ### Continuous Integration
 
