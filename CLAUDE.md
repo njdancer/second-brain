@@ -219,6 +219,11 @@ pnpm test -- --testNamePattern="test name"
 
 All spec files are in [specs/](specs/) directory. Read them before implementing features.
 
+**When writing or updating specifications:**
+- Use the `/write-spec` slash command for guidance
+- Follow the [spec guidelines](docs/spec-guidelines.md) for consistency
+- Always update `specs/index.md` when creating/modifying specs
+
 ## OAuth Architecture (CRITICAL)
 
 **This project has a DUAL OAuth role architecture that is easy to misunderstand.**
