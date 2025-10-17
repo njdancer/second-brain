@@ -70,7 +70,7 @@ Mocks should mirror API contracts without implementing internal logic. Keep them
 
 ### Trend-Based Monitoring
 
-Use automated coverage tracking (Codecov, Coveralls, or similar) to monitor trends across commits. Visualize coverage history to identify patterns. Fail CI on significant drops unless manually overridden with justification. This creates accountability without mandating arbitrary absolutes.
+Automated coverage tracking must monitor trends across commits with historical visualization to identify patterns. CI must fail on significant drops unless manually overridden with justification. This creates accountability without mandating arbitrary absolutes.
 
 **Coverage drops fail CI by default**, requiring:
 - PR comment explaining the decrease
@@ -170,7 +170,7 @@ Maintain a lightweight checklist of critical flows to verify before major releas
 
 ### Coverage Tracking
 
-Coverage metrics must be tracked over time with automated trend analysis. The system should integrate with pull requests to display coverage deltas and historical trends, enabling enforcement of coverage requirements through baseline comparisons.
+Coverage metrics must be tracked over time with automated trend analysis. The system must integrate with pull requests to display coverage deltas and historical trends, enabling enforcement of coverage requirements through baseline comparisons.
 
 ### CI/CD Integration
 
