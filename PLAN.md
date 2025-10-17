@@ -2,8 +2,8 @@
 
 **Project:** MCP Server for Building a Second Brain (BASB)
 **Status:** 🎉 **PRODUCTION - Claude Integration Working!**
-**Version:** v1.2.18 (tagged: `v1.2.18-claude-working`)
-**Last Updated:** 2025-10-12
+**Version:** v1.2.19 (tagged: `v1.2.18-claude-working`)
+**Last Updated:** 2025-10-17
 
 ---
 
