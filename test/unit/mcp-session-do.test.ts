@@ -50,9 +50,10 @@ describe('MCPSessionDurableObject', () => {
   });
 
   describe('constructor', () => {
-    it('should initialize and schedule alarm', () => {
-      expect(mockState.blockConcurrencyWhile).toHaveBeenCalled();
-      expect(mockState.storage.getAlarm).toHaveBeenCalled();
+    it('should initialize without scheduling alarm', () => {
+      // Constructor no longer schedules alarm - only schedules on session initialization
+      // This prevents zombie alarms for DOs that never receive requests
+      expect(durableObject).toBeDefined();
     });
   });
 
@@ -76,7 +77,7 @@ describe('MCPSessionDurableObject', () => {
   });
 
   describe('fetch - DELETE request', () => {
-    it('should terminate session on DELETE', async () => {
+    it('should terminate session on DELETE and cancel alarms', async () => {
       const props = {
         userId: 'test-user',
         githubLogin: 'testuser',
@@ -91,6 +92,7 @@ describe('MCPSessionDurableObject', () => {
 
       const response = await durableObject.fetch(request);
       expect(response.status).toBe(204);
+      expect(mockState.storage.deleteAlarm).toHaveBeenCalled();
     });
   });
 
@@ -150,7 +152,11 @@ describe('MCPSessionDurableObject', () => {
   });
 
   describe('alarm', () => {
-    it('should schedule next alarm', async () => {
+    it('should schedule next alarm only if session is active', async () => {
+      // Mark session as active
+      (durableObject as any).isActive = true;
+      (durableObject as any).lastActivity = Date.now();
+
       await durableObject.alarm();
 
       expect(mockState.storage.setAlarm).toHaveBeenCalled();
@@ -158,30 +164,56 @@ describe('MCPSessionDurableObject', () => {
       expect(callArgs).toBeGreaterThan(Date.now());
     });
 
-    it('should cleanup timed out sessions', async () => {
+    it('should not reschedule alarm if session is inactive', async () => {
+      // Mark session as inactive
+      (durableObject as any).isActive = false;
+      (durableObject as any).lastActivity = Date.now();
+
+      mockState.storage.setAlarm.mockClear();
+
+      await durableObject.alarm();
+
+      // Should not schedule new alarm
+      expect(mockState.storage.setAlarm).not.toHaveBeenCalled();
+    });
+
+    it('should cleanup timed out sessions and not reschedule', async () => {
       // Simulate old last activity
       (durableObject as any).lastActivity = Date.now() - 31 * 60 * 1000; // 31 minutes ago
       (durableObject as any).sessionId = 'old-session';
       (durableObject as any).transport = { some: 'transport' };
+      (durableObject as any).isActive = true;
+
+      mockState.storage.setAlarm.mockClear();
 
       await durableObject.alarm();
 
       // Check that cleanup was called (transport should be undefined)
       expect((durableObject as any).transport).toBeUndefined();
       expect((durableObject as any).sessionId).toBeUndefined();
+      expect((durableObject as any).isActive).toBe(false);
+      expect(mockState.storage.deleteAlarm).toHaveBeenCalled();
+      // Should NOT reschedule after cleanup
+      expect(mockState.storage.setAlarm).not.toHaveBeenCalled();
     });
 
-    it('should not cleanup active sessions', async () => {
+    it('should not cleanup active sessions and should reschedule', async () => {
       // Simulate recent activity
       (durableObject as any).lastActivity = Date.now() - 5 * 60 * 1000; // 5 minutes ago
       (durableObject as any).sessionId = 'active-session';
       (durableObject as any).transport = { some: 'transport' };
+      (durableObject as any).isActive = true;
+
+      mockState.storage.setAlarm.mockClear();
 
       await durableObject.alarm();
 
       // Transport should still be there
       expect((durableObject as any).transport).toBeDefined();
       expect((durableObject as any).sessionId).toBe('active-session');
+      expect((durableObject as any).isActive).toBe(true);
+      // Should reschedule for active session
+      expect(mockState.storage.setAlarm).toHaveBeenCalled();
     });
   });
 
@@ -242,6 +274,7 @@ describe('MCPSessionDurableObject', () => {
       const props = {
         userId: 'test-user',
         githubLogin: 'testuser',
+        sessionId: 'test-session-id',
       };
 
       const initializeBody = {
@@ -263,6 +296,8 @@ describe('MCPSessionDurableObject', () => {
       jest.spyOn(console, 'log').mockImplementation(() => {});
       jest.spyOn(console, 'error').mockImplementation(() => {});
 
+      mockState.storage.setAlarm.mockClear();
+
       const request = new Request('http://test.com/mcp', {
         method: 'POST',
         headers: {
@@ -278,6 +313,9 @@ describe('MCPSessionDurableObject', () => {
       // We expect some response (may be error due to mocking limitations)
       expect(response).toBeDefined();
       expect(response.status).toBeGreaterThanOrEqual(200);
+
+      // Verify that alarm was scheduled during initialization
+      expect(mockState.storage.setAlarm).toHaveBeenCalled();
 
       jest.restoreAllMocks();
     });
