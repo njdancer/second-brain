@@ -164,26 +164,25 @@ Maintain a lightweight checklist of critical flows to verify before major releas
 
 ## Tools & Infrastructure
 
-### Test Framework: Jest
+### Test Framework
 
-Industry-standard TypeScript testing with excellent coverage tooling, fast watch mode for TDD, and mature mocking capabilities. Configuration emphasizes speed (parallel execution) and comprehensive coverage reporting.
+The testing framework must support TypeScript with comprehensive coverage tooling, watch mode for test-driven development, and mature mocking capabilities. Configuration should prioritize speed through parallel execution and provide detailed coverage reporting with trend analysis.
 
-### Coverage Tracking: External Service
+### Coverage Tracking
 
-Use Codecov, Coveralls, or similar to track coverage trends over time. Integrates with GitHub to comment on PRs with coverage deltas and historical charts. Provides baseline enforcement to prevent regression.
+Coverage metrics must be tracked over time with automated trend analysis. The system should integrate with pull requests to display coverage deltas and historical trends, enabling enforcement of coverage requirements through baseline comparisons.
 
-### CI/CD: GitHub Actions
+### CI/CD Integration
 
-Run tests on every push and PR. Upload coverage data. Enforce quality gates (tests pass, coverage acceptable). Deploy on success. Track all deployments for rollback capability.
+Automated testing must run on every commit and pull request, uploading coverage data and enforcing quality gates (all tests pass, coverage trends acceptable). Successful test runs enable deployment. All deployments must be tracked for rollback capability.
 
 ### Local Development
 
-```bash
-pnpm test              # Run all tests (parallel)
-pnpm test:watch        # TDD watch mode
-pnpm test:coverage     # Generate HTML coverage report
-pnpm test -- <path>    # Run specific test file
-```
+The testing system must support:
+- Parallel test execution for speed
+- Watch mode for iterative development
+- HTML coverage report generation
+- Selective test execution by path or pattern
 
 ---
 
