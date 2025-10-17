@@ -32,18 +32,13 @@ export class MCPSessionDurableObject extends DurableObject {
   private sessionId?: string;
   private lastActivity: number = Date.now();
   private readonly SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+  private isActive: boolean = false; // Track if session is active
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
 
-    // Set up periodic cleanup check (every 5 minutes)
-    this.ctx.blockConcurrencyWhile(async () => {
-      const alarm = await this.ctx.storage.getAlarm();
-      if (!alarm) {
-        // Schedule first alarm
-        await this.ctx.storage.setAlarm(Date.now() + 5 * 60 * 1000);
-      }
-    });
+    // Don't schedule alarm in constructor - only schedule when session is initialized
+    // This prevents zombie alarms for DOs that never receive requests
   }
 
   /**
@@ -56,11 +51,15 @@ export class MCPSessionDurableObject extends DurableObject {
     if (timeSinceLastActivity > this.SESSION_TIMEOUT_MS) {
       // Session has timed out - clean up
       console.log(`Session ${this.sessionId} timed out after ${timeSinceLastActivity}ms of inactivity`);
-      this.cleanup();
+      await this.cleanup();
+      // Don't reschedule after cleanup
+      return;
     }
 
-    // Schedule next alarm
-    await this.ctx.storage.setAlarm(now + 5 * 60 * 1000);
+    // Only reschedule if session is still active
+    if (this.isActive) {
+      await this.ctx.storage.setAlarm(now + 5 * 60 * 1000);
+    }
   }
 
   /**
@@ -112,7 +111,7 @@ export class MCPSessionDurableObject extends DurableObject {
       // Handle DELETE - terminate session
       if (request.method === 'DELETE') {
         userLogger.info('Terminating session');
-        this.cleanup();
+        await this.cleanup();
         return new Response(null, { status: 204 });
       }
 
@@ -124,8 +123,12 @@ export class MCPSessionDurableObject extends DurableObject {
         // This ensures the transport uses the SAME session ID that the client receives
         const doSessionId = props.sessionId;
         this.sessionId = doSessionId;
+        this.isActive = true; // Mark session as active
 
         userLogger.info('Using session ID from Worker props', { sessionId: doSessionId });
+
+        // Schedule first alarm for cleanup checks (every 5 minutes)
+        await this.ctx.storage.setAlarm(Date.now() + 5 * 60 * 1000);
 
         // Get env from Durable Object context
         const env = this.env as Env;
@@ -141,9 +144,9 @@ export class MCPSessionDurableObject extends DurableObject {
           onsessioninitialized: (sessionId: string) => {
             userLogger.info('Session initialized in transport', { sessionId });
           },
-          onsessionclosed: (sessionId: string) => {
+          onsessionclosed: async (sessionId: string) => {
             userLogger.info('Session closed in transport', { sessionId });
-            this.cleanup();
+            await this.cleanup();
           },
           enableJsonResponse: true, // Use JSON responses instead of SSE streams
         });
@@ -270,9 +273,13 @@ export class MCPSessionDurableObject extends DurableObject {
   /**
    * Clean up resources
    */
-  private cleanup(): void {
+  private async cleanup(): Promise<void> {
+    this.isActive = false; // Mark session as inactive
     this.transport = undefined;
     this.server = undefined;
     this.sessionId = undefined;
+
+    // Cancel any pending alarms to prevent zombie alarms
+    await this.ctx.storage.deleteAlarm();
   }
 }
