@@ -5,6 +5,14 @@
 **Version:** v1.2.19 (tagged: `v1.2.18-claude-working`)
 **Last Updated:** 2025-10-17
 
+**Recent Changes:**
+- ✅ Refactored deployment and release specs (Issue #10)
+  - Split monolithic deployment.md into focused deployment.md and release.md
+  - deployment.md: hosting, environments, infrastructure, secrets (requirements-focused)
+  - release.md: CI/CD, branching, GitHub Deployments API (continuous deployment model)
+  - Created specs/index.md to catalog all specifications
+  - Follows spec-guidelines.md (prose over lists, requirements not instructions)
+
 ---
 
 ## 🎉 MILESTONE: Claude Desktop Integration Working!
