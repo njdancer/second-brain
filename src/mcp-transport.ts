@@ -1,6 +1,6 @@
 /**
  * MCP Streamable HTTP transport handler
- * Integrates MCP SDK with Cloudflare Workers and Hono
+ * Integrates MCP SDK with Cloudflare Workers
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';

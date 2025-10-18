@@ -18,7 +18,7 @@ second-brain-mcp/
 │   ├── oauth-ui-handler.ts      # GitHub OAuth CLIENT (Arctic)
 │   ├── mcp-api-handler.ts       # Authenticated MCP endpoint
 │   ├── mcp-transport.ts         # MCP protocol + tool registration
-│   ├── logger.ts                # Structured logging (NEW)
+│   ├── logger.ts                # Structured logging
 │   ├── monitoring.ts            # Analytics Engine integration
 │   ├── tools/                   # Tool implementations
 │   │   ├── read.ts
@@ -29,14 +29,11 @@ second-brain-mcp/
 │   ├── storage.ts               # R2 operations abstraction
 │   ├── rate-limiting.ts         # KV-based rate limiting
 │   ├── backup.ts                # S3 backup integration
-│   ├── bootstrap.ts             # Initial file creation
-│   └── archive/                 # Archived implementations
-│       └── oauth-handler-v1.2.3.ts  # Old hand-rolled OAuth
+│   └── bootstrap.ts             # Initial file creation
 ├── test/
 │   ├── unit/                    # Unit tests for each module
 │   ├── integration/             # Integration tests
-│   ├── fixtures/                # Test data
-│   └── archive/                 # Archived tests
+│   └── fixtures/                # Test data
 ├── specs/                       # Technical documentation
 ├── wrangler.toml                # Cloudflare configuration
 ├── package.json
@@ -47,7 +44,7 @@ second-brain-mcp/
 - Removed Hono dependency (direct Fetch API handlers)
 - Added `logger.ts` for structured logging
 - Separated OAuth UI handler (`oauth-ui-handler.ts`) from API handler (`mcp-api-handler.ts`)
-- Created `archive/` for deleted code (git history recovery)
+- Deleted old code (use git history to recover if needed)
 
 ---
 
