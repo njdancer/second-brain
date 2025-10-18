@@ -28,7 +28,7 @@ Each environment operates with dedicated Cloudflare resources that MUST NOT shar
 
 ### Environment Parity
 
-While isolated, both environments MUST maintain configuration parity to ensure changes validated in development behave identically in production. Parity applies to:
+While isolated, both environments MUST maintain configuration parity to ensure changes validated in development behave identically in production. Configuration changes MAY be tested in development before being applied to production, resulting in temporary configuration drift during testing. Configurations SHOULD be considered eventually consistent rather than always identical. Parity applies to:
 
 **Infrastructure:** Identical Worker configuration including compatibility dates, CPU limits, and binding types. Both environments MUST use the same wrangler.toml structure with only environment-specific values differing.
 
@@ -40,8 +40,8 @@ While isolated, both environments MUST maintain configuration parity to ensure c
 
 Each environment MUST be accessible via a stable HTTPS URL:
 
-- Development: `https://second-brain.{username}.workers.dev` (Workers subdomain)
-- Production: Custom domain or `https://second-brain-mcp.{username}.workers.dev`
+- Development: `https://dev.second-brain.{username}.workers.dev` (Workers subdomain) **[NEEDS VERIFICATION]**
+- Production: Custom domain or `https://second-brain.{username}.workers.dev`
 
 URLs MUST remain stable across deployments. Cloudflare Workers provides stable URLs automatically; custom domains require DNS configuration outside this specification.
 
@@ -159,8 +159,8 @@ Certain deployment scenarios are explicitly NOT supported:
 
 ## Related Specifications
 
-See [Release Specification](./release.md) for CI/CD pipeline, branching strategy, and deployment triggering mechanisms.
+See [Release](./release.md) for CI/CD pipeline, branching strategy, and deployment triggering mechanisms.
 
-See [Security Specification](./security.md) for OAuth configuration, token management, and credential handling requirements.
+See [Security](./security.md) for OAuth configuration, token management, and credential handling requirements.
 
-See [Monitoring Specification](./monitoring.md) for detailed observability, alerting, and metrics collection requirements.
+See [Monitoring](./monitoring.md) for detailed observability, alerting, and metrics collection requirements.

@@ -12,8 +12,8 @@ The repository MUST follow a trunk-based development model with short-lived feat
 
 The `main` branch represents the current state of truth and MUST always be in a deployable state. Every commit to `main` MUST pass all automated tests and type checking before merge. The branch MUST be protected with the following GitHub branch protection rules:
 
-- Pull request reviews REQUIRED before merge (minimum 1 approval for single-maintainer projects)
-- Status checks MUST pass before merge (tests, type checking, coverage thresholds)
+- Pull request reviews RECOMMENDED but not enforceable for single-maintainer projects (GitHub does not allow self-approval)
+- Status checks MUST pass before merge (tests, type checking, coverage thresholds, linting, formatting)
 - Force pushes MUST be disabled
 - Deletion MUST be disabled
 - Linear history SHOULD be enforced (rebase or squash merge only)
@@ -26,19 +26,24 @@ All development work MUST occur on feature branches created from `main`. Feature
 
 Feature branches MUST be short-lived, typically merged within 1-3 days of creation. Long-running feature branches increase merge conflicts and defer integration issues. For large features requiring longer development, use feature flags to merge incomplete work while keeping the functionality disabled in production.
 
+**[NEEDS DISCUSSION]** Feature flag approach: How should feature flags be implemented? Environment variables? Code-level constants? Runtime configuration? Should flags be documented in a central registry? What's the process for removing flags after feature completion?
+
 Feature branches SHOULD be deleted immediately after merge to reduce repository clutter and prevent accidental continued development on stale branches.
 
 ### Hotfix Workflow
 
 Critical production issues requiring immediate deployment MAY bypass the standard pull request review process. Hotfixes MUST:
 
-1. Create a branch from `main` (not from a feature branch)
+1. Create a branch from the last production commit (not from `main` if `main` has unreleased features)
 2. Include only the minimal changes required to resolve the critical issue
 3. Add or update tests to prevent regression
 4. Deploy to development environment for validation before production
-5. Create a pull request for post-deployment review and documentation
+5. Deploy to production via manual workflow dispatch (see Production Deployment section)
+6. Create a pull request for post-deployment review and documentation
 
 Hotfixes MUST be deployed to production within 1 hour of identification for critical failures (authentication broken, data loss risk, security vulnerability). Non-critical issues SHOULD follow the standard release process.
+
+**[NEEDS CLARIFICATION]** Production commit tracking: If `main` is continuously deployed to development but production requires manual approval, how do we track which commit is currently in production? Should we use git tags, GitHub Deployments API history, or a separate tracking branch?
 
 ## Continuous Integration Pipeline
 
@@ -46,22 +51,28 @@ Every push to any branch and every pull request MUST trigger automated CI checks
 
 ### CI Workflow Stages
 
-The CI pipeline MUST execute the following stages in order, failing fast at the first error:
+The CI pipeline MUST execute the following stages, with independent stages running in parallel for speed:
 
-**1. Type Checking:** TypeScript compilation MUST succeed with no type errors. The project uses strict mode and all type checking rules MUST be enforced.
+**Parallel Stage 1 (Quality Checks):**
+- **Type Checking:** TypeScript compilation MUST succeed with no type errors. The project uses strict mode and all type checking rules MUST be enforced.
+- **Linting:** Code MUST pass all ESLint rules with no errors (warnings allowed).
+- **Formatting:** Code MUST pass Prettier formatting validation (or auto-format in pre-commit hooks).
 
-**2. Unit Tests:** All unit tests MUST pass with deterministic results. Flaky tests MUST be fixed or quarantined. The test suite MUST complete in under 60 seconds to provide rapid feedback.
+**Parallel Stage 2 (Testing):**
+- **Unit Tests:** All unit tests MUST pass with deterministic results. Flaky tests MUST be fixed or quarantined. The test suite MUST complete in under 60 seconds to provide rapid feedback.
+- **E2E Tests:** End-to-end integration tests MUST pass, validating the full OAuth 2.1 + PKCE + MCP protocol flow. E2E tests MUST complete in under 30 seconds and MUST NOT require manual intervention or browser interaction.
 
-**3. E2E Tests:** End-to-end integration tests MUST pass, validating the full OAuth 2.1 + PKCE + MCP protocol flow. E2E tests MUST complete in under 30 seconds and MUST NOT require manual intervention or browser interaction.
+**Sequential Stage 3 (Coverage):**
+- **Coverage Validation:** Code coverage MUST meet minimum thresholds (95% statement coverage, 95% function coverage). Coverage regressions MUST fail the build.
 
-**4. Coverage Validation:** Code coverage MUST meet minimum thresholds (95% statement coverage, 95% function coverage). Coverage regressions MUST fail the build.
+The pipeline MUST fail fast at the first error in any stage.
 
 ### CI Execution Environment
 
 CI jobs MUST run on GitHub Actions using Ubuntu latest runners. The environment MUST use:
 
-- Node.js 20 (LTS)
-- pnpm 9.0.0 (via corepack)
+- Node.js version as specified in `.mise.toml` or `.tool-versions`
+- pnpm version as specified in `package.json` `packageManager` field (installed via corepack)
 - Frozen lockfile (`pnpm install --frozen-lockfile`) to ensure reproducible builds
 
 CI jobs MUST use cached dependencies to reduce execution time. Cache invalidation MUST occur on `pnpm-lock.yaml` changes.
@@ -89,14 +100,20 @@ Development deployments MUST complete within 3 minutes of merge to `main`. Deplo
 
 Production deployments MUST be triggered manually via GitHub Actions workflow dispatch. This manual gate provides control over production releases while maintaining automation for everything except the final approval decision.
 
+GitHub Environment protection rules SHOULD be configured for production to:
+
+- Require manual approval from designated reviewers (when multiple maintainers available)
+- Enforce deployment branch restrictions (only `main`)
+- Apply wait timer (optional, e.g., 5 minute cooldown between deployments)
+
 The production deployment workflow MUST:
 
 1. Accept a workflow dispatch event from an authorized maintainer
 2. Verify all CI checks passed on the commit being deployed
-3. Re-run tests as final validation (even if CI already passed)
-4. Deploy to Cloudflare Workers production environment
-5. Create a GitHub Deployment record with environment "production"
-6. Wait for manual approval if GitHub Environment protection rules are configured
+3. Re-run all tests and type checking if any new commits were made since the last CI run (e.g., version bumps, changelog updates)
+4. Skip test re-runs if deploying the exact commit that already passed CI with no modifications
+5. Deploy to Cloudflare Workers production environment
+6. Create a GitHub Deployment record with environment "production"
 7. Update deployment status to "success" or "failure"
 8. Verify deployment with health check endpoint
 9. Rollback automatically if health check fails
@@ -116,19 +133,25 @@ For each deployment, the workflow MUST:
 5. Update status to "failure" if any step fails
 6. Include deployment URL in the status update
 
-GitHub Environment protection rules SHOULD be configured for production to:
-
-- Require manual approval from designated reviewers
-- Enforce deployment branch restrictions (only `main`)
-- Apply wait timer (optional, e.g., 5 minute cooldown between deployments)
-
 ## Versioning Strategy
 
-The project DOES NOT use semantic versioning tags for deployments. Version numbers exist for documentation and tracking purposes but do NOT trigger deployments or control which code runs in production.
+The project uses a simplified YEAR.RELEASE.HOTFIX versioning scheme for tracking releases. Version numbers exist for documentation and identification purposes but do NOT trigger deployments or control which code runs in production.
 
-Version numbers in `package.json` SHOULD be updated manually when significant features or breaking changes are released, following semantic versioning principles (MAJOR.MINOR.PATCH). These version updates help users understand release scope but are decoupled from the deployment process.
+Version number format:
+- **YEAR:** Last two digits of the year (e.g., `25` for 2025)
+- **RELEASE:** Sequential release number within the year, incremented for each production deployment (e.g., `1`, `2`, `3`...)
+- **HOTFIX:** Sequential hotfix number for emergency patches to a specific release (e.g., `0` for initial release, `1` for first hotfix)
 
-Git tags MAY be created for significant milestones or release markers, but tags MUST NOT trigger automated deployments. Tags serve as bookmarks in history, not deployment triggers.
+Examples: `25.1.0` (first release of 2025), `25.1.1` (hotfix to first release), `25.2.0` (second release of 2025)
+
+Version number management SHOULD be automated to the greatest degree possible:
+- Version bumps SHOULD occur automatically during the production deployment workflow
+- The workflow SHOULD read the current version from `package.json` and `PLAN.md`
+- The workflow SHOULD increment the RELEASE number for standard deployments
+- The workflow SHOULD increment the HOTFIX number for hotfix deployments
+- Manual version management SHOULD be avoided to reduce human error
+
+Git tags MAY be created automatically by the deployment workflow for release tracking, but tags MUST NOT trigger automated deployments. Tags serve as bookmarks in history, not deployment triggers.
 
 ## Deployment Verification
 
@@ -147,25 +170,19 @@ The health check endpoint is defined in the Deployment Specification and MUST NO
 
 ### Smoke Test Verification
 
-Production deployments SHOULD execute smoke tests against the newly deployed environment. Smoke tests MUST:
-
-- Validate OAuth client registration succeeds
-- Verify MCP initialize endpoint returns valid session
-- Confirm at least one tool execution succeeds (e.g., `glob` on bootstrap files)
-- Complete within 60 seconds total
-
-Smoke tests MAY be temporarily disabled during CI/CD infrastructure changes, documented with TODO comments and GitHub issues tracking re-enablement.
+**[OUT OF SCOPE]** Production smoke tests are deferred for future implementation. While automated smoke tests would provide valuable post-deployment validation (OAuth client registration, MCP initialize, tool execution), they are not required for initial deployment automation. Manual verification via the OAuth test script remains the primary validation method.
 
 ## Rollback Procedures
 
 When a deployment fails verification or is identified as problematic post-deployment, the system MUST support rapid rollback to the previous known-good deployment.
+
+**[NEEDS DISCUSSION]** Data migrations and breaking changes: How should we handle rollbacks when database schema changes or data migrations have occurred? The system should follow an "expand and contract" methodology to avoid one-way doors. Before implementing features that modify data structures, we need a strategy for backward-compatible changes and safe rollback procedures.
 
 ### Automatic Rollback
 
 The deployment workflow MUST automatically rollback if:
 
 - Health check fails after deployment
-- Smoke tests fail (when enabled)
 - Deployment process encounters unrecoverable error
 
 Automatic rollback MUST:
@@ -181,8 +198,7 @@ Automatic rollback MUST:
 Maintainers MUST be able to trigger manual rollback via:
 
 1. **Cloudflare Dashboard:** Workers → Deployments → "Rollback to this deployment" (last 10 deployments available)
-2. **GitHub Actions Workflow:** Workflow dispatch accepting deployment ID or commit SHA to rollback to
-3. **Wrangler CLI:** `wrangler rollback` command for local rollback operations
+2. **GitHub Actions Workflow:** Manual workflow dispatch accepting deployment ID or commit SHA to rollback to, ensuring all rollback steps are followed consistently
 
 Manual rollback SHOULD be used for issues discovered after deployment verification passes (e.g., subtle bugs, performance degradation, user reports).
 
@@ -198,12 +214,14 @@ All code merged to `main` MUST meet quality standards:
 
 - Zero TypeScript type errors
 - Zero linter errors (when linter is configured)
-- 95%+ statement coverage
-- 95%+ function coverage
+- Code coverage MUST NOT decrease compared to the previous commit (compare against base branch coverage)
+- 95%+ statement coverage (absolute minimum threshold)
+- 95%+ function coverage (absolute minimum threshold)
 - All tests passing (unit and E2E)
-- No high-severity security vulnerabilities in dependencies
 
 Pull requests MUST NOT be merged if any quality gate fails.
+
+**Security vulnerabilities in dependencies SHOULD be tracked and addressed separately through dedicated security processes (e.g., Dependabot alerts, security audits) but MUST NOT block deployments.** This prevents situations where a critical bug fix cannot be deployed due to unrelated third-party dependency issues.
 
 ### Dependency Management
 
@@ -256,31 +274,23 @@ This history MUST be maintained for all deployments and MUST include:
 
 ## Release Documentation
 
-While deployments do not require release notes, significant production releases SHOULD be documented.
+**[DEFERRED]** Automated changelog generation and GitHub Releases are deferred for future implementation. For now, git commit history serves as the changelog. If better release documentation is needed in the future, implement a process where:
+- Each feature branch records changes in a fragment file
+- The production deployment workflow combines fragments into a changelog entry
+- Version numbers are automatically incremented based on change types
 
-### Changelog Maintenance
-
-The project SHOULD maintain a `CHANGELOG.md` following [Keep a Changelog](https://keepachangelog.com/) format. Changelog entries SHOULD be added as part of pull requests, not as separate commits.
-
-Changelog entries SHOULD categorize changes as:
-
-- **Added** - New features
-- **Changed** - Changes to existing functionality
-- **Deprecated** - Soon-to-be-removed features
-- **Removed** - Removed features
-- **Fixed** - Bug fixes
-- **Security** - Security improvements
+This level of automation is currently overkill for the project scope. Git commit history provides sufficient traceability.
 
 ### Release Markers
 
-When significant milestones are reached (e.g., production-ready, major feature completion), maintainers MAY:
+When production deployments occur, the deployment workflow SHOULD automatically:
 
-1. Update version in `package.json` following semantic versioning
-2. Update PLAN.md to reflect milestone completion
-3. Create git tag for historical reference (e.g., `v1.2.18-claude-working`)
-4. Create GitHub Release for visibility and reference
+1. Update version in `package.json` following YEAR.RELEASE.HOTFIX scheme
+2. Update PLAN.md to reflect the deployed version
+3. Commit version updates to the repository
+4. Create git tag for historical reference (e.g., `v25.1.0`)
 
-These markers serve documentation purposes and MUST NOT affect deployment automation.
+These markers serve documentation purposes and MUST NOT trigger deployment automation (deployments trigger markers, not the reverse).
 
 ## Emergency Response
 
@@ -290,7 +300,7 @@ In the event of critical production issues, the following emergency procedures a
 
 If production is non-functional (authentication broken, Workers returning 5xx errors, data corruption):
 
-1. Immediately rollback via Cloudflare Dashboard (fastest method)
+1. Immediately rollback via GitHub Actions manual rollback workflow (ensures consistent process) or Cloudflare Dashboard (faster but bypasses workflow tracking)
 2. Verify rollback restores functionality via health check
 3. Create incident report issue on GitHub
 4. Investigate root cause on separate branch
@@ -312,8 +322,8 @@ Performance degradation SHOULD be addressed within 24 hours but does not require
 
 ## Related Specifications
 
-See [Deployment Specification](./deployment.md) for environment configuration, infrastructure requirements, and hosting platform details.
+See [Deployment](./deployment.md) for environment configuration, infrastructure requirements, and hosting platform details.
 
-See [Testing Specification](./testing.md) for test coverage requirements, test execution standards, and E2E test implementation.
+See [Testing](./testing.md) for test coverage requirements, test execution standards, and E2E test implementation.
 
-See [Monitoring Specification](./monitoring.md) for post-deployment observability, alerting, and metrics collection.
+See [Monitoring](./monitoring.md) for post-deployment observability, alerting, and metrics collection.
