@@ -106,10 +106,10 @@ pnpm run test:mcp:oauth
 - Trust git history - it's designed for this purpose
 
 ### Testing Requirements
-- **95%+ code coverage** required (configured in jest.config.js)
-- 100% coverage for all tools, OAuth, rate limiting, storage, bootstrap, backup
+- Coverage should trend upward over time (see specs/testing.md)
 - Write tests BEFORE implementation (TDD)
 - All tests must pass before deploying
+- Run E2E test script (`pnpm run test:mcp:oauth`) after changes to OAuth/MCP code
 
 ### Development Workflow
 1. **Check PLAN.md** - Review current phase and next task
@@ -306,45 +306,14 @@ All spec files are in [specs/](specs/) directory. Read them before implementing 
 
 ### Testing OAuth
 
-**CRITICAL: The OAuth test script is NOT optional. It is THE validation tool.**
+**The E2E OAuth test script validates the complete flow that production uses.** Run `pnpm run test:mcp:oauth` after any changes to OAuth, MCP endpoint, or transport code. If it fails, the server is broken—update PLAN.md and do not deploy.
 
-```bash
-# REQUIRED: Full OAuth flow test (simulates Claude desktop/web)
-pnpm run test:mcp:oauth
-# Must complete ALL 9 steps successfully:
-# 1. Client registration
-# 2. PKCE challenge generation
-# 3. Local callback server
-# 4. OAuth URL generation
-# 5. Browser authentication
-# 6. OAuth callback handling
-# 7. MCP initialize request
-# 8. GET /mcp with session ID
-# 9. Subsequent POST with session ID
+Additional test commands:
+- `pnpm run test:mcp:quick` - Quick test using saved token
+- `pnpm run inspect` - Interactive OAuth inspector
+- `pnpm test` - Unit tests (not sufficient for OAuth validation)
 
-# Quick test (uses saved token from .env.test)
-pnpm run test:mcp:quick
-# Only works if OAuth test has saved token successfully
-
-# Interactive OAuth inspector (for manual testing)
-pnpm run inspect
-
-# Unit tests (NOT sufficient for validation)
-pnpm test
-```
-
-**Validation Requirements:**
-1. Run `pnpm run test:mcp:oauth` after ANY change to:
-   - OAuth code (index.ts, oauth-ui-handler.ts)
-   - MCP endpoint code (mcp-api-handler.ts, mcp-session-do.ts)
-   - Transport code (mcp-transport.ts)
-2. If script fails at ANY step, server is BROKEN
-3. Update PLAN.md immediately with broken state
-4. Do NOT deploy until script passes completely
-
-**See also:**
-- [specs/security.md](specs/security.md) - OAuth architecture details
-- [scripts/test-mcp-with-oauth.ts](scripts/test-mcp-with-oauth.ts) - Test implementation
+See [specs/testing.md](specs/testing.md) for testing strategy and [specs/security.md](specs/security.md) for OAuth architecture.
 
 ## Project Structure
 
