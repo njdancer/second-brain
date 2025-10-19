@@ -43,7 +43,20 @@ Critical production issues requiring immediate deployment MAY bypass the standar
 
 Hotfixes MUST be deployed to production within 1 hour of identification for critical failures (authentication broken, data loss risk, security vulnerability). Non-critical issues SHOULD follow the standard release process.
 
-**[NEEDS CLARIFICATION]** Production commit tracking: If `main` is continuously deployed to development but production requires manual approval, how do we track which commit is currently in production? Should we use git tags, GitHub Deployments API history, or a separate tracking branch?
+### Production Commit Tracking
+
+The system MUST track which commit is currently deployed to production to support hotfix workflows and deployment verification. Since `main` continuously deploys to development but production requires manual approval, production MAY lag behind `main` by multiple commits.
+
+**Tracking mechanism:** The GitHub Deployments API serves as the authoritative source for production commit tracking. Each production deployment creates a deployment record with the deployed commit SHA. To identify the current production commit:
+
+1. Query GitHub Deployments API for environment "production"
+2. Filter for deployments with status "success"
+3. Sort by created timestamp descending
+4. The most recent successful deployment contains the production commit SHA
+
+**Implementation approach:** The hotfix workflow SHOULD include a step that queries the GitHub API to retrieve the current production commit SHA before creating the hotfix branch. This ensures hotfixes branch from production reality, not `main`'s potentially unreleased features.
+
+**Alternative approach:** Git tags (e.g., `production-25.1.0`) could mark production deployments, but tags are less flexible than the Deployments API and don't provide deployment status or rollback history. Tags MAY be used as supplementary markers but SHOULD NOT be the primary tracking mechanism.
 
 ## Continuous Integration Pipeline
 
@@ -195,14 +208,19 @@ Automatic rollback MUST:
 
 ### Manual Rollback
 
-Maintainers MUST be able to trigger manual rollback via:
+Maintainers MUST be able to trigger manual rollback via GitHub Actions workflow dispatch. The workflow MUST accept a target deployment ID or commit SHA and MUST perform all necessary rollback steps consistently:
 
-1. **Cloudflare Dashboard:** Workers → Deployments → "Rollback to this deployment" (last 10 deployments available)
-2. **GitHub Actions Workflow:** Manual workflow dispatch accepting deployment ID or commit SHA to rollback to, ensuring all rollback steps are followed consistently
+1. Validate rollback target exists in Cloudflare deployment history
+2. Trigger Cloudflare Workers rollback via API
+3. Update GitHub Deployment status to reflect rollback
+4. Verify rollback success via health check
+5. Notify maintainers via GitHub Actions summary and related PR comments
 
 Manual rollback SHOULD be used for issues discovered after deployment verification passes (e.g., subtle bugs, performance degradation, user reports).
 
 Rollback MUST NOT require rebuilding, retesting, or code changes. Cloudflare Workers' deployment history provides instant rollback to previous deployments.
+
+**Emergency rollback:** In truly critical situations where the GitHub Actions workflow is unavailable or too slow, maintainers MAY use the Cloudflare Dashboard as a last resort (Workers → Deployments → "Rollback to this deployment"). However, this bypasses workflow tracking and MUST be followed immediately by manual updates to GitHub Deployment records and team notifications.
 
 ## Pre-Deployment Requirements
 

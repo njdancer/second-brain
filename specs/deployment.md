@@ -40,10 +40,10 @@ While isolated, both environments MUST maintain configuration parity to ensure c
 
 Each environment MUST be accessible via a stable HTTPS URL:
 
-- Development: `https://dev.second-brain.{username}.workers.dev` (Workers subdomain) **[NEEDS VERIFICATION]**
-- Production: Custom domain or `https://second-brain.{username}.workers.dev`
+- Development: `https://second-brain-mcp-dev.{username}.workers.dev`
+- Production: `https://second-brain-mcp.{username}.workers.dev`
 
-URLs MUST remain stable across deployments. Cloudflare Workers provides stable URLs automatically; custom domains require DNS configuration outside this specification.
+URLs MUST remain stable across deployments. Cloudflare Workers provides stable URLs automatically.
 
 ## Infrastructure Prerequisites
 
@@ -109,11 +109,11 @@ The health check MAY return degraded status (HTTP 200 with warnings) if non-crit
 
 ### Deployment Rollback
 
-The system MUST support rollback to a previous deployment within 10 minutes of detecting a failed deployment. Cloudflare Workers retains the last 10 deployments in history, allowing instant rollback via dashboard or API.
+The system MUST support rollback to a previous deployment within 10 minutes of detecting a failed deployment. Cloudflare Workers retains the last 10 deployments in history, allowing instant rollback via API.
 
 Rollback MUST NOT require rebuilding or retesting the previous version. The Cloudflare Workers platform provides atomic deployment rollback that reverts to the exact previously deployed code.
 
-Rollback MAY be triggered manually via Cloudflare dashboard or automatically via GitHub Actions if post-deployment verification fails. Automated rollback SHOULD only occur for critical failures (health check failure, authentication broken) not minor issues (increased error rates, performance degradation).
+Rollback MUST be triggered via GitHub Actions workflow to ensure all necessary rollback steps are followed consistently (updating deployment records, notifications, etc.). Automated rollback MUST occur for critical failures (health check failure, authentication broken). Manual rollback via workflow dispatch SHOULD be used for issues discovered post-deployment (increased error rates, performance degradation, user reports).
 
 ## Performance Requirements
 
