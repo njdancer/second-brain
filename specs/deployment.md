@@ -593,7 +593,6 @@ wrangler kv:key delete "rate_limit:..." --binding RATE_LIMIT_KV
 ## Related Documentation
 
 - [Architecture](./architecture.md) - System design
-- [Implementation](./implementation.md) - Configuration details
 - [Security](./security.md) - Authentication setup
 - [Monitoring](./monitoring.md) - Observability
 - [Testing](./testing.md) - Testing strategy

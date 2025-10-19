@@ -154,7 +154,6 @@ async function isAuthorized(githubUserId: string, env: Env): boolean {
 - Prevents abuse and cost escalation
 - Per-user limits enforced
 - Storage caps prevent runaway costs
-- See [Implementation](./implementation.md#rate-limiting) for details
 
 ---
 
@@ -359,6 +358,5 @@ See [Monitoring](./monitoring.md) for implementation details.
 ## Related Documentation
 
 - [Architecture](./architecture.md) - Authentication flow details
-- [Implementation](./implementation.md) - Rate limiting implementation
 - [Deployment](./deployment.md) - Secret configuration
 - [Monitoring](./monitoring.md) - Security metrics and alerts

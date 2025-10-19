@@ -355,6 +355,5 @@ When rate limit is exceeded, the server returns:
 ## Related Documentation
 
 - [Architecture](./architecture.md) - System design and components
-- [Implementation](./implementation.md) - Tool implementation details
 - [User Workflows](./user-workflows.md) - Common usage patterns
 - [Testing](./testing.md) - Tool test specifications

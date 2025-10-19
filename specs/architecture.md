@@ -412,7 +412,6 @@ No architectural changes needed - just:
 
 - [Overview](./overview.md) - Project background and philosophy
 - [API Reference](./api-reference.md) - Tool specifications and schemas
-- [Implementation](./implementation.md) - Project structure and conventions
 - [Security](./security.md) - OAuth architecture and security model
 - [Deployment](./deployment.md) - Setup, configuration, and CI/CD
 - [Monitoring](./monitoring.md) - Observability and debugging

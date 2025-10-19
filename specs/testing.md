@@ -627,6 +627,5 @@ fi
 ## Related Documentation
 
 - [API Reference](./api-reference.md) - Tool specifications to test
-- [Implementation](./implementation.md) - Code structure
 - [Deployment](./deployment.md) - Manual testing in production
 - [Monitoring](./monitoring.md) - Production verification
