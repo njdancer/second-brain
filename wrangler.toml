@@ -3,6 +3,10 @@ main = "src/index.ts"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 
+# Smart Placement - automatically place Workers closer to backend services
+[placement]
+mode = "smart"
+
 # R2 bucket bindings
 [[r2_buckets]]
 binding = "SECOND_BRAIN_BUCKET"
