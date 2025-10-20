@@ -50,11 +50,15 @@ Triggered via workflow dispatch to create the hotfix branch from current product
 1. Query GitHub Deployments API for environment "production"
 2. Extract commit SHA from most recent successful deployment
 3. Create branch `hotfix/{timestamp}-{issue-slug}` from production commit
-4. Create draft pull request from hotfix branch to `main`:
+4. Read current version from `package.json` (e.g., `25.1.0`)
+5. Increment HOTFIX number (e.g., `25.1.0` → `25.1.1`)
+6. Update `package.json` and `PLAN.md` with new version
+7. Commit version bump to hotfix branch
+8. Create draft pull request from hotfix branch to `main`:
    - PR title: `[Hotfix] {issue_description}`
    - PR body: Severity, production commit SHA, instructions for developer
    - Labels: `hotfix`, `draft`
-5. Output PR URL and hotfix branch name
+9. Output PR URL and hotfix branch name
 
 **Workflow 2: Hotfix CI/CD Pipeline (`hotfix-deploy.yml`)**
 
@@ -90,28 +94,25 @@ on:
      - `branch`: hotfix branch name
      - `environment`: development
    - Wait for deployment completion
-   - Verify health check passes (automatic rollback on failure)
-   - Post PR comment with development URL and deployment status
+   - Verify health check passes (blocks production deployment if health check fails)
+   - GitHub Deployments API automatically updates PR with deployment status
 
-3. **Deploy to Production** (on PR approval only)
+3. **Deploy to Production** (on explicit approval only)
    - Requires PR marked "Ready for review" (not draft)
-   - Requires manual approval from authorized maintainer via PR review
-   - GitHub Environment protection rule enforces production approval gate
+   - Requires explicit production deployment approval via GitHub Environment protection
+   - Approval mechanism: Manual approval gate (not PR review - single maintainer cannot self-approve PRs)
    - After approval, trigger internal workflow call to `deploy.yml` with:
      - `branch`: hotfix branch name
      - `environment`: production
    - Wait for deployment completion
    - Verify health check passes (automatic rollback on failure)
-   - Post PR comment with production deployment confirmation
+   - GitHub Deployments API automatically updates PR with deployment status
 
-4. **Version Bump and Merge** (after successful production deployment)
-   - Read current version from `package.json` (e.g., `25.1.0`)
-   - Increment HOTFIX number (e.g., `25.1.0` → `25.1.1`)
-   - Update `package.json` and `PLAN.md`
-   - Commit version bump to hotfix branch
-   - Create git tag `v25.1.1`
-   - Push tag to remote
+4. **Merge and Tag** (after successful production deployment)
    - Auto-merge PR to `main` (squash merge)
+   - Read version from merged commit in `package.json` (e.g., `25.1.1`)
+   - Create git tag `v25.1.1` on merged commit
+   - Push tag to remote
    - Label merged PR with `deployed`
 
 **Workflow execution requirements:**
