@@ -212,7 +212,6 @@ pnpm test -- --testNamePattern="test name"
 **Start with specs when implementing anything:**
 - Architecture & design → [specs/architecture.md](specs/architecture.md)
 - Tool specifications → [specs/api-reference.md](specs/api-reference.md)
-- Implementation details → [specs/implementation.md](specs/implementation.md)
 - Test strategy → [specs/testing.md](specs/testing.md)
 - Deployment procedures → [specs/deployment.md](specs/deployment.md)
 - Complete implementation plan → [PLAN.md](PLAN.md)

@@ -346,8 +346,7 @@ Extract response adapter to separate module for better testability.
 ## Key References
 
 **Specs:**
-- [Architecture](specs/architecture.md) - System design
-- [Implementation](specs/implementation.md) - Module details
+- [Architecture](specs/architecture.md) - System design and module details
 - [Security](specs/security.md) - OAuth architecture
 - [Testing](specs/testing.md) - Test strategy
 

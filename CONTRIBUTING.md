@@ -109,8 +109,6 @@ second-brain/
 └── .mise.toml           # mise configuration (Node.js, tasks)
 ```
 
-See [Implementation Guide](specs/implementation.md) for detailed architecture.
-
 ---
 
 ## Development Workflow
@@ -599,9 +597,8 @@ See [Deployment Guide](specs/deployment.md) for comprehensive deployment procedu
 
 Start with the specification documents in [specs/](specs/):
 
-- [Architecture](specs/architecture.md) - System design
+- [Architecture](specs/architecture.md) - System design and project structure
 - [API Reference](specs/api-reference.md) - Tool specifications
-- [Implementation](specs/implementation.md) - Project structure
 - [Testing](specs/testing.md) - Test strategy
 - [Security](specs/security.md) - Auth and authorization
 - [Deployment](specs/deployment.md) - Setup and deployment

@@ -33,7 +33,6 @@ The Second Brain MCP provides file system-like operations over Cloudflare R2 sto
 
 ### Setup & Operations
 
-- **[Implementation](specs/implementation.md)** - Project structure, dependencies, and configuration
 - **[Security](specs/security.md)** - Authentication, authorization, and data protection
 - **[Deployment](specs/deployment.md)** - Setup instructions, deployment process, and rollback procedures
 - **[Testing](specs/testing.md)** - Testing strategy, unit tests, and manual testing checklist
