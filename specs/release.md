@@ -35,8 +35,22 @@ Critical production issues requiring immediate deployment MAY bypass the standar
 1. Create a branch from the last production commit (not from `main` if `main` has unreleased features)
 2. Include only the minimal changes required to resolve the critical issue
 3. Add or update tests to prevent regression
-4. Deploy to development environment for validation before production
-5. Deploy to production via manual workflow dispatch (see Production Deployment section)
+4. Deploy to development environment for validation before production:
+   - Push the hotfix branch to GitHub remote
+   - Navigate to GitHub Actions → Deploy workflow
+   - Click "Run workflow"
+   - Select the hotfix branch from the branch dropdown
+   - Select "development" from the environment dropdown
+   - Click "Run workflow" to trigger deployment
+   - Wait for deployment to complete and verify the fix works in dev
+   - Alternatively: Deploy locally using `pnpm run deploy:dev` if Cloudflare credentials are configured
+5. Deploy to production via manual workflow dispatch:
+   - Navigate to GitHub Actions → Deploy workflow
+   - Click "Run workflow"
+   - Select the hotfix branch from the branch dropdown
+   - Select "production" from the environment dropdown
+   - Click "Run workflow" to trigger deployment
+   - Monitor deployment logs for success
 6. Create a pull request for post-deployment review and documentation
 
 Hotfixes MUST be deployed to production within 1 hour of identification for critical failures (authentication broken, data loss risk, security vulnerability). Non-critical issues SHOULD follow the standard release process.
