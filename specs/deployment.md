@@ -34,7 +34,7 @@ While isolated, both environments MUST maintain configuration parity to ensure c
 
 **Secrets:** Both environments require the same secret keys (GitHub OAuth credentials, cookie encryption keys, S3 backup credentials) though the actual secret values MAY differ. Development MAY use test credentials where appropriate.
 
-**Dependencies:** Package versions, runtime configuration, and feature flags MUST match. The development environment MUST NOT enable experimental features or configurations not intended for production.
+**Dependencies:** Package versions and runtime configuration MUST match. Feature flags MAY differ between environments to enable testing of incomplete features in development before production enablement. See [Feature Flags](./feature-flags.md) for flag set configuration and flag lifecycle management.
 
 ### Environment URLs
 
@@ -55,13 +55,17 @@ Two R2 buckets MUST exist (one per environment) bound to the Worker with binding
 
 ### KV Namespaces
 
-Four KV namespaces MUST exist:
+Six KV namespaces MUST exist:
 - `OAUTH_KV` (production) - OAuth provider state storage
 - `OAUTH_KV` (development) - OAuth provider state storage
 - `RATE_LIMIT_KV` (production) - Rate limiting counters
 - `RATE_LIMIT_KV` (development) - Rate limiting counters
+- `FEATURE_FLAGS_KV` (production) - Feature flag configuration
+- `FEATURE_FLAGS_KV` (development) - Feature flag configuration
 
-KV namespaces MUST support the standard Cloudflare KV API including TTL-based expiration. The binding names `OAUTH_KV` and `RATE_LIMIT_KV` are hardcoded and MUST NOT be changed without code modifications.
+KV namespaces MUST support the standard Cloudflare KV API including TTL-based expiration. The binding names `OAUTH_KV`, `RATE_LIMIT_KV`, and `FEATURE_FLAGS_KV` are hardcoded and MUST NOT be changed without code modifications.
+
+**[NEEDS CLARIFICATION]** Feature flags KV namespace structure and requirements are detailed in [Feature Flags](./feature-flags.md). The namespace binding must be available in request context for flag set evaluation.
 
 ### Durable Objects
 
