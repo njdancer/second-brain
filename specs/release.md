@@ -30,30 +30,138 @@ Feature branches SHOULD be deleted immediately after merge to reduce repository 
 
 ### Hotfix Workflow
 
-Critical production issues requiring immediate deployment MAY bypass the standard pull request review process. Hotfixes MUST:
+Critical production issues requiring immediate deployment MAY bypass the standard pull request review process through an automated hotfix workflow that guides developers through the emergency deployment process while maintaining safety checks and documentation.
 
-1. Create a branch from the last production commit (not from `main` if `main` has unreleased features)
-2. Include only the minimal changes required to resolve the critical issue
-3. Add or update tests to prevent regression
-4. Deploy to development environment for validation before production:
-   - Push the hotfix branch to GitHub remote
-   - Navigate to GitHub Actions → Deploy workflow
-   - Click "Run workflow"
-   - Select the hotfix branch from the branch dropdown
-   - Select "development" from the environment dropdown
-   - Click "Run workflow" to trigger deployment
-   - Wait for deployment to complete and verify the fix works in dev
-   - Alternatively: Deploy locally using `pnpm run deploy:dev` if Cloudflare credentials are configured
-5. Deploy to production via manual workflow dispatch:
-   - Navigate to GitHub Actions → Deploy workflow
-   - Click "Run workflow"
-   - Select the hotfix branch from the branch dropdown
-   - Select "production" from the environment dropdown
-   - Click "Run workflow" to trigger deployment
-   - Monitor deployment logs for success
-6. Create a pull request for post-deployment review and documentation
+**Hotfix workflow MUST be automated via GitHub Actions workflow dispatch.** The workflow automates hotfix branch creation, deployment sequencing, verification, and post-deployment PR creation to reduce human error during high-pressure incidents.
 
-Hotfixes MUST be deployed to production within 1 hour of identification for critical failures (authentication broken, data loss risk, security vulnerability). Non-critical issues SHOULD follow the standard release process.
+#### Automated Hotfix Workflow Requirements
+
+The `.github/workflows/hotfix.yml` workflow MUST implement the following automation:
+
+**Workflow Inputs:**
+- `issue_description` (required): Brief description of the production issue being fixed
+- `severity` (required): Critical (auth/data loss/security) or High (degraded performance)
+
+**Workflow Steps:**
+
+1. **Query Production Commit**
+   - Query GitHub Deployments API for environment "production"
+   - Filter for status "success", sort by timestamp descending
+   - Extract commit SHA from most recent successful deployment
+   - Store as `PRODUCTION_COMMIT` environment variable
+   - Display production commit in workflow log for developer reference
+
+2. **Create Hotfix Branch**
+   - Create branch `hotfix/{timestamp}-{issue-slug}` from `PRODUCTION_COMMIT`
+   - Push hotfix branch to remote
+   - Check out hotfix branch in workflow runner
+   - Output hotfix branch name for subsequent steps
+
+3. **Pause for Developer Fix**
+   - Display clear instructions: "Hotfix branch `hotfix/...` created from production commit `abc123`"
+   - Instruct developer: "Push your fix commits to the hotfix branch"
+   - Instruct developer: "Re-run this workflow with `skip_creation=true` when ready to deploy"
+   - Workflow pauses (does not proceed to deployment automatically)
+   - Developer implements fix, commits to hotfix branch, pushes to remote
+
+4. **Run Tests** (when workflow re-triggered with `skip_creation=true`)
+   - Check out hotfix branch
+   - Run type checking (MUST pass)
+   - Run unit tests (MUST pass)
+   - Run E2E tests (MUST pass)
+   - Verify coverage meets thresholds
+   - Fail workflow if any test fails (developer MUST fix before deployment)
+
+5. **Deploy to Development**
+   - Trigger internal workflow call to `deploy.yml` with:
+     - `branch`: hotfix branch name
+     - `environment`: development
+   - Wait for deployment completion
+   - Verify health check passes
+   - Fail workflow if deployment fails (rollback automatic)
+
+6. **Verify Development Deployment**
+   - Wait 30 seconds for edge propagation
+   - Request `/health` endpoint on development URL
+   - Verify HTTP 200 response
+   - Output success message: "Development deployment verified"
+   - Provide development URL for manual testing
+   - Pause workflow: "Verify fix works in development, then approve production deployment"
+
+7. **Deploy to Production** (requires manual approval via GitHub Environment protection)
+   - Require manual approval from authorized maintainer
+   - Display deployment details: hotfix branch, issue description, development verification status
+   - After approval, trigger internal workflow call to `deploy.yml` with:
+     - `branch`: hotfix branch name
+     - `environment`: production
+   - Wait for deployment completion
+   - Verify health check passes
+   - Rollback automatically if deployment or health check fails
+
+8. **Create Post-Deployment PR**
+   - Create pull request from hotfix branch to `main`
+   - PR title: `[Hotfix] {issue_description}`
+   - PR body includes:
+     - Severity level
+     - Production commit SHA that was patched
+     - Development deployment URL (for verification)
+     - Production deployment timestamp
+     - Workflow run link
+     - Reminder: "This PR documents a hotfix already deployed to production"
+   - Label PR with `hotfix` and `deployed`
+   - Assign PR to workflow triggering user
+
+9. **Increment Hotfix Version**
+   - Read current version from `package.json` (e.g., `25.1.0`)
+   - Increment HOTFIX number (e.g., `25.1.0` → `25.1.1`)
+   - Update `package.json` and `PLAN.md`
+   - Commit version bump to hotfix branch
+   - Push to remote
+   - Create git tag `v25.1.1`
+   - Push tag to trigger GitHub Release creation
+
+**Workflow Execution Time Requirements:**
+- Total workflow runtime MUST complete within 15 minutes (excluding manual approval wait time)
+- Development deployment MUST complete within 5 minutes of test pass
+- Production deployment MUST complete within 5 minutes of approval
+
+**Error Handling:**
+- If any automated step fails, workflow MUST stop and notify developer
+- Developer MUST address failure and re-trigger workflow
+- Automatic rollback MUST occur for deployment failures
+- Manual rollback workflow MUST be available as backup
+
+#### Developer Hotfix Process
+
+When a critical production issue is identified:
+
+1. **Initiate Hotfix Workflow**
+   - Navigate to GitHub Actions → Hotfix workflow
+   - Click "Run workflow"
+   - Enter issue description (e.g., "OAuth callback returning 500 errors")
+   - Select severity level (Critical or High)
+   - Click "Run workflow"
+
+2. **Implement Fix**
+   - Workflow creates hotfix branch and outputs branch name
+   - Check out hotfix branch locally: `git fetch && git checkout hotfix/...`
+   - Implement minimal fix for the issue
+   - Add or update tests to prevent regression
+   - Commit changes: `git commit -m "fix: resolve OAuth callback error"`
+   - Push to remote: `git push origin hotfix/...`
+
+3. **Trigger Deployment**
+   - Re-run hotfix workflow with `skip_creation=true` input
+   - Workflow automatically runs tests, deploys to dev, waits for approval
+   - Verify fix works in development environment (workflow provides URL)
+   - Approve production deployment via GitHub Environment protection
+
+4. **Post-Deployment**
+   - Workflow creates PR for documentation and code review
+   - Review PR for quality and add any additional context
+   - Merge PR to `main` after review (no rush - already deployed)
+
+**Time to production target:** Critical hotfixes MUST deploy to production within 1 hour of identification. The automated workflow reduces manual steps to meet this SLA.
 
 ### Production Commit Tracking
 
