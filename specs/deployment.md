@@ -1,599 +1,170 @@
-# Deployment Guide
+# Deployment Specification
 
-Prerequisites, setup steps, configuration, and rollback procedures for the Second Brain MCP server.
-
----
-
-## Prerequisites
-
-### Required Accounts
-
-1. **Cloudflare Account**
-   - Workers enabled
-   - R2 storage enabled
-   - Payment method configured
-
-2. **GitHub Account**
-   - For OAuth authentication
-   - Note your GitHub user ID
-
-3. **AWS Account**
-   - For S3 backup storage
-   - IAM user with S3 access
-
-### Required Software
-
-- [mise](https://mise.jdx.dev/) (recommended) - manages Node.js and enables pnpm via corepack
-  - Or manually: Node.js 20+ with corepack enabled for pnpm
-- Git
-- `wrangler` CLI (`pnpm add -g wrangler`)
+Technical requirements for deploying and operating the Second Brain MCP server across development and production environments.
 
 ---
 
-## GitHub OAuth App Setup
+## Hosting Platform
 
-1. Go to GitHub Settings → Developer settings → OAuth Apps
-2. Click "New OAuth App"
-3. Configure:
-   - **Application name:** Second Brain MCP
-   - **Homepage URL:** `https://second-brain.your-domain.workers.dev`
-   - **Authorization callback URL:** `https://second-brain.your-domain.workers.dev/callback`
-4. Click "Register application"
-5. Note the **Client ID**
-6. Generate a new **Client Secret** and save it securely
+The MCP server MUST be deployed on Cloudflare Workers, a serverless compute platform chosen for its global edge network, minimal cold start latency, and native integration with Cloudflare's storage and authentication services. This platform constraint is non-negotiable as the codebase is tightly coupled to Cloudflare's runtime APIs and service bindings.
 
-### Get Your GitHub User ID
+The Workers runtime provides request-scoped execution with automatic scaling and geographic distribution. The platform enforces a maximum CPU time of 50ms for free tier deployments and 30 seconds for paid tier, though typical MCP requests complete in under 100ms. Memory limits are 128MB per request, sufficient for all tool operations including file content processing.
 
-```bash
-# Replace YOUR_USERNAME with your GitHub username
-curl https://api.github.com/users/YOUR_USERNAME | jq .id
-```
+## Environment Architecture
 
-Or visit: `https://api.github.com/users/YOUR_USERNAME`
+The system MUST maintain two isolated environments with identical infrastructure configuration but separate data stores and access controls. The development environment serves as a staging ground for validating changes before production promotion, while the production environment serves actual Claude desktop and web clients.
 
----
+### Environment Isolation
 
-## Initial Setup
+Each environment operates with dedicated Cloudflare resources that MUST NOT share state or credentials:
 
-### 1. Clone and Install
+**Storage isolation** requires separate R2 buckets for user file storage, ensuring development testing cannot corrupt or expose production user data. Development buckets SHOULD use naming conventions that prevent accidental production operations (e.g., `second-brain-dev` vs `second-brain`).
 
-**Option A: Using mise (Recommended)**
+**Session isolation** requires separate Durable Object namespaces, preventing development session IDs from colliding with production sessions. Each environment's Durable Objects MUST use distinct class names or namespace bindings.
 
-```bash
-git clone <repo-url>
-cd second-brain-mcp
+**Authentication isolation** requires separate KV namespaces for OAuth tokens and rate limiting state. Development and production MUST use different OAuth client credentials to prevent token reuse across environments.
 
-# Install mise if not already installed
-# macOS/Linux: curl https://mise.run | sh
-# Windows: See https://mise.jdx.dev/getting-started.html
+**Analytics isolation** SHOULD separate development and production telemetry to prevent test traffic from skewing production metrics. Cloudflare Analytics Engine SHOULD be configured with environment-specific dataset names.
 
-# Install Node.js 20 (defined in .mise.toml)
-mise install
+### Environment Parity
 
-# Enable corepack for pnpm
-mise run setup
+While isolated, both environments MUST maintain configuration parity to ensure changes validated in development behave identically in production. Configuration changes MAY be tested in development before being applied to production, resulting in temporary configuration drift during testing. Configurations SHOULD be considered eventually consistent rather than always identical. Parity applies to:
 
-# Install dependencies
-pnpm install
-```
+**Infrastructure:** Identical Worker configuration including compatibility dates, CPU limits, and binding types. Both environments MUST use the same wrangler.toml structure with only environment-specific values differing.
 
-**Option B: Manual Setup**
+**Secrets:** Both environments require the same secret keys (GitHub OAuth credentials, cookie encryption keys, S3 backup credentials) though the actual secret values MAY differ. Development MAY use test credentials where appropriate.
 
-```bash
-git clone <repo-url>
-cd second-brain-mcp
+**Dependencies:** Package versions and runtime configuration MUST match. Feature flags MAY differ between environments to enable testing of incomplete features in development before production enablement. See [Feature Flags](./feature-flags.md) for flag set configuration and flag lifecycle management.
 
-# Ensure Node.js 20+ is installed
-node --version
+### Environment URLs
 
-# Enable corepack
-corepack enable
+Each environment MUST be accessible via a stable HTTPS URL:
 
-# Install dependencies (corepack uses packageManager field in package.json)
-pnpm install
-```
+- Development: `https://second-brain-mcp-dev.{username}.workers.dev`
+- Production: `https://second-brain-mcp.{username}.workers.dev`
 
-### 2. Create R2 Buckets
+URLs MUST remain stable across deployments. Cloudflare Workers provides stable URLs automatically.
 
-```bash
-# Production bucket
-wrangler r2 bucket create second-brain
+## Infrastructure Prerequisites
 
-# Development bucket
-wrangler r2 bucket create second-brain-dev
-```
+Before any deployment can succeed, specific Cloudflare resources MUST exist with correct bindings configured in `wrangler.toml`.
 
-### 3. Create KV Namespaces
+### R2 Storage Buckets
 
-```bash
-# Production namespaces
-wrangler kv:namespace create OAUTH_KV
-wrangler kv:namespace create RATE_LIMIT_KV
+Two R2 buckets MUST exist (one per environment) bound to the Worker with binding name `STORAGE`. Buckets MUST be created in the same Cloudflare account as the Worker and MUST be located in a region supporting R2's object metadata features. The binding name `STORAGE` is hardcoded in the application and MUST NOT be changed without corresponding code changes.
 
-# Development namespaces
-wrangler kv:namespace create OAUTH_KV --preview
-wrangler kv:namespace create RATE_LIMIT_KV --preview
-```
+### KV Namespaces
 
-Note the namespace IDs returned by these commands.
+Six KV namespaces MUST exist:
+- `OAUTH_KV` (production) - OAuth provider state storage
+- `OAUTH_KV` (development) - OAuth provider state storage
+- `RATE_LIMIT_KV` (production) - Rate limiting counters
+- `RATE_LIMIT_KV` (development) - Rate limiting counters
+- `FEATURE_FLAGS_KV` (production) - Feature flag configuration
+- `FEATURE_FLAGS_KV` (development) - Feature flag configuration
 
-### 4. Configure wrangler.toml
+KV namespaces MUST support the standard Cloudflare KV API including TTL-based expiration. The binding names `OAUTH_KV`, `RATE_LIMIT_KV`, and `FEATURE_FLAGS_KV` are hardcoded and MUST NOT be changed without code modifications.
 
-Update `wrangler.toml` with your values:
+**[NEEDS CLARIFICATION]** Feature flags KV namespace structure and requirements are detailed in [Feature Flags](./feature-flags.md). The namespace binding must be available in request context for flag set evaluation.
 
-```toml
-name = "second-brain-mcp"
-main = "src/index.ts"
-compatibility_date = "2024-10-01"
+### Durable Objects
 
-[vars]
-GITHUB_ALLOWED_USER_ID = "12345678"  # Your GitHub user ID
+One Durable Object class named `MCPSessionDurableObject` MUST be bound to each environment with binding name `MCP_SESSION`. The Durable Object MUST support alarm scheduling for session cleanup. This binding is critical for session persistence and MUST NOT be omitted.
 
-[[r2_buckets]]
-binding = "STORAGE"
-bucket_name = "second-brain"
+### Analytics Engine
 
-[[kv_namespaces]]
-binding = "OAUTH_KV"
-id = "abc123..."  # From step 3
+One Analytics Engine dataset SHOULD be bound with binding name `ANALYTICS` to enable request telemetry and tool usage tracking. This binding is optional for development but RECOMMENDED for production to support monitoring and debugging.
 
-[[kv_namespaces]]
-binding = "RATE_LIMIT_KV"
-id = "def456..."  # From step 3
+## Secret Management
 
-[triggers]
-crons = ["0 2 * * *"]
+Sensitive credentials MUST be stored as Cloudflare Worker secrets (encrypted at rest, decrypted at request time) and MUST NOT appear in wrangler.toml, source code, or version control.
 
-[env.development]
-vars = { GITHUB_ALLOWED_USER_ID = "12345678" }
+### Required Secrets
 
-[[env.development.r2_buckets]]
-binding = "STORAGE"
-bucket_name = "second-brain-dev"
+**GITHUB_CLIENT_ID** and **GITHUB_CLIENT_SECRET** contain OAuth application credentials for GitHub authentication. These MUST correspond to a GitHub OAuth App configured with the correct callback URL for each environment. The client secret MUST be treated as highly sensitive and rotated periodically.
 
-[[env.development.kv_namespaces]]
-binding = "OAUTH_KV"
-id = "dev-abc123..."
+**COOKIE_ENCRYPTION_KEY** contains a 32-byte hex-encoded key for encrypting OAuth state cookies. This MUST be generated using a cryptographically secure random source (e.g., `openssl rand -hex 32`). Rotating this secret invalidates all in-flight OAuth sessions.
 
-[[env.development.kv_namespaces]]
-binding = "RATE_LIMIT_KV"
-id = "dev-def456..."
-```
+**S3_BACKUP_ACCESS_KEY**, **S3_BACKUP_SECRET_KEY**, **S3_BACKUP_BUCKET**, and **S3_BACKUP_REGION** contain AWS credentials for optional R2-to-S3 backup functionality. These are REQUIRED if backup features are enabled, OPTIONAL otherwise.
 
-### 5. Set Production Secrets
+### Secret Rotation
 
-```bash
-# GitHub OAuth
-wrangler secret put GITHUB_CLIENT_ID
-# Paste your GitHub OAuth App client ID
+The system MUST support secret rotation without requiring code changes or redeployment. Rotating `COOKIE_ENCRYPTION_KEY` will invalidate active OAuth sessions, requiring users to reauthenticate. Rotating GitHub OAuth credentials requires updating both the Worker secret and the GitHub OAuth App configuration.
 
-wrangler secret put GITHUB_CLIENT_SECRET
-# Paste your GitHub OAuth App client secret
+## Environment Variables
 
-# Cookie encryption (generate random 32-byte hex)
-openssl rand -hex 32
-wrangler secret put COOKIE_ENCRYPTION_KEY
-# Paste the generated hex string
+Non-sensitive configuration MAY be stored as environment variables in wrangler.toml under `[vars]` sections. These are public values that change between environments but are not secret.
 
-# AWS S3 Backup (if using)
-wrangler secret put S3_BACKUP_ACCESS_KEY
-# Paste AWS access key
+**GITHUB_ALLOWED_USER_ID** contains the GitHub user ID permitted to access the MCP server. This acts as a simple authorization allowlist and MUST be configured for both environments. Future versions MAY support multiple user IDs or different authorization mechanisms.
 
-wrangler secret put S3_BACKUP_SECRET_KEY
-# Paste AWS secret key
+## Deployment Verification
 
-wrangler secret put S3_BACKUP_BUCKET
-# Paste S3 bucket name (e.g., my-second-brain-backup)
+After any deployment, automated verification MUST confirm the Worker is accessible and responsive before considering the deployment successful.
 
-wrangler secret put S3_BACKUP_REGION
-# Paste AWS region (e.g., us-east-1)
-```
+### Health Check Endpoint
 
-### 6. Set Development Secrets (Optional)
+The Worker MUST expose a health check endpoint at `/health` that returns HTTP 200 with a JSON response indicating service status. This endpoint MUST NOT require authentication and SHOULD complete in under 100ms. The health check MUST verify:
 
-```bash
-# Same as production but for dev environment
-wrangler secret put GITHUB_CLIENT_ID --env development
-wrangler secret put GITHUB_CLIENT_SECRET --env development
-wrangler secret put COOKIE_ENCRYPTION_KEY --env development
-# ... etc
-```
+- Worker is running and responding to requests
+- All bindings (R2, KV, DO, Analytics) are accessible
+- No critical configuration errors prevent request handling
 
----
+The health check MAY return degraded status (HTTP 200 with warnings) if non-critical features are unavailable (e.g., backup credentials missing but MCP tools functional).
 
-## Deployment
+### Deployment Rollback
 
-### Run Tests
+The system MUST support rollback to a previous deployment within 10 minutes of detecting a failed deployment. Cloudflare Workers retains the last 10 deployments in history, allowing instant rollback via API.
 
-```bash
-pnpm test
-```
+Rollback MUST NOT require rebuilding or retesting the previous version. The Cloudflare Workers platform provides atomic deployment rollback that reverts to the exact previously deployed code.
 
-Ensure all tests pass before deploying.
+Rollback MUST be triggered via GitHub Actions workflow to ensure all necessary rollback steps are followed consistently (updating deployment records, notifications, etc.). Automated rollback MUST occur for critical failures (health check failure, authentication broken). Manual rollback via workflow dispatch SHOULD be used for issues discovered post-deployment (increased error rates, performance degradation, user reports).
 
-### Deploy to Development
+## Performance Requirements
 
-```bash
-wrangler deploy --env development
-```
+The deployed Worker MUST meet specific performance criteria to provide acceptable MCP client experience:
 
-Note the deployed URL (e.g., `https://second-brain-mcp.dev.your-subdomain.workers.dev`)
+**Request latency:** P95 latency MUST be under 500ms for tool execution, measured from request arrival to response completion. This includes time for authentication, rate limiting checks, R2 operations, and response serialization.
 
-### Test Development Deployment
+**Cold start latency:** Initial requests after periods of inactivity MUST complete within 1 second. Cloudflare Workers typically achieve 10-50ms cold starts; this requirement provides buffer for global routing and binding initialization.
 
-1. Configure Claude to connect to dev URL
-2. Complete OAuth flow
-3. Test all tools (read, write, edit, glob, grep)
-4. Verify bootstrap files created
-5. Check rate limiting
-6. Test backup trigger (if configured)
+**Throughput:** The Worker MUST handle at minimum 100 requests per minute per user without throttling (beyond intentional rate limits). Cloudflare's autoscaling MUST accommodate burst traffic patterns from interactive Claude sessions.
 
-### Deploy to Production
+## Availability Requirements
 
-```bash
-wrangler deploy
-```
+The production environment MUST achieve 99.9% uptime over any 30-day period, excluding scheduled maintenance windows. This translates to approximately 43 minutes of acceptable downtime per month.
 
-Note the production URL (e.g., `https://second-brain-mcp.your-subdomain.workers.dev`)
+Deployments MUST use zero-downtime deployment strategies. Cloudflare Workers provides this automatically through gradual rollout across edge locations. During deployment, some edge locations serve old code while others serve new code for up to 30 seconds.
 
-### Tag Release
+The system MUST tolerate temporary Cloudflare service degradation by returning appropriate HTTP status codes (503 Service Unavailable) rather than silent failures or data corruption.
 
-```bash
-git tag -a v1.0.0 -m "Initial release"
-git push origin v1.0.0
-```
+## Observability Requirements
 
----
+Production deployments MUST emit structured logs viewable via Cloudflare Workers Logs or exported to external log aggregation services. Logs MUST include:
 
-## Claude Configuration
+- Request correlation IDs for tracing related log entries
+- HTTP status codes and error messages
+- Tool execution timing and success/failure status
+- Rate limiting decisions
+- Authentication/authorization outcomes
 
-### Desktop/Web Client
+Logs MUST NOT contain PII (personally identifiable information) or sensitive data (OAuth tokens, file contents, user data). Error messages MUST be sanitized before logging.
 
-1. Open Claude Settings
-2. Go to Integrations → MCP Servers
-3. Click "Add MCP Server"
-4. Configure:
-   - **Name:** Second Brain
-   - **URL:** `https://second-brain-mcp.your-subdomain.workers.dev/sse`
-   - **OAuth Client ID:** (from GitHub OAuth App)
-   - **OAuth Client Secret:** (from GitHub OAuth App)
-5. Click "Connect"
-6. Complete OAuth flow in browser
-7. Approve MCP access
-8. Server appears in tools list
+## Deployment Constraints
 
-### Mobile Client
+Certain deployment scenarios are explicitly NOT supported:
 
-Same steps as desktop, but OAuth flow opens in mobile browser.
+**[OUT OF SCOPE]** Multi-region active-active deployment. While Cloudflare Workers deploy globally, the application assumes a single Durable Object namespace and R2 bucket per environment, precluding multi-region failover.
 
----
+**[OUT OF SCOPE]** Blue-green deployment. Cloudflare Workers' instant rollback capability makes blue-green deployment unnecessary overhead.
 
-## Verification
+**[OUT OF SCOPE]** Canary deployment to subset of users. The single-user authorization model makes canary deployment meaningless. Future multi-user versions MAY support canary rollout.
 
-### Check Deployment Status
+**[DEFERRED]** Automated performance regression detection. While desirable, defining objective performance regression criteria requires production baseline data not yet available.
 
-```bash
-wrangler deployments list
-```
+## Related Specifications
 
-### View Logs
+See [Release](./release.md) for CI/CD pipeline, branching strategy, and deployment triggering mechanisms.
 
-```bash
-wrangler tail
-```
+See [Security](./security.md) for OAuth configuration, token management, and credential handling requirements.
 
-### Test Tool Calls
-
-In Claude, try:
-- "List files in my second brain" (triggers `glob`)
-- "Create a note about testing" (triggers `write`)
-- "Read the README" (triggers `read`)
-- "Search for 'test'" (triggers `grep`)
-
-### Check R2 Contents
-
-```bash
-wrangler r2 object list second-brain
-```
-
-Should see bootstrap files if this is first connection.
-
-### Check KV Contents
-
-```bash
-# List OAuth tokens
-wrangler kv:key list --binding OAUTH_KV
-
-# Check rate limits
-wrangler kv:key list --binding RATE_LIMIT_KV
-```
-
----
-
-## Rollback Procedures
-
-### Automated Rollback via GitHub Actions
-
-**Setup:** Create `.github/workflows/rollback.yml`:
-
-```yaml
-name: Rollback Deployment
-
-on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'Deployment version to rollback to'
-        required: true
-        type: string
-
-jobs:
-  rollback:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.version }}
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - run: pnpm install --frozen-lockfile
-
-      - name: Run tests
-        run: pnpm test
-
-      - name: Deploy to production
-        run: npx wrangler deploy
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-
-      - name: Notify rollback
-        run: echo "Rolled back to version ${{ inputs.version }}"
-```
-
-**Trigger Rollback:**
-
-1. Go to GitHub → Actions → Rollback Deployment
-2. Click "Run workflow"
-3. Enter version tag (e.g., `v1.0.0`)
-4. Click "Run workflow"
-
-Tests run automatically before rollback is deployed.
-
-### Manual Rollback
-
-```bash
-# 1. Checkout previous version
-git checkout v1.0.0
-
-# 2. Install dependencies
-pnpm install --frozen-lockfile
-
-# 3. Run tests
-pnpm test
-
-# 4. Deploy
-wrangler deploy
-
-# 5. Verify
-wrangler tail
-```
-
-### Cloudflare Dashboard Rollback
-
-1. Go to Cloudflare Dashboard
-2. Workers & Pages → second-brain-mcp
-3. Deployments tab
-4. Click "..." on previous deployment
-5. Click "Rollback to this deployment"
-
-**Note:** Last 10 deployments available for rollback.
-
----
-
-## Continuous Deployment
-
-### GitHub Actions Setup
-
-**`.github/workflows/test.yml`** (CI):
-
-```yaml
-name: Test
-
-on: [push, pull_request]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm test
-```
-
-**`.github/workflows/deploy.yml`** (CD):
-
-```yaml
-name: Deploy
-
-on:
-  push:
-    branches: [main]
-    tags: ['v*']
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm test
-
-      - name: Deploy to production
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: npx wrangler deploy
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-
-      - name: Deploy to development
-        if: github.ref == 'refs/heads/main'
-        run: npx wrangler deploy --env development
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-```
-
-**Required GitHub Secrets:**
-- `CLOUDFLARE_API_TOKEN` - From Cloudflare Dashboard → API Tokens
-
----
-
-## Monitoring Setup
-
-### Cloudflare Analytics
-
-Automatically enabled - view in Cloudflare Dashboard:
-- Workers & Pages → second-brain-mcp → Metrics
-
-### Custom Alerts
-
-Configure in Cloudflare Dashboard → Notifications:
-- Error rate threshold
-- Request rate spikes
-- CPU/memory limits
-
-See [Monitoring](./monitoring.md) for detailed metrics.
-
----
-
-## Backup Configuration
-
-### AWS S3 Setup
-
-```bash
-# Create S3 bucket
-aws s3 mb s3://my-second-brain-backup
-
-# Create IAM user with S3 access
-aws iam create-user --user-name second-brain-backup
-
-# Attach S3 full access policy (or create custom policy)
-aws iam attach-user-policy \
-  --user-name second-brain-backup \
-  --policy-arn arn:aws:iam::aws:policy/AmazonS3FullAccess
-
-# Create access keys
-aws iam create-access-key --user-name second-brain-backup
-```
-
-Save the access key ID and secret access key for wrangler secrets.
-
-### Manual Backup Trigger
-
-```bash
-curl -X POST \
-  https://second-brain-mcp.your-subdomain.workers.dev/admin/backup \
-  -H "Authorization: Bearer YOUR_OAUTH_TOKEN"
-```
-
----
-
-## Troubleshooting
-
-### OAuth Fails
-
-- Verify GitHub OAuth App callback URL matches worker URL
-- Check `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` secrets
-- Ensure `GITHUB_ALLOWED_USER_ID` matches your GitHub user ID
-- Check browser console for errors
-
-### Tools Don't Work
-
-- Verify R2 bucket exists and binding is correct
-- Check KV namespaces exist and IDs match wrangler.toml
-- View logs: `wrangler tail`
-- Test with simple operations first (read README.md)
-
-### Rate Limits Hit Immediately
-
-- Check `RATE_LIMIT_KV` is configured correctly
-- Verify no stale entries: `wrangler kv:key list --binding RATE_LIMIT_KV`
-- Delete test entries: `wrangler kv:key delete "rate_limit:..." --binding RATE_LIMIT_KV`
-
-### Backup Fails
-
-- Verify AWS credentials are correct
-- Check S3 bucket exists and is accessible
-- View cron logs: `wrangler tail --format json | grep cron`
-- Test manual backup: `POST /admin/backup`
-
----
-
-## Maintenance
-
-### Update Dependencies
-
-```bash
-pnpm update
-pnpm audit --fix
-pnpm test
-wrangler deploy --env development
-# Test thoroughly
-wrangler deploy
-```
-
-### Update Node.js Version (if using mise)
-
-```bash
-# Edit .mise.toml to change Node version
-# Then run:
-mise install
-mise run setup
-pnpm install
-```
-
-### Rotate Secrets
-
-```bash
-# Generate new encryption key
-openssl rand -hex 32
-
-# Update secret
-wrangler secret put COOKIE_ENCRYPTION_KEY
-# Note: Existing tokens will be invalid
-
-# Or rotate GitHub OAuth credentials
-# 1. Generate new secret in GitHub OAuth App
-# 2. Update wrangler secret
-wrangler secret put GITHUB_CLIENT_SECRET
-```
-
-### Clean Up Old Data
-
-```bash
-# List all files
-wrangler r2 object list second-brain
-
-# Delete specific file
-wrangler r2 object delete second-brain/path/to/file.md
-
-# Clean up rate limit entries (if needed)
-wrangler kv:key delete "rate_limit:..." --binding RATE_LIMIT_KV
-```
-
----
-
-## Related Documentation
-
-- [Architecture](./architecture.md) - System design
-- [Implementation](./implementation.md) - Configuration details
-- [Security](./security.md) - Authentication setup
-- [Monitoring](./monitoring.md) - Observability
-- [Testing](./testing.md) - Testing strategy
+See [Monitoring](./monitoring.md) for detailed observability, alerting, and metrics collection requirements.
