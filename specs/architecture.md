@@ -410,8 +410,8 @@ No architectural changes needed - just:
 
 ## Related Documentation
 
-- [Overview](./overview.md) - Project background and philosophy
-- [API Reference](./api-reference.md) - Tool specifications and schemas
+- [Methodology](./methodology.md) - BASB principles and guidance requirements
+- [Tools](./tools.md) - MCP tool specifications and schemas
 - [Security](./security.md) - OAuth architecture and security model
 - [Deployment](./deployment.md) - Setup, configuration, and CI/CD
 - [Monitoring](./monitoring.md) - Observability and debugging

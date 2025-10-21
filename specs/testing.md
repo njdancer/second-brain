@@ -237,7 +237,7 @@ Bad tests are worse than no tests—they create false confidence and maintenance
 
 ## Related Documentation
 
-- [API Reference](./api-reference.md) - Tool specifications
+- [Tools](./tools.md) - MCP tool specifications
 - [Implementation](./implementation.md) - Code structure
 - [Security](./security.md) - Security architecture
 - [Deployment](./deployment.md) - Production procedures
