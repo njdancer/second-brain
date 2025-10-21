@@ -317,7 +317,7 @@ Configure alerts for:
 - Error rate >5%
 - Backup failures
 
-See [Monitoring](./monitoring.md) for implementation details.
+See [Observability](./observability.md) for implementation details.
 
 ---
 
@@ -325,4 +325,4 @@ See [Monitoring](./monitoring.md) for implementation details.
 
 - [Architecture](./architecture.md) - Authentication flow details
 - [Deployment](./deployment.md) - Secret configuration
-- [Monitoring](./monitoring.md) - Security metrics and alerts
+- [Observability](./observability.md) - Security metrics and alerts

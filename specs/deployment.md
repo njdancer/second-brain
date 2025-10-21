@@ -79,7 +79,9 @@ Sensitive credentials MUST be stored as Cloudflare Worker secrets (encrypted at 
 
 **GITHUB_CLIENT_ID** and **GITHUB_CLIENT_SECRET** contain OAuth application credentials for GitHub authentication. These MUST correspond to a GitHub OAuth App configured with the correct callback URL for each environment. The client secret MUST be treated as highly sensitive and rotated periodically.
 
-**COOKIE_ENCRYPTION_KEY** contains a 32-byte hex-encoded key for encrypting OAuth state cookies. This MUST be generated using a cryptographically secure random source (e.g., `openssl rand -hex 32`). Rotating this secret invalidates all in-flight OAuth sessions.
+**COOKIE_ENCRYPTION_KEY** contains a 32-byte hex-encoded key for encrypting OAuth state cookies. This MUST be generated using a cryptographically secure random source. Rotating this secret invalidates all in-flight OAuth sessions.
+
+**[DEFERRED]** Specific tools for secret generation are implementation details. Any cryptographically secure random generator is acceptable.
 
 **S3_BACKUP_ACCESS_KEY**, **S3_BACKUP_SECRET_KEY**, **S3_BACKUP_BUCKET**, and **S3_BACKUP_REGION** contain AWS credentials for optional R2-to-S3 backup functionality. These are REQUIRED if backup features are enabled, OPTIONAL otherwise.
 
@@ -163,4 +165,4 @@ See [Release](./release.md) for CI/CD pipeline, branching strategy, and deployme
 
 See [Security](./security.md) for OAuth configuration, token management, and credential handling requirements.
 
-See [Monitoring](./monitoring.md) for detailed observability, alerting, and metrics collection requirements.
+See [Observability](./observability.md) for detailed observability, alerting, and metrics collection requirements.

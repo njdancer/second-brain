@@ -32,141 +32,48 @@ Feature branches SHOULD be deleted immediately after merge to reduce repository 
 
 ### Hotfix Workflow
 
-Critical production issues requiring immediate deployment MAY bypass the standard pull request review process through an automated PR-based hotfix workflow that deploys to development on every push and requires explicit approval for production deployment.
+Critical production issues requiring immediate deployment MUST use an automated hotfix workflow that enables rapid iteration while maintaining safety gates.
 
-**Hotfix workflow MUST be PR-based with automatic CI/CD triggers.** The workflow automates hotfix branch creation, continuous dev deployment on push, and production deployment approval through GitHub Environment protection. This approach allows rapid iteration (push multiple fixes without manual workflow re-runs) while maintaining safety gates for production.
+**Core Requirements:**
 
-#### Automated Hotfix Workflow Requirements
+The hotfix system MUST:
+- Create hotfix branches from the current production commit (not from `main`)
+- Support rapid iteration through automated development deployments on every push
+- Require explicit approval before production deployment
+- Auto-merge and tag after successful production deployment
+- Complete within 1 hour from issue identification to production fix
 
-The `.github/workflows/hotfix-create.yml` and `.github/workflows/hotfix-deploy.yml` workflows MUST implement the following automation:
+**Workflow Capabilities:**
 
-**Workflow 1: Hotfix Branch Creation (`hotfix-create.yml`)**
+**Hotfix Initiation:**
+- MUST query GitHub Deployments API to identify current production commit
+- MUST create hotfix branch with descriptive naming (e.g., `hotfix/{timestamp}-{issue-slug}`)
+- MUST auto-increment hotfix version number (e.g., `25.1.0` → `25.1.1`)
+- MUST create draft pull request with issue description and severity level
 
-Triggered via workflow dispatch to create the hotfix branch from current production commit.
+**Automated Testing and Deployment:**
+- MUST run all code checks (type checking, linting, tests) on every push
+- MUST deploy to development environment automatically after tests pass
+- MUST verify deployment health before allowing production promotion
+- MUST re-run pipeline automatically on each push (no manual workflow triggers)
 
-**Inputs:**
-- `issue_description` (required): Brief description of the production issue
-- `severity` (required): Critical (auth/data loss/security) or High (degraded performance)
+**Production Deployment:**
+- MUST require explicit approval (GitHub Environment protection or equivalent)
+- MUST deploy only after development verification succeeds
+- MUST verify production health check before finalizing
+- MUST rollback automatically on health check failure
 
-**Steps:**
-1. Query GitHub Deployments API for environment "production"
-2. Extract commit SHA from most recent successful deployment
-3. Create branch `hotfix/{timestamp}-{issue-slug}` from production commit
-4. Read current version from `package.json` (e.g., `25.1.0`)
-5. Increment HOTFIX number (e.g., `25.1.0` → `25.1.1`)
-6. Update `package.json` and `PLAN.md` with new version
-7. Commit version bump to hotfix branch
-8. Create draft pull request from hotfix branch to `main`:
-   - PR title: `[Hotfix] {issue_description}`
-   - PR body: Severity, production commit SHA, instructions for developer
-   - Labels: `hotfix`, `draft`
-9. Output PR URL and hotfix branch name
+**Completion:**
+- MUST auto-merge PR after successful production deployment
+- MUST create version tag on merged commit
+- MUST update PR status with deployment information
 
-**Workflow 2: Hotfix CI/CD Pipeline (`hotfix-deploy.yml`)**
+**Performance Targets:**
+- Tests + development deployment: < 5 minutes
+- Production deployment: < 5 minutes after approval
+- Total time to production: < 1 hour from issue identification
 
-Triggered automatically on every push to `hotfix/*` branches and on PR approval.
-
-**Trigger conditions:**
-```yaml
-on:
-  push:
-    branches:
-      - 'hotfix/**'
-  pull_request:
-    types: [opened, synchronize, ready_for_review]
-    branches:
-      - main
-  pull_request_review:
-    types: [submitted]
-```
-
-**Pipeline stages:**
-
-1. **Run Tests** (on every push to hotfix/\* branch)
-   - Check out hotfix branch
-   - Run type checking (MUST pass)
-   - Run unit tests (MUST pass)
-   - Run E2E tests (MUST pass)
-   - Verify coverage meets thresholds
-   - Fail workflow if any test fails (blocks dev deployment)
-   - Update PR status check (tests passing/failing)
-
-2. **Deploy to Development** (on every push after tests pass)
-   - Trigger internal workflow call to `deploy.yml` with:
-     - `branch`: hotfix branch name
-     - `environment`: development
-   - Wait for deployment completion
-   - Verify health check passes (blocks production deployment if health check fails)
-   - GitHub Deployments API automatically updates PR with deployment status
-
-3. **Deploy to Production** (on explicit approval only)
-   - Requires PR marked "Ready for review" (not draft)
-   - Requires explicit production deployment approval via GitHub Environment protection
-   - Approval mechanism: Manual approval gate (not PR review - single maintainer cannot self-approve PRs)
-   - After approval, trigger internal workflow call to `deploy.yml` with:
-     - `branch`: hotfix branch name
-     - `environment`: production
-   - Wait for deployment completion
-   - Verify health check passes (automatic rollback on failure)
-   - GitHub Deployments API automatically updates PR with deployment status
-
-4. **Merge and Tag** (after successful production deployment)
-   - Auto-merge PR to `main` (squash merge)
-   - Read version from merged commit in `package.json` (e.g., `25.1.1`)
-   - Create git tag `v25.1.1` on merged commit
-   - Push tag to remote
-   - Label merged PR with `deployed`
-
-**Workflow execution requirements:**
-- Tests and dev deployment MUST complete within 5 minutes of push
-- Production deployment MUST complete within 5 minutes of approval
-- Developer MUST be able to push multiple commits without manually re-running workflows
-- Each push re-deploys to dev automatically (rapid iteration)
-
-**Error handling:**
-- Test failures block dev deployment, post PR comment with error details
-- Dev deployment failures rollback automatically, post PR comment
-- Prod deployment failures rollback automatically, block PR merge
-- Developer fixes issues and pushes again → workflow re-runs automatically
-
-#### Developer Hotfix Process
-
-When a critical production issue is identified:
-
-1. **Initiate Hotfix**
-   - Navigate to GitHub Actions → "Create Hotfix Branch" workflow
-   - Click "Run workflow"
-   - Enter issue description (e.g., "OAuth callback returning 500 errors")
-   - Select severity level (Critical or High)
-   - Click "Run workflow"
-   - Workflow creates hotfix branch and draft PR
-
-2. **Implement and Test Fix** (iterative process)
-   - Check out hotfix branch locally: `git fetch && git checkout hotfix/...`
-   - Implement fix, add/update tests
-   - Commit: `git commit -m "fix: resolve OAuth callback error"`
-   - Push: `git push origin hotfix/...`
-   - **Workflow automatically runs tests and deploys to dev**
-   - Check PR for dev deployment URL
-   - Verify fix works in dev
-   - If fix incomplete, push more commits → auto-redeploy to dev
-   - Repeat until fix verified in dev
-
-3. **Deploy to Production**
-   - Mark PR as "Ready for review" (remove draft status)
-   - Request review from maintainer (or self-approve if sole maintainer)
-   - Approve PR review
-   - **Workflow automatically deploys to production after approval**
-   - Monitor PR comments for production deployment confirmation
-   - Verify fix in production
-
-4. **Complete Incident Response**
-   - Workflow automatically merges PR to `main` after successful production deployment
-   - Version bump and git tag created automatically
-   - **Optional:** Add post-mortem analysis to merged PR as follow-up comment
-   - **Optional:** Create incident report issue linking to merged hotfix PR
-
-**Time to production target:** Critical hotfixes MUST deploy to production within 1 hour of identification. The PR-based workflow enables rapid iteration without manual workflow re-runs, reducing time to resolution.
+**[DEFERRED]** Specific GitHub Actions workflow implementation, YAML structure, and detailed step sequences are implementation details. The requirements above define the necessary capabilities.
 
 ### Production Commit Tracking
 
@@ -469,4 +376,4 @@ See [Deployment](./deployment.md) for environment configuration, infrastructure 
 
 See [Testing](./testing.md) for test coverage requirements, test execution standards, and E2E test implementation.
 
-See [Monitoring](./monitoring.md) for post-deployment observability, alerting, and metrics collection.
+See [Observability](./observability.md) for post-deployment observability, alerting, and metrics collection.

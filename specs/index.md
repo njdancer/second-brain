@@ -20,6 +20,6 @@ Central registry of all technical specification documents for the Second Brain M
 
 - [Deployment](./deployment.md) - Hosting platform, environment configuration, and infrastructure requirements
 - [Release](./release.md) - CI/CD pipeline, branching strategy, and deployment automation
-- [Monitoring](./monitoring.md) - Observability, logging, metrics, and alerting requirements
+- [Observability](./observability.md) - Logging, metrics, debugging, and alerting requirements
 - [Testing](./testing.md) - Test strategy, coverage requirements, and quality standards
 - [Code Checks](./code-checks.md) - Linting, formatting, type checking, and code quality enforcement

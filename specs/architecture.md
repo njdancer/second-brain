@@ -388,5 +388,5 @@ No architectural changes needed - just:
 - [Tools](./tools.md) - MCP tool specifications and schemas
 - [Security](./security.md) - OAuth architecture and security model
 - [Deployment](./deployment.md) - Setup, configuration, and CI/CD
-- [Monitoring](./monitoring.md) - Observability and debugging
+- [Observability](./observability.md) - Observability and debugging
 - [Testing](./testing.md) - Test strategy and requirements
