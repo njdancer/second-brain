@@ -36,6 +36,8 @@ While isolated, both environments MUST maintain configuration parity to ensure c
 
 **Dependencies:** Package versions and runtime configuration MUST match across environments.
 
+**Feature Flags:** Development and production MAY use different flag sets to enable testing incomplete features in development before production release. See [Feature Flags](./feature-flags.md) for flag set configuration and management.
+
 ### Environment URLs
 
 Each environment MUST be accessible via a stable HTTPS URL:
@@ -55,13 +57,17 @@ Two R2 buckets MUST exist (one per environment) bound to the Worker with binding
 
 ### KV Namespaces
 
-Four KV namespaces MUST exist:
+Six KV namespaces MUST exist:
 - `OAUTH_KV` (production) - OAuth provider state storage
 - `OAUTH_KV` (development) - OAuth provider state storage
 - `RATE_LIMIT_KV` (production) - Rate limiting counters
 - `RATE_LIMIT_KV` (development) - Rate limiting counters
+- `FEATURE_FLAGS_KV` (production) - Feature flag sets
+- `FEATURE_FLAGS_KV` (development) - Feature flag sets
 
-KV namespaces MUST support the standard Cloudflare KV API including TTL-based expiration. The binding names `OAUTH_KV` and `RATE_LIMIT_KV` are hardcoded and MUST NOT be changed without code modifications.
+KV namespaces MUST support the standard Cloudflare KV API including TTL-based expiration. The binding names `OAUTH_KV`, `RATE_LIMIT_KV`, and `FEATURE_FLAGS_KV` are hardcoded and MUST NOT be changed without code modifications.
+
+Feature flag sets are stored as JSON blobs with keys in format `flagset:{set_id}`. See [Feature Flags](./feature-flags.md) for flag set structure and management.
 
 ### Durable Objects
 
