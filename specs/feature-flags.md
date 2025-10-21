@@ -252,7 +252,7 @@ Flag sets are stored as JSON blobs in KV with the following structure:
 
 **KV key naming:**
 - Format: `flagset:{set_id}`
-- Examples: `flagset:production`, `flagset:development`, `flagset:test-client`
+- Examples: `flagset:env:production`, `flagset:env:development`, `flagset:custom:test-client`
 
 **Flag set value (JSON):**
 ```json
