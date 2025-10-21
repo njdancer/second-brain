@@ -6,6 +6,12 @@
 **Last Updated:** 2025-10-17
 
 **Recent Changes:**
+- ✅ Audited and refactored security spec (Issue #15)
+  - Removed ~60 lines of OAuth architecture duplication (now in architecture.md)
+  - Simplified authentication flow section with cross-references
+  - Converted error codes to table format for clarity
+  - Added [DEFERRED] scope markers to future features
+  - Improved alignment with spec guidelines (prose over lists, requirements focus)
 - ✅ Refactored deployment and release specs (Issue #10)
   - Split monolithic deployment.md into focused deployment.md and release.md
   - deployment.md: hosting, environments, infrastructure, secrets (requirements-focused)
