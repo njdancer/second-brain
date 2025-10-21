@@ -6,16 +6,16 @@ Central registry of all technical specification documents for the Second Brain M
 
 ## Core Specifications
 
-- [Overview](./overview.md) - Project vision, goals, and high-level architecture summary
 - [Architecture](./architecture.md) - System design, component interactions, and technical decisions
 - [Implementation](./implementation.md) - Module structure, configuration details, and code organization
 - [Security](./security.md) - OAuth architecture, authentication flows, and security requirements
 
-## API and Integration
+## MCP Interface
 
-- [API Reference](./api-reference.md) - MCP tools, prompts, and endpoint specifications
-- [MCP Configuration](./mcp-configuration.md) - Claude desktop/web client configuration and connection setup
-- [User Workflows](./user-workflows.md) - End-to-end user interaction patterns and use cases
+- [Tools](./tools.md) - Complete specification of all five MCP tools (read, write, edit, glob, grep)
+- [Prompts](./prompts.md) - Pre-defined BASB workflow prompts and templates
+- [Bootstrap](./bootstrap.md) - Initial file structure and server description requirements
+- [Methodology](./methodology.md) - Building a Second Brain (BASB) principles and guidance requirements
 
 ## Operations
 
@@ -24,8 +24,3 @@ Central registry of all technical specification documents for the Second Brain M
 - [Feature Flags](./feature-flags.md) - Runtime feature toggle system, flag sets, and controlled rollout mechanisms
 - [Monitoring](./monitoring.md) - Observability, logging, metrics, and alerting requirements
 - [Testing](./testing.md) - Test strategy, coverage requirements, and quality standards
-
-## Planning and Reference
-
-- [Roadmap](./roadmap.md) - Feature priorities, planned enhancements, and future direction
-- [Glossary](./glossary.md) - Domain terminology, abbreviations, and technical definitions
