@@ -1,631 +1,243 @@
 # Testing Strategy
 
-Comprehensive testing approach for the Second Brain MCP server, including unit tests, integration tests, and manual testing procedures.
+Testing philosophy, architecture, and quality standards for the Second Brain MCP server.
 
 ---
 
-## Overview
+## Philosophy
 
-Heavy unit test coverage is critical due to difficulty of integration testing MCP protocol. Target 95%+ code coverage with emphasis on:
-- Edge cases and error conditions
-- Concurrent operations
-- Rate limiting boundaries
-- Security validation
+**Quality Through Trends, Not Absolutes**
+
+Coverage metrics indicate direction, not destination. The goal is continuous improvement: coverage should trend upward over time, with decreases requiring explicit justification. This approach balances pragmatism with rigor—we acknowledge that not all code can be meaningfully tested while maintaining accountability for quality regression.
+
+**Test What Matters**
+
+Focus testing effort where it provides maximum value: business logic, security boundaries, error handling, and integration points. Avoid testing implementation details of third-party libraries or platform APIs—trust mature dependencies, mock at boundaries, and test our usage of them.
+
+**Fast Feedback Loops**
+
+Tests should be fast enough to run on every save during development. Unit tests measure in milliseconds, integration tests in seconds. Slow tests get skipped; skipped tests provide no value. Speed enables test-driven development and rapid iteration.
 
 ---
 
-## Unit Tests
+## Architecture
 
-### Coverage Requirements
+### Test Boundaries
 
-**100% Coverage Required:**
-- Individual tool functions (read, write, edit, glob, grep)
-- OAuth flow handlers
-- R2 operations abstraction
-- Rate limiting logic
-- Bootstrap file generation
-- Backup sync logic
-- Error handling for all edge cases
+**Unit Tests**: Isolated component behavior
+- Mock all external dependencies (R2, KV, OAuth libraries, external APIs)
+- Test business logic, validation, error handling, edge cases
+- Fast execution (< 100ms per test)
+- High coverage of algorithmic complexity
 
-**95%+ Coverage Required:**
-- MCP server implementation
-- Monitoring and logging
-- Utility functions
+**Integration Tests**: Cross-component interactions
+- Real business logic with mocked infrastructure
+- Test workflows that span multiple modules
+- Verify contracts between components
+- Moderate execution time (< 5s per test)
+
+**E2E Tests**: Full system validation
+- Real Worker runtime via `wrangler dev`
+- Real MCP SDK client (production-equivalent)
+- Mock only external services (GitHub, S3)
+- Tests the actual HTTP boundary that production uses
+- Slow but comprehensive (< 30s per test)
+
+### Runtime Strategy
+
+**Current: Node.js + Jest**
+
+All tests run in Node.js because our dependencies (MCP SDK, AWS SDK) use CommonJS modules with JSON imports that workerd doesn't support. This works because:
+- Unit/integration tests don't need Worker-specific APIs
+- E2E tests run actual Worker via `wrangler dev`
+- Production bundler (esbuild) resolves CommonJS→ESM at build time
+
+**Future: Workers Runtime**
+
+If dependencies migrate to pure ESM or we pre-bundle for testing, we could use `@cloudflare/vitest-pool-workers` to test in actual workerd. This would catch platform-specific issues earlier, but the current gap is acceptable—E2E tests provide sufficient runtime validation.
+
+### Mock Strategy
+
+Mocks should mirror API contracts without implementing internal logic. Keep them simple, predictable, and focused on enabling test scenarios (success paths, error injection, edge cases). Never mock third-party library internals—mock at the boundaries where we call them.
+
+**Infrastructure mocks** (R2, KV): In-memory Map-based implementations matching Cloudflare API contracts.
+
+**Service mocks** (OAuth, GitHub): Controlled flows with configurable responses for testing authorization, error handling, and edge cases.
+
+---
+
+## Coverage Standards
+
+### Trend-Based Monitoring
+
+Automated coverage tracking via GitHub Actions monitors trends across commits, visualizes coverage history, and identifies patterns. The system fails CI on significant drops unless manually overridden with justification. This creates accountability without mandating arbitrary absolutes.
+
+**Architectural Decision**: Coverage tracking is implemented using GitHub Actions (e.g., `clearlyip/code-coverage-report-action`) rather than third-party services, keeping all CI/CD infrastructure within GitHub's ecosystem and avoiding external service dependencies.
+
+**Coverage drops fail CI by default**, requiring:
+- PR comment explaining the decrease
+- Maintainer approval via review
+- Plan to recover coverage (if applicable)
+
+This prevents accidental quality degradation while allowing intentional trade-offs.
+
+### What to Measure
+
+**High coverage priorities**:
+- Tool implementations (read, write, edit, glob, grep)
+- Security validation (path traversal, size limits, injection)
+- Rate limiting and quota enforcement
+- Error handling paths
+- Storage abstractions
+
+**Lower coverage acceptable**:
+- Defensive logging and debug code
+- HTTP request/response marshaling (tested via E2E)
+- OAuth library integration (tested via E2E)
+- Platform API wrappers (thin adapters over R2/KV)
+
+### CI/CD Enforcement
+
+GitHub Actions runs tests on every push, uploads coverage data, and enforces quality gates:
+- All tests must pass
+- TypeScript compilation must succeed
+- Coverage must not decrease significantly (without override)
+
+Manual approval gates prevent deployment of quality regressions while preserving flexibility for justified trade-offs.
+
+---
+
+## Test Types
+
+### Unit Testing
+
+Focus on pure functions, business logic, and error handling. Mock all I/O and external dependencies. Test edge cases, boundary conditions, concurrent operations, and security validations.
+
+**Key principles**:
+- One assertion per concept (not necessarily per test)
+- Descriptive test names that document behavior
+- Fast execution enables rapid iteration
+- Comprehensive coverage of conditional logic
+
+**Example patterns**:
+- Valid input → expected output
+- Invalid input → proper error with context
+- Boundary conditions (empty, max, overflow)
+- Concurrent operations → correct final state
+- Security violations → rejection with safe error
+
+### Integration Testing
+
+Verify that components work together correctly. Use real business logic with mocked infrastructure. Test workflows that cross module boundaries.
+
+**Focus areas**:
+- Tool operation sequences (create → read → edit → delete)
+- Rate limiting across multiple requests
+- Storage operations with quota enforcement
+- Error propagation through layers
+
+**Not tested here**: Full HTTP transport, real OAuth flows, production runtime—those belong in E2E tests.
+
+### E2E Testing
+
+Validate the complete system as production uses it. Run actual Worker via `wrangler dev`, use real MCP SDK client, test over HTTP transport. Mock only external services (GitHub OAuth, S3 backups).
+
+**What this validates**:
+- HTTP request/response handling
+- OAuth 2.1 + PKCE flow completion
+- MCP protocol implementation (initialize, tools/list, prompts/list, tool execution)
+- Session management
+- Real Worker runtime behavior
+
+**Why this matters**: Unit and integration tests can't catch protocol-level issues, runtime incompatibilities, or HTTP transport bugs. E2E tests verify the actual production integration point.
+
+### Manual Testing
+
+Automated tests can't cover everything. Manual validation is required for:
+- Cross-platform clients (desktop, web, mobile)
+- Real OAuth providers (not mocked flows)
+- User experience and error messages
+- Production performance under load
+- Backup validation with actual S3
+
+Maintain a lightweight checklist of critical flows to verify before major releases, but don't prescribe detailed step-by-step procedures—those go stale quickly.
+
+---
+
+## Tools & Infrastructure
 
 ### Test Framework
 
-```json
-{
-  "test": "jest",
-  "coverage": "jest --coverage",
-  "test:watch": "jest --watch"
-}
-```
+**Jest** provides the testing infrastructure with TypeScript support, comprehensive coverage tooling, watch mode for test-driven development, and mature mocking capabilities. Configuration prioritizes speed through parallel execution and provides detailed coverage reporting with trend analysis.
 
-**Note:** Use `pnpm` instead of `npm` for all commands.
+### Coverage Tracking
 
-**Configuration (`jest.config.js`):**
-```javascript
-module.exports = {
-  preset: 'ts-jest',
-  testEnvironment: 'node',
-  collectCoverageFrom: [
-    'src/**/*.ts',
-    '!src/**/*.d.ts',
-    '!src/**/*.test.ts'
-  ],
-  coverageThreshold: {
-    global: {
-      branches: 95,
-      functions: 95,
-      lines: 95,
-      statements: 95
-    }
-  }
-};
-```
+Coverage metrics must be tracked over time with automated trend analysis. The system should integrate with pull requests to display coverage deltas and historical trends, enabling enforcement of coverage requirements through baseline comparisons.
 
-### Future: vitest-pool-workers
+### CI/CD Integration
 
-**Status: Blocked by CommonJS dependency compatibility (as of Jan 2025)**
+Automated testing must run on every commit and pull request, uploading coverage data and enforcing quality gates (all tests pass, coverage trends acceptable). Successful test runs enable deployment. All deployments must be tracked for rollback capability.
 
-**What We'd Like:**
+### Local Development
 
-Use `@cloudflare/vitest-pool-workers` to run tests in actual workerd runtime instead of Node.js. This would:
-- Test with production environment (Cloudflare Workers APIs)
-- Catch workerd-specific compatibility issues during testing
-- Eliminate differences between test and production runtimes
-
-**Why We Can't:**
-
-Our dependencies use CommonJS modules that import JSON files:
-- `ajv` (via `@modelcontextprotocol/sdk`) uses `require('./schema.json')`
-- `express` modules (via MCP SDK) use `require('./statuses.json')`
-- `@aws-sdk/client-s3` (in backup.ts) uses various CJS JSON imports
-
-workerd doesn't support CommonJS `require()`, so these fail with `SyntaxError: Unexpected token ':'` when JSON files are parsed as JavaScript.
-
-**Why Production Works:**
-
-Wrangler's bundler (esbuild) pre-processes everything before deployment:
-- Reads JSON files at build time and inlines them as JS objects
-- Transpiles CommonJS to ESM
-- Bundles into pure ESM that workerd can execute
-
-**When to Revisit:**
-
-- vitest-pool-workers improves CommonJS compatibility
-- Dependencies migrate to pure ESM (ajv v9+ is ESM-only)
-- We can pre-bundle dependencies for testing (similar to production)
-
-### Mock Implementations
-
-**R2 Bucket Mock:**
-```typescript
-// test/mocks/r2.ts
-export class MockR2Bucket {
-  private storage = new Map<string, ArrayBuffer>();
-
-  async get(key: string): Promise<R2Object | null> {
-    const data = this.storage.get(key);
-    if (!data) return null;
-    return {
-      key,
-      body: data,
-      size: data.byteLength,
-      httpMetadata: {},
-      customMetadata: {}
-    } as R2Object;
-  }
-
-  async put(key: string, value: ArrayBuffer): Promise<void> {
-    this.storage.set(key, value);
-  }
-
-  async delete(key: string): Promise<void> {
-    this.storage.delete(key);
-  }
-
-  async list(options?: R2ListOptions): Promise<R2Objects> {
-    // Implementation for listing with prefix/delimiter support
-  }
-}
-```
-
-**KV Namespace Mock:**
-```typescript
-// test/mocks/kv.ts
-export class MockKVNamespace {
-  private storage = new Map<string, { value: string; expiration?: number }>();
-
-  async get(key: string): Promise<string | null> {
-    const entry = this.storage.get(key);
-    if (!entry) return null;
-    if (entry.expiration && Date.now() > entry.expiration) {
-      this.storage.delete(key);
-      return null;
-    }
-    return entry.value;
-  }
-
-  async put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void> {
-    this.storage.set(key, {
-      value,
-      expiration: options?.expirationTtl ? Date.now() + options.expirationTtl * 1000 : undefined
-    });
-  }
-}
-```
+The testing system must support:
+- Parallel test execution for speed
+- Watch mode for iterative development
+- HTML coverage report generation
+- Selective test execution by path or pattern
 
 ---
 
-## Key Test Cases
+## Quality Gates
 
-### Tool: `read`
+### Continuous Integration
 
-```typescript
-describe('read tool', () => {
-  it('should read entire file', async () => {
-    // Test reading full file content
-  });
+**Required for merge**:
+- All tests pass (unit, integration, E2E)
+- TypeScript compilation succeeds
+- Coverage trend is acceptable
 
-  it('should read line range', async () => {
-    // Test range [10, 20]
-  });
+**Manual override available** for coverage decreases with justification.
 
-  it('should return 404 for missing file', async () => {
-    // Test error handling
-  });
+### Pre-Deployment
 
-  it('should enforce max_bytes limit', async () => {
-    // Test byte limit enforcement
-  });
-
-  it('should handle files with unicode characters', async () => {
-    // Test UTF-8 encoding
-  });
-
-  it('should reject invalid line ranges', async () => {
-    // Test [0, 10], [-1, 10], [20, 10]
-  });
-});
-```
-
-### Tool: `write`
-
-```typescript
-describe('write tool', () => {
-  it('should create new file', async () => {});
-
-  it('should overwrite existing file', async () => {});
-
-  it('should reject files over 1MB', async () => {});
-
-  it('should reject invalid paths', async () => {
-    // Test path traversal: '../etc/passwd'
-  });
-
-  it('should handle concurrent writes to same file', async () => {
-    // Test race conditions
-  });
-
-  it('should enforce storage quotas', async () => {
-    // Test 10GB and 10k file limits
-  });
-});
-```
-
-### Tool: `edit`
-
-```typescript
-describe('edit tool', () => {
-  it('should replace unique string', async () => {});
-
-  it('should reject non-unique old_str', async () => {
-    // Test string appearing multiple times
-  });
-
-  it('should reject missing old_str', async () => {});
-
-  it('should move file to new path', async () => {});
-
-  it('should rename file', async () => {});
-
-  it('should delete file', async () => {});
-
-  it('should edit and move in one operation', async () => {});
-
-  it('should reject move to existing path', async () => {});
-
-  it('should handle special characters in old_str', async () => {
-    // Test quotes, backslashes, unicode
-  });
-});
-```
-
-### Tool: `glob`
-
-```typescript
-describe('glob tool', () => {
-  it('should match all markdown files', async () => {
-    // Pattern: **/*.md
-  });
-
-  it('should match files in directory', async () => {
-    // Pattern: projects/**
-  });
-
-  it('should match files with name pattern', async () => {
-    // Pattern: **/*meeting*
-  });
-
-  it('should handle empty results', async () => {});
-
-  it('should enforce max_results limit', async () => {});
-
-  it('should reject invalid patterns', async () => {
-    // Test malformed globs
-  });
-
-  it('should return metadata', async () => {
-    // Test size, modified date
-  });
-});
-```
-
-### Tool: `grep`
-
-```typescript
-describe('grep tool', () => {
-  it('should find matches across all files', async () => {});
-
-  it('should scope search to path', async () => {
-    // Test path: projects/**
-  });
-
-  it('should return context lines', async () => {
-    // Test context_lines: 2
-  });
-
-  it('should handle regex patterns', async () => {
-    // Test: \\buser\\s+research\\b
-  });
-
-  it('should be case-insensitive by default', async () => {});
-
-  it('should enforce max_matches limit', async () => {});
-
-  it('should reject invalid regex', async () => {});
-
-  it('should handle multiline matches', async () => {});
-});
-```
-
-### OAuth Handler
-
-```typescript
-describe('OAuth handler', () => {
-  it('should complete OAuth flow', async () => {});
-
-  it('should reject unauthorized users', async () => {
-    // Test user not in allowed list
-  });
-
-  it('should store tokens in KV', async () => {});
-
-  it('should validate tokens', async () => {});
-
-  it('should handle token expiry', async () => {});
-
-  it('should refresh expired tokens', async () => {});
-
-  it('should encrypt tokens', async () => {});
-});
-```
-
-### Rate Limiting
-
-```typescript
-describe('rate limiting', () => {
-  it('should allow requests within limit', async () => {});
-
-  it('should block requests over limit', async () => {
-    // Test 100 requests/minute
-  });
-
-  it('should reset counters after TTL', async () => {});
-
-  it('should enforce per-window limits', async () => {
-    // Test minute, hour, day windows
-  });
-
-  it('should return retry-after header', async () => {});
-
-  it('should enforce storage quotas', async () => {
-    // Test 10GB limit
-  });
-});
-```
-
-### Bootstrap
-
-```typescript
-describe('bootstrap', () => {
-  it('should create bootstrap files on first run', async () => {});
-
-  it('should be idempotent', async () => {
-    // Don't overwrite existing README
-  });
-
-  it('should create PARA directory structure', async () => {});
-
-  it('should handle bootstrap errors gracefully', async () => {});
-});
-```
-
-### Backup
-
-```typescript
-describe('backup', () => {
-  it('should sync all files to S3', async () => {});
-
-  it('should only sync changed files', async () => {
-    // Test ETag comparison
-  });
-
-  it('should preserve directory structure', async () => {});
-
-  it('should clean up old backups', async () => {
-    // Test 30-day retention
-  });
-
-  it('should log backup statistics', async () => {});
-
-  it('should handle S3 errors gracefully', async () => {});
-});
-```
+Manual validation checklist for production releases (real OAuth, cross-platform testing, backup verification). Automated tests provide confidence, but critical flows deserve human verification before release.
 
 ---
 
-## Integration Tests
-
-Limited integration testing due to MCP protocol complexity.
-
-### Test Coverage
-
-```typescript
-describe('Integration: OAuth + Tool Call', () => {
-  it('should complete full OAuth flow and call tool', async () => {
-    // 1. Mock GitHub OAuth
-    // 2. Complete OAuth
-    // 3. Call read tool with token
-    // 4. Verify success
-  });
-});
-
-describe('Integration: Tool Sequences', () => {
-  it('should create, read, edit, delete file', async () => {
-    // Test full lifecycle
-  });
-
-  it('should handle errors in sequence', async () => {
-    // Test write → read (404) → error
-  });
-});
-
-describe('Integration: SSE Connection', () => {
-  it('should maintain SSE connection', async () => {
-    // Test MCP over SSE
-  });
-
-  it('should handle connection drops', async () => {});
-});
-```
-
----
-
-## Manual Testing Checklist
-
-Core functionality must be manually verified with real Claude client:
-
-### Initial Setup
-- [ ] OAuth connection from Claude desktop
-- [ ] OAuth connection from Claude mobile
-- [ ] Bootstrap files appear on first connection
-- [ ] Bootstrap is idempotent (doesn't recreate files)
-
-### Tool: `read`
-- [ ] Read entire file
-- [ ] Read with line range [1, 10]
-- [ ] Read non-existent file (404 error)
-- [ ] Read large file (>1MB)
-- [ ] Read file with unicode characters
-
-### Tool: `write`
-- [ ] Create new file in projects/
-- [ ] Overwrite existing file
-- [ ] Create file with special characters in content
-- [ ] Attempt to write file >1MB (413 error)
-- [ ] Create files in all PARA categories
-
-### Tool: `edit`
-- [ ] Replace text in file
-- [ ] Replace text with special characters (quotes, backslashes)
-- [ ] Attempt to replace non-existent text (400 error)
-- [ ] Attempt to replace non-unique text (400 error)
-- [ ] Move file between directories
-- [ ] Rename file
-- [ ] Delete file
-- [ ] Edit and move in one operation
-
-### Tool: `glob`
-- [ ] List all files: `**/*.md`
-- [ ] List files in directory: `projects/**`
-- [ ] Find files by name pattern: `**/*meeting*`
-- [ ] Empty results (no matches)
-- [ ] Verify metadata (size, modified date)
-
-### Tool: `grep`
-- [ ] Search all files for keyword
-- [ ] Search with regex pattern
-- [ ] Search scoped to directory
-- [ ] Search with context lines
-- [ ] Case-insensitive search (default)
-- [ ] Case-sensitive search
-- [ ] No matches found
-
-### Rate Limiting
-- [ ] Make 100 requests in 1 minute (should work)
-- [ ] Make 101st request (should get 429)
-- [ ] Wait 1 minute and retry (should work)
-- [ ] Verify Retry-After header
-
-### Storage Limits
-- [ ] Create multiple files approaching 10GB limit
-- [ ] Attempt to exceed 10GB (507 error)
-- [ ] Create 10,000 files
-- [ ] Attempt to create 10,001st file (507 error)
-
-### Error Scenarios
-- [ ] Invalid path (path traversal attempt)
-- [ ] Malformed tool parameters
-- [ ] Expired OAuth token
-- [ ] Invalid OAuth token
-
-### Prompts
-- [ ] Use `capture-note` prompt
-- [ ] Use `weekly-review` prompt
-- [ ] Use `research-summary` prompt
-
-### Backup
-- [ ] Wait for scheduled backup (2 AM UTC)
-- [ ] Trigger manual backup: `POST /admin/backup`
-- [ ] Verify files in S3
-- [ ] Verify incremental backup (only changed files)
-
-### Cross-Platform
-- [ ] Test on Claude web
-- [ ] Test on Claude desktop (macOS/Windows/Linux)
-- [ ] Test on Claude mobile (iOS/Android)
-
----
-
-## Performance Testing
-
-### Load Tests
-
-```typescript
-describe('Performance', () => {
-  it('should handle 100 concurrent reads', async () => {
-    // Test concurrent tool calls
-  });
-
-  it('should complete tool call in <500ms', async () => {
-    // Test p95 latency
-  });
-
-  it('should handle large file operations', async () => {
-    // Test 10MB read, 1MB write
-  });
-
-  it('should list 1000 files efficiently', async () => {
-    // Test glob performance
-  });
-});
-```
-
-### Stress Tests
-
-- Create 10,000 files
-- Search 10,000 files with grep
-- Rapid tool calls (rate limit testing)
-- Large file operations near limits
-
----
-
-## Test Data
-
-### Fixtures
-
-Create test fixtures in `test/fixtures/`:
-
-```
-test/fixtures/
-├── notes/
-│   ├── simple.md              # Basic markdown
-│   ├── unicode.md             # UTF-8 characters
-│   ├── large.md               # >1MB file
-│   ├── special-chars.md       # Quotes, backslashes
-│   └── multiline.md           # Multiple sections
-└── expected/
-    ├── bootstrap-readme.md    # Expected bootstrap output
-    └── para-structure.json    # Expected directory structure
-```
-
----
-
-## Continuous Integration
-
-### GitHub Actions: `.github/workflows/test.yml`
-
-```yaml
-name: Test
-
-on: [push, pull_request]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm test -- --coverage
-      - name: Upload coverage
-        uses: codecov/codecov-action@v3
-        with:
-          files: ./coverage/lcov.info
-```
-
-### Pre-commit Hook
-
-```bash
-#!/bin/bash
-# .git/hooks/pre-commit
-
-pnpm test
-if [ $? -ne 0 ]; then
-  echo "Tests failed. Commit aborted."
-  exit 1
-fi
-```
-
----
-
-## Test Maintenance
+## Maintenance
 
 ### When to Update Tests
 
-- When adding new features
-- When fixing bugs (add regression test)
-- When changing tool behavior
-- When updating dependencies
+- **New features**: Write tests first (TDD)
+- **Bug fixes**: Add regression test before fixing
+- **Behavior changes**: Update affected tests
+- **Refactoring**: Tests should still pass (if they don't, you changed behavior)
 
-### Test Review Checklist
+### When to Delete Tests
 
-- [ ] All edge cases covered
-- [ ] Error conditions tested
-- [ ] Concurrent operations tested
-- [ ] Security validations tested
-- [ ] Performance acceptable
-- [ ] Tests are readable and maintainable
+- **Dead code removed**: Delete associated tests immediately
+- **Features removed**: Delete feature tests
+- **Never**: Keep tests for active code paths
+
+Trust git history as the archive. Don't comment out tests "just in case."
+
+### Test Quality Indicators
+
+Good tests are:
+- **Readable**: Self-documenting with clear names and structure
+- **Fast**: Unit tests < 100ms, integration < 5s, E2E < 30s
+- **Deterministic**: No flaky tests, no timing dependencies
+- **Isolated**: No shared state between tests
+- **Comprehensive**: Cover edge cases, errors, and security
+
+Bad tests are worse than no tests—they create false confidence and maintenance burden.
 
 ---
 
 ## Related Documentation
 
-- [API Reference](./api-reference.md) - Tool specifications to test
-- [Deployment](./deployment.md) - Manual testing in production
-- [Monitoring](./monitoring.md) - Production verification
+- [API Reference](./api-reference.md) - Tool specifications
+- [Implementation](./implementation.md) - Code structure
+- [Security](./security.md) - Security architecture
+- [Deployment](./deployment.md) - Production procedures
