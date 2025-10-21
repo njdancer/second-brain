@@ -33,7 +33,7 @@ Flags are organized into **flag sets** stored as JSON objects in Cloudflare KV. 
 
 **Storage requirements:**
 - Flag sets MUST be stored in KV namespace `FEATURE_FLAGS_KV`
-- Each flag set MUST be stored with key: `flagset:{set_id}` (e.g., `flagset:production`, `flagset:development`)
+- Each flag set MUST be stored with key: `flagset:{set_id}` (e.g., `flagset:env:production`, `flagset:env:development`)
 - Flag set values MUST be valid JSON
 - Missing flag sets MUST NOT crash the application (use default fallback)
 
