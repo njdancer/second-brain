@@ -1,4 +1,4 @@
-# API Reference
+# MCP Tools
 
 Complete specification of all MCP tools provided by the Second Brain server.
 
