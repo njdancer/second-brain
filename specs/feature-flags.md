@@ -127,33 +127,51 @@ export const FlagSchemas = {
 
 ### Flag Metadata
 
-Each flag SHOULD be documented with metadata for tracking and cleanup:
+Each flag MUST be documented with metadata using JSDoc-style comments in the schema registry file. This keeps metadata co-located with schemas, enables structured documentation, and allows potential tooling to parse flag information.
 
-**Required metadata:**
-- **Name** - Flag identifier (SCREAMING_SNAKE_CASE)
-- **Description** - What feature/behavior the flag controls
-- **Added date** - When flag was created
-- **Owner** - Who's responsible for the flagged feature
-- **Target removal** - Expected date to remove flag (typically 3-6 months)
+**Required metadata fields:**
+- `@description` - What feature/behavior the flag controls
+- `@added` - When flag was created (YYYY-MM-DD format)
+- `@owner` - Who's responsible for the flagged feature (GitHub username)
+- `@removal` - Expected date to remove flag (YYYY-MM-DD format, typically 3-6 months from creation)
 
-**Metadata location options:**
-
-**Option A: Inline code comments** (recommended for simplicity)
+**JSDoc format example:**
 ```typescript
 export const FlagSchemas = {
-  // ADVANCED_SEARCH
-  // Description: Enable advanced search with fuzzy matching
-  // Added: 2025-01-15
-  // Owner: @username
-  // Target removal: 2025-04-15 (3 months)
+  /**
+   * Enable advanced search with fuzzy matching and relevance scoring
+   * @added 2025-01-15
+   * @owner @username
+   * @removal 2025-04-15
+   */
   ADVANCED_SEARCH: z.boolean(),
+
+  /**
+   * Enable batch delete operations for multiple files
+   * @added 2025-01-20
+   * @owner @username
+   * @removal 2025-07-20
+   */
+  BATCH_OPERATIONS: z.boolean(),
+
+  /**
+   * Experimental tool with configurable limits
+   * @added 2025-02-01
+   * @owner @username
+   * @removal 2025-05-01
+   */
+  EXPERIMENTAL_TOOL: z.object({
+    enabled: z.boolean(),
+    max_items: z.number().min(1).max(1000),
+  }),
 } as const;
 ```
 
-**Option B: Separate markdown registry**
-Create `docs/feature-flags.md` with a table of all active flags.
-
-**[DEFERRED]** The choice between inline comments and markdown registry is an implementation decision. Both approaches work, choose based on team preference.
+**Benefits of JSDoc approach:**
+- Structured and parsable (enables future tooling)
+- Co-located with schemas (single source of truth)
+- Familiar format for TypeScript developers
+- Potential to generate documentation automatically
 
 ### Flag Naming Conventions
 
@@ -172,7 +190,7 @@ Flag names MUST follow these conventions:
 Process for adding a new flag:
 
 1. **Define schema** in the flag schema registry (TypeScript file)
-2. **Add metadata** (inline comment or markdown registry entry)
+2. **Add JSDoc metadata** (@description, @added, @owner, @removal)
 3. **Set default value** in the `production` flag set in KV
 4. **Override in development** flag set in KV if needed for testing
 5. **Use flag in code** with proper type checking
@@ -209,10 +227,9 @@ Process for removing a flag after feature is complete:
 1. **Enable in all flag sets** (ensure feature is enabled everywhere)
 2. **Monitor production** for 1 week minimum
 3. **Remove flag checks from code** (assume feature always enabled)
-4. **Remove schema** from schema registry
+4. **Remove schema and JSDoc metadata** from schema registry
 5. **Remove from flag sets** in KV
-6. **Remove metadata** from registry
-7. **Document removal** in commit message
+6. **Document removal** in commit message
 
 **Cleanup policy:**
 - Flags SHOULD be reviewed monthly
