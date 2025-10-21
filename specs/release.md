@@ -24,7 +24,9 @@ Direct commits to `main` are PROHIBITED except for emergency hotfixes when the p
 
 All development work MUST occur on feature branches created from `main`. Feature branches SHOULD follow the naming convention `feature/{description}` or `fix/{description}` to indicate intent. Branch names MUST use kebab-case and SHOULD be concise but descriptive (e.g., `feature/oauth-pkce-support`, `fix/session-timeout-bug`).
 
-Feature branches MUST be short-lived, typically merged within 1-3 days of creation. Long-running feature branches increase merge conflicts and defer integration issues. For large features requiring longer development, use feature flags to merge incomplete work while keeping the functionality disabled in production. See [Feature Flags](./feature-flags.md) for the runtime feature toggle system, flag set management, and flag lifecycle requirements.
+Feature branches MUST be short-lived, typically merged within 1-3 days of creation. Long-running feature branches increase merge conflicts and defer integration issues. For large features requiring longer development, feature flags MAY be used to merge incomplete work while keeping functionality disabled in production.
+
+**[DEFERRED]** Feature flag system design and implementation are deferred to future requirements.
 
 Feature branches SHOULD be deleted immediately after merge to reduce repository clutter and prevent accidental continued development on stale branches.
 

@@ -238,6 +238,6 @@ Bad tests are worse than no tests—they create false confidence and maintenance
 ## Related Documentation
 
 - [Tools](./tools.md) - MCP tool specifications
-- [Implementation](./implementation.md) - Code structure
+- [Architecture](./architecture.md) - System architecture and components
 - [Security](./security.md) - Security architecture
 - [Deployment](./deployment.md) - Production procedures
