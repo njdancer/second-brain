@@ -55,23 +55,12 @@ Functions return:
 - **Flag set ID** (string) if the function matches this request
 - **null** to pass to the next function in the chain
 
-**Initial implementation (environment-based):**
-```typescript
-function assignByEnvironment(request: Request, env: Env): string | null {
-  if (env.ENVIRONMENT === 'development') return 'development';
-  if (env.ENVIRONMENT === 'production') return 'production';
-  return null;
-}
-```
-
-**Future extensions (examples, not required initially):**
-- Check `User-Agent` header to detect test clients
-- Check `X-Feature-Flags` header for override requests
-- Check IP address against allowlist
-- Check request path patterns
+**[DEFERRED]** The specific implementation of assignment functions is an implementation decision. Initial implementation SHOULD support environment-based assignment (development vs production). Future extensions MAY include more sophisticated targeting based on request headers, IP addresses, or other request attributes.
 
 **Default fallback:**
 If no assignment function returns a flag set ID, use `production` as the default.
+
+Default flag values SHOULD be configured in `wrangler.toml` per environment to provide build-time defaults. These environment-level defaults allow different baseline flag values for development vs production without requiring KV reads when flag sets are unavailable.
 
 ### Flag Access
 
@@ -191,8 +180,8 @@ Process for adding a new flag:
 
 1. **Define schema** in the flag schema registry (TypeScript file)
 2. **Add JSDoc metadata** (@description, @added, @owner, @removal)
-3. **Set default value** in the `production` flag set in KV
-4. **Override in development** flag set in KV if needed for testing
+3. **Set default value** in `wrangler.toml` for both production and development environments
+4. **Override in KV flag sets** if runtime changes are needed
 5. **Use flag in code** with proper type checking
 6. **Deploy code** that checks the flag
 7. **Verify flag works** in development environment
@@ -200,14 +189,29 @@ Process for adding a new flag:
 **Schema validation requirement:**
 All flag set updates (manual or automated) MUST validate against the schema registry. Invalid flag values MUST be rejected.
 
-**[DEFERRED]** CLI tooling for flag creation is a future enhancement. Initial implementation uses manual KV updates (via wrangler CLI or dashboard).
+**Flag management automation:**
+The system SHOULD provide automated tooling for flag management to reduce manual errors and enforce schema validation. Potential approaches include:
+- Command-line scripts that interact with KV via Cloudflare API
+- HTTP endpoints within the application (with authentication) for flag updates
+- Dashboard UI for flag visualization and modification
+
+The automated system SHOULD:
+- Enforce schema validation before accepting flag updates
+- Support bulk flag updates across environments
+- Provide audit logging of flag changes
+- Enable complex flag set operations (flag set composition, merging, etc.)
+
+**Virtual flag sets:**
+To enable more complex flag matching scenarios, the system SHOULD support virtual flag sets that combine multiple existing flag sets. For example, a "staging" virtual flag set could be defined as the combination of "production" defaults with specific overrides from a "staging-overrides" flag set. When flag sets are updated, any dependent virtual flag sets SHOULD be recalculated automatically. This maintains the performance requirement of one KV read per request while enabling flexible flag configuration.
+
+**[DEFERRED]** Specific implementation of automated flag management (CLI scripts, API endpoints, dashboard UI) is deferred. Initial implementation MAY use manual KV updates via wrangler CLI or Cloudflare dashboard, but this should be considered temporary.
 
 ### Updating Flags
 
 Process for changing flag values at runtime:
 
-1. **Update flag set** in KV (modify JSON blob for target flag set)
-2. **Validate against schema** before saving
+1. **Update flag set** via automated tooling (preferred) or manual KV update
+2. **Validate against schema** (enforced by tooling or manual check)
 3. **Wait for edge propagation** (KV updates propagate within seconds to minutes)
 4. **Verify change** in target environment
 5. **Monitor for issues** after enabling new code paths
@@ -273,12 +277,20 @@ Flag sets are stored as JSON blobs in KV with the following structure:
 
 ### Default Values
 
-Each flag schema SHOULD define a sensible default value that applies when:
-- The flag is missing from the flag set
-- The flag set is not found in KV
-- KV is unavailable (fail-safe behavior)
+Flag values are resolved in the following priority order (highest to lowest):
+1. **KV flag set values** - Runtime flag values from KV (highest priority)
+2. **wrangler.toml environment values** - Build-time environment-specific defaults
+3. **Schema defaults** - Hardcoded defaults in Zod schemas (lowest priority, fail-safe)
 
-**[DEFERRED]** The mechanism for defining defaults (schema defaults, separate config file, hardcoded fallbacks) is an implementation decision.
+This layering allows:
+- Flags defined in `wrangler.toml` override schema defaults
+- Flags in KV override both wrangler.toml and schema defaults
+- Safe fallback to schema defaults when both KV and wrangler.toml are unavailable
+
+Each flag schema SHOULD define a sensible default value that applies when:
+- The flag is missing from the flag set in KV
+- The flag is not configured in wrangler.toml
+- KV is unavailable (fail-safe behavior)
 
 ---
 
@@ -342,7 +354,7 @@ Tests MUST NOT depend on KV state or flag set configuration in KV. Test fixtures
 
 **Approaches:**
 
-**Option A: Mock flag loader**
+**Option A: Mock flag loader (PREFERRED)**
 ```typescript
 // In tests
 const mockFlags = {
@@ -351,8 +363,14 @@ const mockFlags = {
 };
 ```
 
+This approach is preferred because it:
+- Keeps tests fast (no KV dependency)
+- Makes test expectations explicit
+- Enables testing of specific flag combinations easily
+- Avoids test environment state management
+
 **Option B: Test-specific flag sets**
-Create flag sets specifically for testing (e.g., `flagset:test-enabled`, `flagset:test-disabled`) and load them in test environments.
+Create flag sets specifically for testing (e.g., `flagset:test-enabled`, `flagset:test-disabled`) and load them in test environments. This approach MAY be used for integration tests but is NOT recommended for unit tests.
 
 ### Test Coverage
 

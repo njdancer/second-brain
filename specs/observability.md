@@ -215,13 +215,7 @@ The system MUST leverage the built-in Cloudflare Workers dashboard for:
 
 ### Custom Analytics
 
-The system SHOULD support custom dashboards querying Analytics Engine data for:
-- Tool usage trends over time
-- Per-tool performance metrics
-- Cost tracking and forecasting
-- Security event monitoring
-
-**[DEFERRED]** Specific dashboard tools (Grafana, custom web UI, SQL queries) are implementation decisions.
+**[OUT OF SCOPE]** Custom dashboards and data visualization are explicitly deferred. The system MUST collect and store observability data in Analytics Engine, but accessing and visualizing this data is out of scope for current implementation. Future work MAY include custom dashboards for tool usage trends, performance metrics, cost tracking, and security monitoring.
 
 ---
 

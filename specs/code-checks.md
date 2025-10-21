@@ -166,10 +166,7 @@ Developers MAY bypass hooks with `--no-verify` flag for emergency situations, bu
 
 ### Recommended Tools
 
-**[DEFERRED]** The choice of pre-commit hook implementation is an implementation decision. Options include:
-- `husky` + `lint-staged` (popular JavaScript ecosystem choice)
-- `simple-git-hooks` (lighter alternative)
-- Native Git hooks (maximum control, less convenient)
+The project MUST use `husky` + `lint-staged` for pre-commit hook management to ensure consistent tooling across development environments.
 
 ---
 
