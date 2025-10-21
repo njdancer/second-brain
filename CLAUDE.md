@@ -338,6 +338,71 @@ test/
 └── mocks/                # R2, KV, GitHub mocks
 ```
 
+## Configuration Reference
+
+This section contains essential configuration information for interactive setup assistance. All setup and onboarding should be done interactively via Claude - do NOT create static setup documentation.
+
+### Required Cloudflare Resources
+
+**R2 Buckets:**
+```bash
+wrangler r2 bucket create second-brain
+wrangler r2 bucket create second-brain-dev  # Development environment
+```
+
+**KV Namespaces:**
+```bash
+# OAuth token storage
+wrangler kv:namespace create "OAUTH_KV"
+wrangler kv:namespace create "OAUTH_KV" --preview
+
+# Rate limiting
+wrangler kv:namespace create "RATE_LIMIT_KV"
+wrangler kv:namespace create "RATE_LIMIT_KV" --preview
+```
+
+### Required Secrets
+
+Set via `wrangler secret put <SECRET_NAME>`:
+
+| Secret | Description | How to Generate |
+|--------|-------------|-----------------|
+| `GITHUB_CLIENT_ID` | OAuth App client ID | GitHub OAuth App settings |
+| `GITHUB_CLIENT_SECRET` | OAuth App client secret | GitHub OAuth App settings |
+| `COOKIE_ENCRYPTION_KEY` | 32-byte hex string | `openssl rand -hex 32` |
+| `S3_BACKUP_ACCESS_KEY` | AWS access key | AWS IAM user |
+| `S3_BACKUP_SECRET_KEY` | AWS secret key | AWS IAM user |
+| `S3_BACKUP_BUCKET` | S3 bucket name | Your backup bucket |
+| `S3_BACKUP_REGION` | AWS region | e.g., `us-east-1` |
+
+### Required Environment Variables
+
+**`wrangler.toml` configuration:**
+- `GITHUB_ALLOWED_USER_ID` - GitHub user ID (get from `curl https://api.github.com/users/USERNAME | jq .id`)
+- R2 bucket bindings (STORAGE)
+- KV namespace bindings (OAUTH_KV, RATE_LIMIT_KV)
+- Cron trigger: `["0 2 * * *"]` for daily backups
+
+**GitHub OAuth App Setup:**
+- Homepage URL: `https://second-brain-mcp.YOUR_SUBDOMAIN.workers.dev`
+- Callback URL: `https://second-brain-mcp.YOUR_SUBDOMAIN.workers.dev/callback`
+
+### AWS S3 Backup (Optional)
+
+**IAM Policy for backup user:**
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["s3:PutObject", "s3:GetObject", "s3:ListBucket", "s3:DeleteObject"],
+      "Resource": ["arn:aws:s3:::BUCKET_NAME", "arn:aws:s3:::BUCKET_NAME/*"]
+    }
+  ]
+}
+```
+
 ## When Stuck
 
 1. Check relevant spec file in [specs/](specs/)

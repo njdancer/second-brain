@@ -4,378 +4,415 @@
 
 ## Stack
 
-- **Platform**: Cloudflare Workers
-- **Protocol**: Model Context Protocol (MCP) via `@modelcontextprotocol/sdk`
+- **Platform**: Cloudflare Workers (serverless edge compute)
+- **Protocol**: Model Context Protocol (MCP) v2025-03-26 via `@modelcontextprotocol/sdk`
 - **OAuth SERVER**: `@cloudflare/workers-oauth-provider` v0.0.11 (issues MCP tokens with PKCE)
 - **OAuth CLIENT**: Arctic v3.7.0 (GitHub authentication for user verification)
-- **Storage**: Cloudflare R2 (single bucket, configured via wrangler)
-- **Session Management**: Cloudflare Durable Objects (stateful MCP transport sessions)
-- **Transport**: Streamable HTTP (MCP protocol version 2025-03-26)
+- **Storage**: Cloudflare R2 (object storage, single bucket)
+- **Session Management**: Cloudflare Durable Objects (stateful MCP sessions)
+- **Transport**: Streamable HTTP with JSON response mode (not SSE)
 - **Observability**: Structured JSON logging + Cloudflare Analytics Engine
+- **Version**: 1.2.18
 
 ---
 
-## Architecture Pattern
+## Core Architecture Pattern
 
+```mermaid
+graph TD
+    A[Claude/MCP Client] -->|OAuth 2.1 + PKCE| B[Worker: OAuthProvider]
+    B -->|/mcp endpoint| C[Worker: MCPHandler]
+    C -->|Session routing| D[Durable Object: MCPSessionDO]
+    D -->|Tool execution| E[R2 Storage]
+
+    B -->|/authorize /callback| F[Worker: GitHubHandler]
+    F -->|OAuth 2.0 + PKCE| G[GitHub API]
+    G -->|User verification| F
+    F -->|Issue MCP token| B
+
+    D -.Metrics.-> H[Analytics Engine]
+    C -.Rate limiting.-> I[KV: RATE_LIMIT_KV]
+    B -.Token storage.-> J[KV: OAUTH_KV]
+
+    style D fill:#e1f5ff
+    style B fill:#fff4e1
+    style F fill:#fff4e1
 ```
-Claude/MCP Client
-    ↓ (OAuth 2.1 + PKCE)
-    ↓ [MCP tokens issued by us]
-Worker (OAuthProvider)
-    ├─→ /mcp endpoint (authenticated)
-    │       ↓
-    │   Durable Object (per session)
-    │       ├─→ StreamableHTTPServerTransport (stateful)
-    │       ├─→ MCP Server
-    │       └─→ R2 Storage
-    │
-    └─→ /oauth/* (GitHub flow)
-            ↓ (OAuth 2.0 + PKCE)
-            ↓ [GitHub tokens consumed by us via Arctic]
-        GitHub API
-            ↓
-        User Verification (allowlist check)
+
+### Dual OAuth Architecture
+
+**Flow 1: OAuth SERVER (We issue tokens)**
+- MCP clients authenticate WITH US
+- We issue MCP access tokens via `@cloudflare/workers-oauth-provider`
+- Includes PKCE (OAuth 2.1 requirement for public clients)
+
+**Flow 2: OAuth CLIENT (We consume tokens)**
+- We authenticate WITH GitHub via Arctic library
+- GitHub verifies user identity
+- We check user against allowlist (`GITHUB_ALLOWED_USER_ID`)
+- GitHub tokens are consumed, NOT passed to MCP clients
+
+### Session Management via Durable Objects
+
+Each MCP session runs in its own Durable Object instance:
+
+```mermaid
+sequenceDiagram
+    participant C as Claude Client
+    participant W as Worker
+    participant DO as Durable Object
+    participant T as MCP Transport
+
+    C->>W: POST /mcp (initialize)
+    W->>W: Generate session ID
+    W->>DO: Get/create DO by session ID
+    DO->>T: Initialize StreamableHTTPServerTransport
+    DO->>T: Connect MCP Server
+    T-->>W: Response with session context
+    W-->>C: Response + mcp-session-id header
+
+    Note over C: Subsequent requests
+    C->>W: POST /mcp + mcp-session-id header
+    W->>DO: Route to same DO by ID
+    DO->>T: Handle via existing transport
+    T-->>DO: Tool execution result
+    DO-->>W: Response
+    W-->>C: Tool result
 ```
 
-**Dual OAuth Architecture:**
-- **Flow 1**: Claude authenticates WITH US (we issue MCP tokens via OAuthProvider)
-- **Flow 2**: We authenticate WITH GitHub (we verify user identity via Arctic)
-
-**Session Management:**
-- Each MCP session runs in its own Durable Object instance
-- Session ID is used as Durable Object ID for routing
-- Provides stateful storage for StreamableHTTPServerTransport
-- Enables SSE (Server-Sent Events) streaming across multiple HTTP requests
+**Why Durable Objects?**
+- Workers are stateless, but MCP transport requires stateful session management
+- Each session ID maps directly to a Durable Object ID (consistent routing)
+- Provides strongly-consistent storage per session
+- Automatic hibernation reduces costs (well within free tier)
+- Built-in alarm system for session timeout (30 minutes idle)
 
 ---
 
-## Authentication Flow
+## Authentication & Authorization Flow
 
-**Complete OAuth Flow (both roles combined):**
+```mermaid
+sequenceDiagram
+    participant C as Claude Client
+    participant OP as OAuthProvider
+    participant GH as GitHubHandler
+    participant GitHub as GitHub API
 
-1. Claude initiates OAuth with MCP server at `/oauth/authorize` (PKCE code challenge)
-2. OAuthProvider parses MCP OAuth request, validates client
-3. Worker redirects user to GitHub via Arctic (`/oauth/callback` return URL)
-4. User authenticates with GitHub and authorizes `read:user` scope
-5. GitHub redirects back to `/oauth/callback` with authorization code
-6. Arctic validates code and exchanges for GitHub access token (with PKCE)
-7. Worker fetches GitHub user info using token
-8. Worker validates user against `GITHUB_ALLOWED_USER_ID` allowlist
-9. OAuthProvider.completeAuthorization() issues MCP authorization code to Claude
-10. Claude exchanges authorization code for MCP access token (with PKCE verification)
-11. Claude uses MCP token for subsequent tool calls at `/mcp` endpoint
+    Note over C,GitHub: MCP OAuth Flow (We Issue Tokens)
+    C->>OP: GET /authorize (PKCE challenge)
+    OP->>OP: Parse OAuth request
+    OP->>GH: Redirect to GitHub auth
 
-**Library Responsibilities:**
-- **Arctic** - Handles GitHub OAuth CLIENT (steps 3-7): auth URL generation, token exchange, PKCE
-- **OAuthProvider** - Handles MCP OAuth SERVER (steps 1-2, 9-10): request parsing, token issuance, PKCE validation
+    Note over GH,GitHub: GitHub OAuth Flow (We Consume Tokens)
+    GH->>GitHub: Redirect with state + PKCE
+    GitHub-->>GH: Authorization code
+    GH->>GitHub: Exchange code for token
+    GitHub-->>GH: Access token
+    GH->>GitHub: Fetch user info
+    GitHub-->>GH: User ID + login
 
-**GitHub OAuth Scopes Required:**
-- `read:user` - To verify user identity and retrieve GitHub user ID
+    Note over GH: Authorization Check
+    GH->>GH: Verify user in allowlist
+
+    Note over GH,OP: Complete MCP OAuth
+    GH->>OP: completeAuthorization()
+    OP-->>C: Redirect with MCP auth code
+    C->>OP: POST /token (exchange code + PKCE)
+    OP-->>C: MCP access token
+
+    Note over C: Authenticated Requests
+    C->>OP: POST /mcp (Bearer token)
+    OP->>OP: Validate token
+    OP->>C: Forward to MCP handler
+```
+
+**Critical Security Points:**
+1. Two separate OAuth flows (we are BOTH server AND client)
+2. PKCE required for both flows (OAuth 2.1 compliance)
+3. GitHub tokens never leave our server
+4. User allowlist enforced before issuing MCP tokens
+5. MCP tokens validated on every request
 
 ---
 
-## Data Flow
+## Request Flow
 
 ### Tool Call Lifecycle
 
-1. **Client Request**: Claude invokes MCP tool with parameters
-2. **Authentication**: Worker validates OAuth token from `OAUTH_KV`
-3. **Rate Limiting**: Check user's rate limit in `RATE_LIMIT_KV`
-4. **Authorization**: Verify user is in allowed list (`GITHUB_ALLOWED_USER_ID`)
-5. **Tool Execution**: Invoke appropriate tool handler
-6. **Storage Operation**: Perform R2 read/write/list operation
-7. **Response**: Return result or error to Claude
-8. **Metrics**: Record usage metrics to Analytics Engine
+```mermaid
+graph LR
+    A[Client Request] --> B[OAuth Token Validation]
+    B --> C[Rate Limit Check]
+    C --> D[Session ID Extraction]
+    D --> E[Durable Object Routing]
+    E --> F[MCP Transport]
+    F --> G[Tool Execution]
+    G --> H[Storage Operation]
+    H --> I[Response]
+
+    C -.Hit limit.-> J[429 Rate Limited]
+    G -.Error.-> K[Error Logging]
+    I -.Success.-> L[Metrics Recording]
+```
+
+1. **Authentication**: OAuthProvider validates token from `OAUTH_KV`
+2. **Rate Limiting**: Check user limits in `RATE_LIMIT_KV` (100/min, 1000/hr, 10000/day)
+3. **Session Routing**: Extract `mcp-session-id` header or generate for initialize
+4. **Durable Object**: Route to session-specific DO by ID
+5. **Tool Execution**: Execute tool via MCP transport
+6. **Storage**: Perform R2 operation with quota enforcement (10GB, 10k files, 10MB/file)
+7. **Response**: Return JSON result (not SSE stream)
+8. **Observability**: Log to structured JSON + record metrics
 
 ### Storage Organization
 
-All files stored in R2 with flat path structure:
-- `projects/app-name/notes.md`
-- `areas/health/fitness-log.md`
-- `resources/productivity/basb-notes.md`
-- `archives/2024/old-project/summary.md`
+Flat path structure in single R2 bucket:
+```
+projects/app-name/notes.md
+areas/health/fitness-log.md
+resources/productivity/basb-notes.md
+archives/2024/old-project/summary.md
+```
 
-No enforced hierarchy - structure emerges from user's file paths.
+No enforced hierarchy - structure emerges from user's file paths following BASB/PARA principles.
 
 ---
 
-## Durable Objects Session Management
+## Component Architecture
 
-**Why Durable Objects?**
-
-Cloudflare Workers are stateless - each request can go to a different Worker instance. However, the MCP `StreamableHTTPServerTransport` requires stateful session management:
-- Maintains internal state (`_streamMapping`, `_requestToStreamMapping`, etc.)
-- Handles SSE (Server-Sent Events) streaming connections
-- Associates multiple HTTP requests with the same session
-
-Durable Objects provide strongly-consistent, stateful storage per session, solving the session persistence problem.
-
-**Architecture:**
+### Layer Overview
 
 ```
-POST /mcp (initialize) → Worker
-    ↓
-Worker creates Durable Object stub with session ID
-    ↓
-Durable Object initializes StreamableHTTPServerTransport
-    ↓
-Returns session ID to client
-
-GET /mcp (with session ID) → Worker
-    ↓
-Worker gets existing Durable Object stub by session ID
-    ↓
-Durable Object processes request with existing transport
-    ↓
-SSE stream established through same stateful transport
+┌─────────────────────────────────────────────────────┐
+│  Entry Point (index.ts)                             │
+│  - OAuthProvider configuration                      │
+│  - Route configuration                              │
+│  - Environment bindings                             │
+└────────────┬────────────────────────────────────────┘
+             │
+      ┌──────┴──────┐
+      │             │
+┌─────▼──────┐ ┌───▼──────────────┐
+│ OAuth UI   │ │ MCP API Handler  │
+│ Handler    │ │ (Authenticated)  │
+└─────┬──────┘ └───┬──────────────┘
+      │            │
+      │         ┌──▼───────────────┐
+      │         │ Durable Object   │
+      │         │ (Session DO)     │
+      │         └──┬───────────────┘
+      │            │
+      │         ┌──▼──────────┐
+      │         │ MCP         │
+      │         │ Transport   │
+      │         └──┬──────────┘
+      │            │
+      │         ┌──▼──────────┐
+      │         │ Tool        │
+      │         │ Executor    │
+      │         └──┬──────────┘
+      │            │
+┌─────▼────────────▼──────────┐
+│  Cross-Cutting Concerns     │
+│  - Logger (structured JSON) │
+│  - Monitoring (Analytics)   │
+│  - Storage (R2 wrapper)     │
+│  - Rate Limiter (KV)        │
+└─────────────────────────────┘
 ```
 
-**Implementation Details:**
+### 1. Worker Entry Point ([index.ts](../src/index.ts))
 
-1. **Durable Object Class** (`MCPSessionDurableObject`):
-   - One instance per MCP session
-   - Holds `StreamableHTTPServerTransport` and `Server` instances
-   - Lifecycle tied to session (initialize → use → terminate)
-
-2. **Worker routing**:
-   - Extract session ID from `mcp-session-id` header or initialize
-   - Get or create Durable Object stub: `env.MCP_SESSIONS.get(id)`
-   - Forward request to Durable Object
-
-3. **Session ID as Durable Object ID**:
-   - MCP session ID directly maps to Durable Object ID
-   - Ensures requests with same session ID always route to same instance
-   - No external session storage needed (KV, D1)
-
-4. **Session cleanup**:
-   - DELETE request triggers session termination
-   - Durable Object can implement automatic timeout (e.g., 1 hour idle)
-   - Closed sessions are garbage collected by Cloudflare
-
-**Cost Considerations:**
-
-- **Free tier includes Durable Objects!** (as of 2024)
-- Free limits: 100K requests/day, 13K GB-sec duration/day, 5GB storage
-- Personal use case: Well within free tier limits
-- Automatic hibernation when idle reduces duration usage
-- No upgrade needed for this project
-
-**Critical Implementation Detail - Response Timing:**
-
-The MCP SDK's `StreamableHTTPServerTransport.handleRequest()` has an important async behavior that requires careful handling:
-
-1. **The Problem**: `handleRequest()` promise resolves BEFORE the transport writes the response
-   - Transport calls `response.write()` and `response.end()` asynchronously
-   - If you `await handleRequest()` and immediately return, response body will be empty
-   - This manifests as `bodyLength: 0` despite transport writing 1000+ bytes
-
-2. **The Solution**: Wait for BOTH the handleRequest promise AND response.end() to be called
-   ```typescript
-   // Create promise that resolves when end() is called
-   let endResolver: () => void;
-   const endPromise = new Promise<void>((resolve) => {
-     endResolver = resolve;
-   });
-
-   const nodeResponse = {
-     // ... other methods ...
-     end: (data?: string) => {
-       if (data) responseChunks.push(data);
-       endResolver(); // Resolve our promise
-       return nodeResponse;
-     },
-   };
-
-   // Wait for BOTH to complete
-   await Promise.all([
-     transport.handleRequest(nodeRequest, nodeResponse, body),
-     endPromise  // Critical: wait for end() to be called
-   ]);
-
-   const responseBody = responseChunks.join(''); // Now has data!
-   ```
-
-3. **Why This Happens**:
-   - The MCP SDK uses internal queueing/scheduling for response writing
-   - `handleRequest()` returns after setting up handlers, not after writing response
-   - Response data is written asynchronously via `res.write()` and `res.end()` calls
-   - This is normal Node.js HTTP behavior but requires explicit handling in Workers
-
-**Symptoms of this bug**: Empty response bodies, "Unexpected end of JSON input" errors, clients timing out waiting for response.
-
-**Reference**: Fixed in v1.2.16 (commit 41e02d3)
-
----
-
-## Components
-
-### 1. Worker Entry Point (`src/index.ts`)
-- OAuthProvider instance configuration and export (root handler)
+Exports OAuthProvider as default handler:
 - Configures OAuth endpoints (`/authorize`, `/token`, `/register`)
-- Routes `/mcp` to authenticated API handler
-- Routes default to GitHub OAuth UI handler
+- Routes `/mcp` to authenticated MCPHandler
+- Routes default to GitHubHandler (OAuth UI)
+- Exports Durable Object class for runtime
 
-### 2. GitHub OAuth UI Handler (`src/oauth-ui-handler.ts`)
-- GitHub OAuth CLIENT flow using Arctic library
-- `/authorize` - Parse MCP request, redirect to GitHub
-- `/callback` - Exchange code for GitHub token, verify user, complete MCP OAuth
-- User authorization check against `GITHUB_ALLOWED_USER_ID`
-- State management (encodes MCP OAuth request in GitHub state parameter)
-- Direct Fetch API handlers (no framework layer)
+### 2. GitHub OAuth UI Handler ([oauth-ui-handler.ts](../src/oauth-ui-handler.ts))
 
-### 3. MCP API Handler (`src/mcp-api-handler.ts`)
-- Authenticated MCP requests (token validation by OAuthProvider)
-- Rate limiting enforcement
-- Session ID extraction from headers
-- Durable Object routing (forwards to session-specific DO)
-- Direct Fetch API handlers (no framework layer)
+Handles GitHub authentication flow (OAuth CLIENT role):
+- `/authorize` - Parse MCP request → redirect to GitHub
+- `/callback` - Exchange code → verify user → complete MCP OAuth
+- Uses abstracted `GitHubOAuthProvider` interface for testability
+- Production: Arctic library implementation
+- Testing: Mock provider implementation
 
-### 4. MCP Session Durable Object (`src/mcp-session-do.ts`) **NEW**
-- Stateful session management (one instance per MCP session)
-- Holds StreamableHTTPServerTransport and Server instances
-- Handles all MCP protocol requests for a session
-- Processes GET (SSE), POST (JSON-RPC), DELETE (terminate)
-- Automatic session cleanup on termination
+**Testability Pattern:**
+```typescript
+// Interface abstraction (github-oauth-provider.ts)
+interface GitHubOAuthProvider {
+  createAuthorizationURL(state: string, scopes: string[]): URL;
+  validateAuthorizationCode(code: string): Promise<GitHubTokens>;
+  getUserInfo(accessToken: string): Promise<GitHubUser>;
+}
 
-### 5. MCP Transport (`src/mcp-transport.ts`)
-- MCP protocol implementation
-- StreamableHTTPServerTransport initialization
-- Tool registration and dispatch
-- Server metadata (name, description, version)
-- Prompt registration
+// Production: Arctic wrapper (github-oauth-provider-arctic.ts)
+// Testing: Mock implementation (test/mocks/github-oauth-provider-mock.ts)
+```
 
-### 6. Tool Implementations (`src/tools/`)
-- `read.ts` - File reading with range support
-- `write.ts` - File creation/overwrite
-- `edit.ts` - String replacement, move, rename, delete
-- `glob.ts` - Pattern-based file search
-- `grep.ts` - Content search with regex
+### 3. MCP API Handler ([mcp-api-handler.ts](../src/mcp-api-handler.ts))
 
-### 7. Storage Service (`src/storage.ts`)
-- R2 API wrapper
-- Error handling and retries
-- Storage limit checks
+Handles authenticated MCP requests (after OAuth validation):
+- Extract user props from OAuthProvider context
+- Enforce rate limits
+- Extract or generate session ID
+- Route to Durable Object by session ID
+- Add `mcp-session-id` to response headers
+
+### 4. MCP Session Durable Object ([mcp-session-do.ts](../src/mcp-session-do.ts))
+
+**Stateful session management:**
+- One instance per MCP session (session ID = DO ID)
+- Holds `StreamableHTTPServerTransport` and `Server` instances
+- Handles GET (session info), POST (tool calls), DELETE (terminate)
+- **Session timeout**: 30-minute idle timeout via alarm system
+- **Cleanup**: Automatic resource cleanup on timeout or DELETE
+
+**Critical Implementation Detail:**
+The MCP SDK's `StreamableHTTPServerTransport.handleRequest()` resolves before writing response. Must wait for BOTH:
+```typescript
+// Wait for handleRequest AND response.end()
+await Promise.all([
+  transport.handleRequest(nodeRequest, nodeResponse, body),
+  endPromise  // Resolves when response.end() is called
+]);
+```
+
+**Session Configuration:**
+```typescript
+new StreamableHTTPServerTransport({
+  sessionIdGenerator: () => doSessionId, // Use Worker-generated ID
+  enableJsonResponse: true, // JSON responses, not SSE
+  onsessioninitialized: (id) => logger.info('Session initialized'),
+  onsessionclosed: (id) => cleanup(),
+})
+```
+
+### 5. MCP Transport ([mcp-transport.ts](../src/mcp-transport.ts))
+
+**MCP protocol implementation:**
+- Server initialization with metadata (name, version, instructions)
+- Tool registration (read, write, edit, glob, grep)
+- Prompt registration (capture-note, weekly-review, research-summary)
+- Tool execution with rate limiting and bootstrapping
+- Request/response handling via MCP SDK
+
+### 6. Tool Implementations ([tools/](../src/tools/))
+
+- **read.ts** - File reading with optional range and byte limits
+- **write.ts** - File creation/overwrite with size validation
+- **edit.ts** - String replacement + move/rename/delete operations
+- **glob.ts** - Pattern-based file search (supports `**/*.md` patterns)
+- **grep.ts** - Regex content search with context lines
+
+All tools use Zod schemas for parameter validation and enforce security constraints.
+
+### 7. Cross-Cutting Concerns
+
+**Logger** ([logger.ts](../src/logger.ts)):
+- Structured JSON logging for Cloudflare Workers Logs
+- Request correlation via UUID (`crypto.randomUUID()`)
+- Context propagation through child loggers
+- Log levels: DEBUG, INFO, WARN, ERROR
+
+**Monitoring** ([monitoring.ts](../src/monitoring.ts)):
+- Analytics Engine integration
+- Metrics: tool calls, OAuth events, rate limits, storage, errors
+- User ID anonymization (SHA-256 hash)
+- Silent failure (never breaks app)
+
+**Storage** ([storage.ts](../src/storage.ts)):
+- R2 API wrapper with error handling
+- Quota enforcement (10GB total, 10k files, 10MB per file)
 - Metadata management
 
-### 8. Rate Limiting (`src/rate-limiting.ts`)
-- Per-user rate limit tracking
+**Rate Limiting** ([rate-limiting.ts](../src/rate-limiting.ts)):
 - KV-based counters with TTL
-- Multiple time windows (minute, hour, day)
-- Storage quota enforcement
+- Multiple windows (minute, hour, day)
+- Limits: 100/min, 1000/hr, 10000/day
 
-### 9. Bootstrap (`src/bootstrap.ts`)
-- Initial file creation logic
-- README and PARA directory structure
-- Idempotent execution (check for existing files)
+---
 
-### 10. Backup (`src/backup.ts`)
-- R2 to S3 sync via cron trigger
-- Incremental backup logic
-- Retention management (30 days)
+## Design Principles
 
-### 11. Observability (`src/logger.ts`, `src/monitoring.ts`)
-- **Logger**: Structured JSON logging with request correlation
-- **Monitoring**: Analytics Engine integration, metric collection
-- Request tracing, error tracking, performance metrics
+### 1. Testability Through Abstraction
+
+External dependencies are abstracted behind interfaces:
+- **GitHubOAuthProvider**: Arctic in production, mock in tests
+- **Environment bindings**: Injected via Cloudflare bindings system
+- **No global state**: All state passed explicitly or stored in DO
+
+### 2. Security by Default
+
+- Path validation (no `..`, null bytes, control chars)
+- Size limits enforced before operations
+- User allowlist for authorization
+- Token validation on every request
+- No PII in logs (anonymized user IDs)
+
+### 3. Observability First
+
+- Every request gets unique requestId
+- Structured logging throughout
+- Metrics recorded for all operations
+- Error context preserved (with stack traces)
+
+### 4. Fail Gracefully
+
+- User-facing: Generic error messages + HTTP status codes
+- Internal: Detailed logs with full context
+- Monitoring failures are silent (never break app)
 
 ---
 
 ## Scalability Considerations
 
-### Current (Single User)
+### Current State (Single User)
 - Single R2 bucket
-- User ID in environment variable
-- Simple authorization check
+- User ID in environment variable (`GITHUB_ALLOWED_USER_ID`)
+- Simple allowlist check
 
-### Future (Multi-User)
-- User namespacing in R2 paths: `users/{user_id}/projects/...`
-- Dynamic user management (database or KV)
-- Per-user storage quotas
-- Shared resources or multi-tenancy
+### Future Multi-User Support
+Path prefixing strategy preserves flat structure:
+```
+users/{user_id}/projects/app/notes.md
+users/{user_id}/areas/health/log.md
+```
 
-**Design Choice**: Current architecture doesn't preclude multi-user support - can migrate by prefixing all paths with user ID.
+No architectural changes needed - just:
+1. Add user ID prefix to all R2 paths
+2. Store allowlist in KV or D1 instead of env var
+3. Per-user rate limits and quotas (already supported)
 
 ---
 
-## Observability Architecture
+## Cost Profile (Cloudflare Free Tier)
 
-### Structured Logging
+**Well within free limits for personal use:**
 
-**JSON-formatted logs** for efficient querying in Cloudflare Workers Logs:
+| Service | Free Tier | Typical Usage |
+|---------|-----------|---------------|
+| Workers | 100K requests/day | ~1K/day |
+| Durable Objects | 100K requests/day | ~1K/day |
+| R2 Storage | 10GB | < 1GB |
+| R2 Operations | 1M reads/mo, 1M writes/mo | ~30K/mo |
+| KV | 100K reads/day, 1K writes/day | ~100 reads, ~10 writes/day |
+| Analytics Engine | 10M events/mo | ~50K/mo |
 
-```typescript
-{
-  "timestamp": "2025-10-11T12:34:56.789Z",
-  "level": "INFO",  // DEBUG, INFO, WARN, ERROR
-  "message": "MCP request completed",
-  "requestId": "uuid-v4",
-  "userId": "github-user-id",
-  "tool": "read",
-  "duration": 125,  // milliseconds
-  "success": true
-}
-```
-
-**Request Correlation:**
-- Every request gets a unique `requestId` (UUID v4)
-- Passed through all layers (OAuthProvider → MCP handler → tools → storage)
-- All logs include `requestId` for tracing complete request lifecycle
-
-**Log Levels:**
-- `DEBUG` - Detailed execution flow (disabled in production)
-- `INFO` - Request lifecycle, tool execution, OAuth events
-- `WARN` - Rate limits approaching, storage quota warnings
-- `ERROR` - Failures with full context (preserved stack traces)
-
-### Metrics Collection
-
-**Analytics Engine** for high-cardinality metrics:
-
-```typescript
-// Tool execution metrics
-await analytics.writeDataPoint({
-  blobs: [toolName, userId],       // Dimensions (unlimited cardinality)
-  doubles: [duration, 1],           // Metrics [duration_ms, count]
-  indexes: [toolName]               // Indexed for fast queries
-});
-
-// OAuth events
-await monitoring.recordOAuthEvent(userId, 'success' | 'failure');
-
-// Rate limiting
-await monitoring.recordRateLimitHit(userId, window, limit);
-
-// Storage usage
-await monitoring.recordStorageMetrics(userId, totalBytes, totalFiles);
-```
-
-**Real-time Monitoring:**
-- Tool execution times (p50, p95, p99)
-- OAuth success/failure rates
-- Rate limit hit rates
-- Storage quota utilization
-- Error rates by type
-
-### Error Tracking
-
-**Error Context Preservation:**
-- Original stack traces preserved through tool execution chain
-- Error types categorized (user error vs system error)
-- Structured error logging with full context
-- No PII in logs (user IDs anonymized in analytics)
-
-**Monitoring Integration:**
-- All errors sent to Analytics Engine
-- Categorized by HTTP status code
-- Includes user context for debugging (without exposing PII)
+**Key cost optimizations:**
+- Durable Objects hibernate when idle
+- R2 has no egress fees
+- KV used sparingly (rate limits, OAuth tokens)
+- Analytics Engine is highly efficient
 
 ---
 
 ## Related Documentation
 
 - [Overview](./overview.md) - Project background and philosophy
-- [API Reference](./api-reference.md) - Tool specifications
-- [Implementation](./implementation.md) - Project structure and dependencies
-- [Security](./security.md) - Authentication and authorization details
-- [Deployment](./deployment.md) - Setup and configuration
-- [Monitoring](./monitoring.md) - Observability implementation details
+- [API Reference](./api-reference.md) - Tool specifications and schemas
+- [Security](./security.md) - OAuth architecture and security model
+- [Deployment](./deployment.md) - Setup, configuration, and CI/CD
+- [Monitoring](./monitoring.md) - Observability and debugging
+- [Testing](./testing.md) - Test strategy and requirements

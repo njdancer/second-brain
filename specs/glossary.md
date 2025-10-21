@@ -270,5 +270,4 @@ Lowercase words separated by hyphens: `my-project-notes.md`
 - [Overview](./overview.md) - BASB methodology and project background
 - [Architecture](./architecture.md) - Technical system design
 - [API Reference](./api-reference.md) - Tool specifications
-- [Implementation](./implementation.md) - Code structure and configuration
 - [Deployment](./deployment.md) - Setup and deployment guide

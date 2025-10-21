@@ -254,4 +254,3 @@ Keep archives organized by year for easy retrieval.
 - [Overview](./overview.md) - BASB methodology and design philosophy
 - [API Reference](./api-reference.md) - Tool specifications
 - [User Workflows](./user-workflows.md) - Example usage patterns
-- [Implementation](./implementation.md) - Bootstrap implementation details

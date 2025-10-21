@@ -538,7 +538,6 @@ export function estimateMonthlyCost(metrics: UsageMetrics): number {
 ## Related Documentation
 
 - [Architecture](./architecture.md) - System components to monitor
-- [Implementation](./implementation.md) - Monitoring code structure
 - [Security](./security.md) - Security metrics and alerts
 - [Deployment](./deployment.md) - Monitoring setup
 - [Testing](./testing.md) - Performance testing
