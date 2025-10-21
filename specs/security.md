@@ -4,67 +4,30 @@ Authentication, authorization, data protection, and access control for the Secon
 
 ---
 
-## OAuth Architecture Overview
+## OAuth Architecture
 
-**IMPORTANT:** This MCP server has a **dual OAuth role** architecture with TWO separate flows:
+This server uses a dual OAuth role architecture where we act as both OAuth server (issuing MCP tokens) and OAuth client (consuming GitHub tokens for user verification). See [Architecture](./architecture.md#dual-oauth-architecture) for the complete flow diagram and technical details.
 
-### 1. OAuth SERVER (We Issue Tokens)
-- **Role:** Authorization server for MCP clients
-- **Clients:** Claude.ai, MCP Inspector, other MCP clients
-- **We provide:** MCP access tokens (`mcp_*` prefix)
-- **Protocol:** OAuth 2.1 with PKCE (required for public clients)
-- **Implementation:** `@cloudflare/workers-oauth-provider` v0.0.11 (production library)
-- **Endpoints:** `/oauth/authorize`, `/oauth/token`, `/register`, `/.well-known/oauth-authorization-server`
-- **Current Status:** ✅ Production-ready with PKCE support (Phase 13 complete)
-
-### 2. OAuth CLIENT (We Consume Tokens)
-- **Role:** OAuth client consuming GitHub's OAuth service
-- **Provider:** GitHub
-- **We consume:** GitHub access tokens (for user identity verification only)
-- **Protocol:** OAuth 2.0 with PKCE
-- **Implementation:** Arctic v3.7.0 (production library with 50+ OAuth provider support)
-- **Purpose:** Verify user ID against `GITHUB_ALLOWED_USER_ID` allowlist
-- **Current Status:** ✅ Production-ready with secure token handling (Phase 13B complete)
-
-**Why Two Flows?**
-- We can't give MCP clients direct access to GitHub tokens (security boundary)
-- We need to verify user identity before issuing our own MCP tokens
-- MCP tokens have different scopes (`mcp:read`, `mcp:write`) than GitHub tokens (`read:user`)
-
-**Token Boundaries:**
-- MCP access tokens (issued by us) → Used for MCP protocol requests
-- GitHub access tokens (issued by GitHub) → Used for user verification only
+**Security-relevant token boundaries:**
+- MCP access tokens (we issue) → Used for MCP protocol requests
+- GitHub access tokens (GitHub issues) → Used for user verification only
 - **Never** mix these tokens across boundaries
-
-**Implementation Files:**
-- `src/index.ts` - OAuthProvider instance configuration and export
-- `src/oauth-ui-handler.ts` - GitHub OAuth CLIENT flow (Arctic integration)
-- `src/mcp-api-handler.ts` - Authenticated MCP requests (validates tokens from OAuthProvider)
-- OAuth SERVER endpoints - Handled automatically by `@cloudflare/workers-oauth-provider`
 
 ---
 
 ## Authentication
 
-### OAuth 2.1 via GitHub (Combined Flows)
+### OAuth 2.1 Authentication Flow
 
-**Note:** The flow below describes BOTH OAuth roles. Steps 1-2 and 9-10 are our OAuth SERVER role. Steps 3-8 are our OAuth CLIENT role.
+Users authenticate through a combined OAuth flow (see [Architecture](./architecture.md#authentication--authorization-flow) for the complete sequence diagram). Security properties:
 
-**Required Scopes:**
+- PKCE MUST be enforced for both OAuth flows (OAuth 2.1 compliance)
+- GitHub tokens MUST be used only for user verification, never exposed to MCP clients
+- User ID MUST be validated against `GITHUB_ALLOWED_USER_ID` before issuing MCP tokens
+- MCP access tokens MUST be validated on every tool call
+
+**Required GitHub Scopes:**
 - `read:user` - To verify user identity and retrieve GitHub user ID
-
-**Authentication Flow:**
-
-1. User initiates connection in Claude client
-2. Claude opens OAuth flow with MCP server's client ID/secret
-3. Worker redirects to GitHub authorization page
-4. User authenticates with GitHub
-5. User approves requested scopes
-6. GitHub redirects to worker with authorization code
-7. Worker exchanges code for access token
-8. Worker validates user is in allowed list (`GITHUB_ALLOWED_USER_ID`)
-9. Worker issues MCP access token to Claude
-10. Token stored in `OAUTH_KV` with TTL
 
 **Token Storage:**
 - Access tokens stored in `OAUTH_KV` namespace (managed by OAuthProvider)
@@ -103,7 +66,7 @@ async function isAuthorized(githubUserId: string, env: Env): boolean {
 - All tool calls scoped to user's R2 bucket
 - No cross-user data access (only one user exists)
 
-### Future Multi-User Support
+### Future Multi-User Support **[DEFERRED]**
 
 **Path Namespacing:**
 - Prefix all paths with user ID: `users/{user_id}/projects/...`
@@ -196,7 +159,7 @@ async function isAuthorized(githubUserId: string, env: Env): boolean {
 - Same authorization as tool calls
 - Logged to analytics
 
-**Future Admin Endpoints:**
+**Future Admin Endpoints** **[DEFERRED]**:
 - User management (multi-user mode)
 - Storage usage reports
 - Rate limit overrides
@@ -247,14 +210,17 @@ async function isAuthorized(githubUserId: string, env: Env): boolean {
 - File paths sanitized in errors
 
 **Error Codes:**
-- `400` - Client error (invalid input)
-- `401` - Unauthenticated
-- `403` - Forbidden (authorized but not allowed)
-- `404` - Not found
-- `413` - Payload too large
-- `429` - Rate limit exceeded
-- `500` - Server error (generic)
-- `507` - Insufficient storage
+
+| Code | Meaning | When Used |
+|------|---------|-----------|
+| 400 | Bad Request | Invalid input parameters |
+| 401 | Unauthorized | Missing or invalid token |
+| 403 | Forbidden | Valid token but not allowed |
+| 404 | Not Found | Resource does not exist |
+| 413 | Payload Too Large | File size exceeds limit |
+| 429 | Too Many Requests | Rate limit exceeded |
+| 500 | Internal Server Error | Generic server error |
+| 507 | Insufficient Storage | Storage quota exceeded |
 
 ---
 
@@ -294,7 +260,7 @@ async function isAuthorized(githubUserId: string, env: Env): boolean {
 - Future: Export endpoint for zip archive
 - Backup data accessible via S3 (user has credentials)
 
-### GDPR Considerations (Future)
+### GDPR Considerations **[DEFERRED]**
 
 For multi-user deployments:
 - Right to access: Provide data export
