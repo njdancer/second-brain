@@ -9,7 +9,7 @@ import type { OAuthHelpers } from '@cloudflare/workers-oauth-provider';
 import { MonitoringService } from './monitoring';
 import { Logger, generateRequestId } from './logger';
 import type { Env } from './index';
-import type { GitHubOAuthProvider, GitHubUser } from './github-oauth-provider';
+import type { GitHubOAuthProvider } from './github-oauth-provider';
 import { VERSION_INFO, getVersionString } from './version';
 
 /**
@@ -18,6 +18,7 @@ import { VERSION_INFO, getVersionString } from './version';
 interface OAuthEnv extends Env {
   OAUTH_PROVIDER: OAuthHelpers;
   GITHUB_OAUTH?: GitHubOAuthProvider; // Optional injected provider for tests
+  TEST_MODE?: string; // Optional test mode flag
 }
 
 /**
@@ -29,7 +30,7 @@ async function createGitHubProvider(env: OAuthEnv, request: Request): Promise<Gi
   const url = new URL(request.url);
 
   // Use mock provider in test mode (for E2E tests)
-  if ((env as any).TEST_MODE === 'true') {
+  if (env.TEST_MODE === 'true') {
     const { MockGitHubOAuthProvider } = await import('../test/mocks/github-oauth-provider-mock');
     return new MockGitHubOAuthProvider({
       baseUrl: url.origin,
@@ -113,7 +114,7 @@ async function handleCallback(request: Request, env: OAuthEnv, logger: Logger): 
     }
 
     // Decode the original MCP OAuth request from state
-    const oauthReqInfo = JSON.parse(atob(state));
+    const oauthReqInfo = JSON.parse(atob(state)) as { scope?: string; [key: string]: unknown };
     logger.debug('Retrieved MCP auth request from state');
 
     // Get GitHub OAuth provider (injected for tests, or create from env)
@@ -191,7 +192,7 @@ async function handleCallback(request: Request, env: OAuthEnv, logger: Logger): 
 export async function githubOAuthHandler(
   request: Request,
   env: OAuthEnv,
-  ctx: ExecutionContext
+  _ctx: ExecutionContext
 ): Promise<Response> {
   const url = new URL(request.url);
   const requestId = generateRequestId();
@@ -231,7 +232,7 @@ export async function githubOAuthHandler(
  * Export the handler for OAuthProvider defaultHandler configuration
  */
 export const GitHubHandler = {
-  async fetch(request: Request, env: any, ctx: any): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     return githubOAuthHandler(request, env as OAuthEnv, ctx);
   }
 };

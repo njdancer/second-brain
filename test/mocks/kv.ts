@@ -10,22 +10,22 @@ export interface MockKVEntry {
 export class MockKVNamespace {
   private store: Map<string, MockKVEntry> = new Map();
 
-  async get(key: string, options?: { type?: 'text' | 'json' }): Promise<string | null> {
+  get(key: string, _options?: { type?: 'text' | 'json' }): Promise<string | null> {
     const entry = this.store.get(key);
     if (!entry) {
-      return null;
+      return Promise.resolve(null);
     }
 
     // Check expiration
     if (entry.expiration && entry.expiration < Date.now() / 1000) {
       this.store.delete(key);
-      return null;
+      return Promise.resolve(null);
     }
 
-    return entry.value;
+    return Promise.resolve(entry.value);
   }
 
-  async put(
+  put(
     key: string,
     value: string,
     options?: { expiration?: number; expirationTtl?: number }
@@ -34,21 +34,23 @@ export class MockKVNamespace {
       (options?.expirationTtl ? Math.floor(Date.now() / 1000) + options.expirationTtl : undefined);
 
     this.store.set(key, { value, expiration });
+    return Promise.resolve();
   }
 
-  async delete(key: string): Promise<void> {
+  delete(key: string): Promise<void> {
     this.store.delete(key);
+    return Promise.resolve();
   }
 
-  async list(options?: { prefix?: string }): Promise<{ keys: Array<{ name: string }> }> {
+  list(options?: { prefix?: string }): Promise<{ keys: Array<{ name: string }> }> {
     const keys = Array.from(this.store.keys());
     const filtered = options?.prefix
       ? keys.filter((key) => key.startsWith(options.prefix!))
       : keys;
 
-    return {
+    return Promise.resolve({
       keys: filtered.map((name) => ({ name })),
-    };
+    });
   }
 
   // Test helpers

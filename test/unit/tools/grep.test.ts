@@ -3,7 +3,8 @@
  */
 
 import { grepTool } from '../../../src/tools/grep';
-import { StorageService, StorageObject } from '../../../src/storage';
+import type { StorageObject } from '../../../src/storage';
+import { StorageService } from '../../../src/storage';
 
 // Mock storage service
 class MockStorageService {

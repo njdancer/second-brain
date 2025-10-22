@@ -22,6 +22,7 @@ const MAX_RESULTS_LIMIT = 1000;
  * Convert glob pattern to regex
  */
 function globToRegex(pattern: string): RegExp {
+  // Using \x00 as safe placeholder - intentional control characters
   const regexPattern = pattern
     // Replace ** with a placeholder FIRST (before everything else)
     .replace(/\*\*/g, '\x00DOUBLESTAR\x00')
@@ -31,11 +32,11 @@ function globToRegex(pattern: string): RegExp {
     .replace(/[.+^${}()|[\]\\]/g, '\\$&')
     // Replace single * with match any except /
     .replace(/\*/g, '[^/]*')
-    // Replace **/ placeholder (zero or more directories)
+    // eslint-disable-next-line no-control-regex
     .replace(/\x00DOUBLESTAR\x00\//g, '(?:.*/)?')
-    // Remaining ** (standalone) should match anything
+    // eslint-disable-next-line no-control-regex
     .replace(/\x00DOUBLESTAR\x00/g, '.*')
-    // Replace ? placeholder with match single character
+    // eslint-disable-next-line no-control-regex
     .replace(/\x00QUESTION\x00/g, '.');
 
   return new RegExp(`^${regexPattern}$`);
@@ -67,7 +68,7 @@ export async function globTool(
     let regex: RegExp;
     try {
       regex = globToRegex(params.pattern);
-    } catch (error) {
+    } catch {
       return {
         content: `Error: Invalid glob pattern: ${params.pattern}`,
         isError: true,

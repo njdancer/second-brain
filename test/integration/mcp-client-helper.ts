@@ -5,7 +5,7 @@
  * for testing the complete OAuth + MCP flow.
  */
 
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import fetch from 'node-fetch';
 import crypto from 'crypto';
 

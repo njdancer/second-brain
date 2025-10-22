@@ -2,7 +2,8 @@
  * Unit tests for Worker entry point (Hono app)
  */
 
-import { Env, createApp } from '../../src/index';
+import type { Env} from '../../src/index';
+import { createApp } from '../../src/index';
 
 // Mock environment
 const createMockEnv = (): Env => ({

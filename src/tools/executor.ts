@@ -6,11 +6,11 @@
 import type { StorageService } from '../storage';
 import type { RateLimiter } from '../rate-limiting';
 import type { Logger } from '../logger';
-import { readTool } from './read';
-import { writeTool } from './write';
-import { editTool } from './edit';
-import { globTool } from './glob';
-import { grepTool } from './grep';
+import { readTool, type ReadParams } from './read';
+import { writeTool, type WriteParams } from './write';
+import { editTool, type EditParams } from './edit';
+import { globTool, type GlobParams } from './glob';
+import { grepTool, type GrepParams } from './grep';
 
 export interface ToolContext {
   storage: StorageService;
@@ -24,7 +24,7 @@ export interface ToolContext {
  */
 export async function executeTool(
   toolName: string,
-  args: Record<string, any>,
+  args: Record<string, unknown>,
   context: ToolContext
 ): Promise<string> {
   const { storage, userId, logger } = context;
@@ -38,23 +38,23 @@ export async function executeTool(
 
     switch (toolName) {
       case 'read':
-        result = await readTool(args as any, storage);
+        result = await readTool(args as ReadParams, storage);
         break;
 
       case 'write':
-        result = await writeTool(args as any, storage, userId);
+        result = await writeTool(args as WriteParams, storage, userId);
         break;
 
       case 'edit':
-        result = await editTool(args as any, storage);
+        result = await editTool(args as EditParams, storage);
         break;
 
       case 'glob':
-        result = await globTool(args as any, storage);
+        result = await globTool(args as GlobParams, storage);
         break;
 
       case 'grep':
-        result = await grepTool(args as any, storage);
+        result = await grepTool(args as GrepParams, storage);
         break;
 
       default:

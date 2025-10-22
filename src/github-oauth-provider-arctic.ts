@@ -49,6 +49,7 @@ export class ArcticGitHubOAuthProvider implements GitHubOAuthProvider {
       throw new Error(`GitHub API error: ${userResponse.status}`);
     }
 
-    return (await userResponse.json()) as GitHubUser;
+    const data: unknown = await userResponse.json();
+    return data as GitHubUser;
   }
 }

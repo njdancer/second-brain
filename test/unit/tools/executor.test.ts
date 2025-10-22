@@ -3,7 +3,8 @@
  * Tests for the tool execution router
  */
 
-import { executeTool, ToolContext } from '../../../src/tools/executor';
+import type { ToolContext } from '../../../src/tools/executor';
+import { executeTool } from '../../../src/tools/executor';
 import { MockR2Bucket } from '../../mocks/r2';
 import { MockKVNamespace } from '../../mocks/kv';
 import { StorageService } from '../../../src/storage';

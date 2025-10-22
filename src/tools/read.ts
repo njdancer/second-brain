@@ -16,7 +16,7 @@ export interface ReadResult {
   isError: boolean;
 }
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB default limit
+const _MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB default limit (defined for documentation)
 
 /**
  * Read file contents

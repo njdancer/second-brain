@@ -20,6 +20,23 @@ interface MCPProps {
 }
 
 /**
+ * ExecutionContext extended with OAuth props
+ */
+interface MCPExecutionContext extends ExecutionContext {
+  props?: MCPProps;
+}
+
+/**
+ * MCP JSON-RPC request body
+ */
+interface MCPRequestBody {
+  jsonrpc: '2.0';
+  method: string;
+  id: string | number | null;
+  params?: Record<string, unknown>;
+}
+
+/**
  * Main MCP API handler
  * Called by OAuthProvider after validating the OAuth token
  * User information is available in ctx.props (injected by OAuthProvider)
@@ -27,7 +44,7 @@ interface MCPProps {
 export async function mcpApiHandler(
   request: Request,
   env: Env,
-  ctx: ExecutionContext
+  ctx: MCPExecutionContext
 ): Promise<Response> {
   const requestId = generateRequestId();
   const logger = new Logger({ requestId });
@@ -45,7 +62,7 @@ export async function mcpApiHandler(
 
   try {
     // Get user ID from props (set by OAuthProvider after token validation)
-    const props = (ctx as any).props as MCPProps | undefined;
+    const props = ctx.props;
     const userId = props?.userId;
 
     if (!userId) {
@@ -74,7 +91,7 @@ export async function mcpApiHandler(
 
     // Parse JSON body only for POST requests
     // GET is used for SSE streaming, DELETE for session termination
-    let body: any = undefined;
+    let body: MCPRequestBody | undefined = undefined;
     if (request.method === 'POST') {
       body = await request.json();
     }
@@ -249,7 +266,7 @@ export async function mcpApiHandler(
  * Export the handler for OAuthProvider apiHandler configuration
  */
 export const MCPHandler = {
-  async fetch(request: Request, env: any, ctx: any): Promise<Response> {
-    return mcpApiHandler(request, env, ctx);
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    return mcpApiHandler(request, env, ctx as MCPExecutionContext);
   }
 };

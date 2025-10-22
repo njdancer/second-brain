@@ -4,7 +4,6 @@
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import {
   ListToolsRequestSchema,
   CallToolRequestSchema,
@@ -17,7 +16,6 @@ import { MonitoringService } from './monitoring';
 import { bootstrapSecondBrain } from './bootstrap';
 import { executeTool } from './tools/executor';
 import type { Logger } from './logger';
-import { Env } from './index';
 import { getVersionString } from './version';
 
 /**
@@ -67,7 +65,7 @@ Let the structure emerge naturally through use. Create folders as needed by crea
   );
 
   // Register tool handlers
-  server.setRequestHandler(ListToolsRequestSchema, async () => {
+  server.setRequestHandler(ListToolsRequestSchema, () => {
     return {
       tools: [
         {
@@ -216,7 +214,7 @@ Let the structure emerge naturally through use. Create folders as needed by crea
       await bootstrapSecondBrain(storage);
 
       // Execute tool
-      const result = await executeTool(name, args as Record<string, any>, {
+      const result = await executeTool(name, args as Record<string, unknown>, {
         storage,
         rateLimiter,
         userId,
@@ -260,7 +258,7 @@ Let the structure emerge naturally through use. Create folders as needed by crea
   });
 
   // Register prompt handlers
-  server.setRequestHandler(ListPromptsRequestSchema, async () => {
+  server.setRequestHandler(ListPromptsRequestSchema, () => {
     return {
       prompts: [
         {
@@ -316,7 +314,7 @@ Let the structure emerge naturally through use. Create folders as needed by crea
   });
 
   // Handle prompt get requests
-  server.setRequestHandler(GetPromptRequestSchema, async (request) => {
+  server.setRequestHandler(GetPromptRequestSchema, (request) => {
     const { name, arguments: args } = request.params;
 
     const prompts: Record<string, (args: Record<string, string>) => string> = {
@@ -404,6 +402,11 @@ Please:
 /**
  * Check if request is an initialize request
  */
-export function isInitializeRequest(body: any): boolean {
-  return body?.method === 'initialize';
+export function isInitializeRequest(body: unknown): boolean {
+  return (
+    typeof body === 'object' &&
+    body !== null &&
+    'method' in body &&
+    body.method === 'initialize'
+  );
 }

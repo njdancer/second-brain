@@ -3,7 +3,8 @@
  */
 
 import { writeTool } from '../../../src/tools/write';
-import { StorageService, QuotaStatus } from '../../../src/storage';
+import type { QuotaStatus } from '../../../src/storage';
+import { StorageService } from '../../../src/storage';
 
 // Mock storage service
 class MockStorageService {

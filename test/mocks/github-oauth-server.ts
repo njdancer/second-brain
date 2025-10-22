@@ -122,7 +122,7 @@ export class MockGitHubOAuthServer {
   private handleTokenExchange(req: http.IncomingMessage, res: http.ServerResponse): void {
     let body = '';
 
-    req.on('data', (chunk) => {
+    req.on('data', (chunk: Buffer) => {
       body += chunk.toString();
     });
 

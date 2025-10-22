@@ -23,6 +23,43 @@ interface SessionProps {
 }
 
 /**
+ * MCP JSON-RPC request body interface
+ */
+interface MCPRequestBody {
+  jsonrpc: '2.0';
+  method: string;
+  id: string | number | null;
+  params?: Record<string, unknown>;
+}
+
+/**
+ * Node.js-like IncomingMessage interface for MCP SDK compatibility
+ */
+interface NodeIncomingMessage {
+  method: string;
+  url: string;
+  headers: Record<string, string>;
+  httpVersion: string;
+  on: () => NodeIncomingMessage;
+  once: () => NodeIncomingMessage;
+  emit: () => boolean;
+  removeListener: () => NodeIncomingMessage;
+}
+
+/**
+ * Node.js-like ServerResponse interface for MCP SDK compatibility
+ */
+interface NodeServerResponse {
+  statusCode: number;
+  setHeader: (name: string, value: string) => NodeServerResponse;
+  writeHead: (statusCode: number, headers?: Record<string, string>) => NodeServerResponse;
+  write: (chunk: string) => boolean;
+  end: (data?: string) => NodeServerResponse;
+  flushHeaders: () => NodeServerResponse;
+  on: (_event: string, _callback: (...args: unknown[]) => void) => NodeServerResponse;
+}
+
+/**
  * MCPSessionDurableObject - Holds MCP transport and server for a single session
  * Each session ID maps to one instance of this Durable Object
  */
@@ -86,7 +123,7 @@ export class MCPSessionDurableObject extends DurableObject {
         );
       }
 
-      const props: SessionProps = JSON.parse(propsHeader);
+      const props = JSON.parse(propsHeader) as SessionProps;
       const userLogger = logger.child({
         userId: props.userId,
         githubLogin: props.githubLogin,
@@ -94,7 +131,7 @@ export class MCPSessionDurableObject extends DurableObject {
       });
 
       // Parse request body only for POST requests
-      let body: any = undefined;
+      let body: MCPRequestBody | undefined = undefined;
       if (request.method === 'POST') {
         body = await request.json();
       }
@@ -197,7 +234,7 @@ export class MCPSessionDurableObject extends DurableObject {
 
       // Create Node.js-compatible request object
       // The MCP SDK expects http.IncomingMessage properties
-      const nodeRequest = {
+      const nodeRequest: NodeIncomingMessage = {
         method: request.method,
         url: new URL(request.url).pathname + new URL(request.url).search,
         headers: Object.fromEntries(request.headers.entries()), // Convert Headers to plain object
@@ -208,7 +245,7 @@ export class MCPSessionDurableObject extends DurableObject {
         removeListener: () => nodeRequest,
       };
 
-      const nodeResponse = {
+      const nodeResponse: NodeServerResponse = {
         statusCode: 200,
         setHeader: (name: string, value: string) => {
           responseHeaders.set(name, value);
@@ -236,11 +273,12 @@ export class MCPSessionDurableObject extends DurableObject {
           return nodeResponse;
         },
         flushHeaders: () => nodeResponse,
-        on: (event: string, callback: (...args: any[]) => void) => nodeResponse,
+        on: (_event: string, _callback: (...args: unknown[]) => void) => nodeResponse,
       };
 
       // Handle request through transport
       // Pass pre-parsed body as third parameter (per MCP SDK documentation)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
       const handlePromise = this.transport.handleRequest(nodeRequest as any, nodeResponse as any, body);
 
       // Wait for BOTH handleRequest to complete AND end() to be called

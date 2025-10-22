@@ -19,18 +19,18 @@ export class MockR2Bucket {
 
   constructor() {}
 
-  async get(key: string): Promise<R2ObjectBody | null> {
+  get(key: string): Promise<R2ObjectBody | null> {
     if (this.shouldFail && this.failureCount < this.maxFailures) {
       this.failureCount++;
-      throw new Error('R2 operation failed');
+      return Promise.reject(new Error('R2 operation failed'));
     }
 
     const obj = this.objects.get(key);
     if (!obj) {
-      return null;
+      return Promise.resolve(null);
     }
 
-    return {
+    return Promise.resolve({
       key: obj.key,
       body: obj.value,
       bodyUsed: false,
@@ -41,21 +41,21 @@ export class MockR2Bucket {
       customMetadata: obj.metadata || {},
       range: undefined,
       checksums: {},
-      text: async () => obj.value,
-      json: async () => JSON.parse(obj.value),
-      arrayBuffer: async () => new TextEncoder().encode(obj.value).buffer,
-      blob: async () => new Blob([obj.value]),
-    } as R2ObjectBody;
+      text: () => Promise.resolve(obj.value),
+      json: () => Promise.resolve(JSON.parse(obj.value) as unknown),
+      arrayBuffer: () => Promise.resolve(new TextEncoder().encode(obj.value).buffer),
+      blob: () => Promise.resolve(new Blob([obj.value])),
+    } as R2ObjectBody);
   }
 
-  async put(
+  put(
     key: string,
     value: string | ReadableStream | ArrayBuffer,
     options?: { customMetadata?: Record<string, string> }
   ): Promise<R2Object> {
     if (this.shouldFail && this.failureCount < this.maxFailures) {
       this.failureCount++;
-      throw new Error('R2 operation failed');
+      return Promise.reject(new Error('R2 operation failed'));
     }
 
     const valueStr = typeof value === 'string' ? value : '';
@@ -73,7 +73,7 @@ export class MockR2Bucket {
     this.objects.set(key, obj);
     this.failureCount = 0;
 
-    return {
+    return Promise.resolve({
       key: obj.key,
       size: obj.size,
       httpEtag: obj.httpEtag,
@@ -82,22 +82,23 @@ export class MockR2Bucket {
       customMetadata: obj.metadata || {},
       range: undefined,
       checksums: {},
-    } as R2Object;
+    } as R2Object);
   }
 
-  async delete(keys: string | string[]): Promise<void> {
+  delete(keys: string | string[]): Promise<void> {
     if (this.shouldFail && this.failureCount < this.maxFailures) {
       this.failureCount++;
-      throw new Error('R2 operation failed');
+      return Promise.reject(new Error('R2 operation failed'));
     }
 
     const keyArray = Array.isArray(keys) ? keys : [keys];
     for (const key of keyArray) {
       this.objects.delete(key);
     }
+    return Promise.resolve();
   }
 
-  async list(options?: {
+  list(options?: {
     prefix?: string;
     delimiter?: string;
     limit?: number;
@@ -105,7 +106,7 @@ export class MockR2Bucket {
   }): Promise<R2Objects> {
     if (this.shouldFail && this.failureCount < this.maxFailures) {
       this.failureCount++;
-      throw new Error('R2 operation failed');
+      return Promise.reject(new Error('R2 operation failed'));
     }
 
     let filtered = Array.from(this.objects.values());
@@ -125,11 +126,11 @@ export class MockR2Bucket {
       checksums: {},
     })) as R2Object[];
 
-    return {
+    return Promise.resolve({
       objects,
       truncated: false,
       delimitedPrefixes: [],
-    } as R2Objects;
+    } as R2Objects);
   }
 
   // Test helpers
