@@ -276,15 +276,15 @@ describe('Monitoring System', () => {
       expect(mockAnalytics.getCount()).toBe(3);
     });
 
-    it('should handle analytics failures in recordBackupEvent', async () => {
+    it('should handle analytics failures in recordBackupEvent', () => {
       const failingAnalytics = {
         writeDataPoint: jest.fn(() => { throw new Error('Analytics failed'); })
       };
 
       const monitoringWithFailure = new MonitoringService(failingAnalytics as any);
 
-      await expect(monitoringWithFailure.recordBackupEvent(10, 2, 1500000))
-        .resolves.not.toThrow();
+      expect(() => monitoringWithFailure.recordBackupEvent(10, 2, 1500000))
+        .not.toThrow();
     });
   });
 
