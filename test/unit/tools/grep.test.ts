@@ -4,7 +4,18 @@
 
 import { grepTool } from '../../../src/tools/grep';
 import type { StorageObject } from '../../../src/storage';
-import { StorageService } from '../../../src/storage';
+import type { StorageService } from '../../../src/storage';
+
+// Type for grep tool result
+interface GrepMatchResult {
+  path: string;
+  lineNumber: number;
+  line: string;
+  context?: {
+    before?: string[];
+    after?: string[];
+  };
+}
 
 // Mock storage service
 class MockStorageService {
@@ -52,7 +63,7 @@ describe('Grep Tool', () => {
       const result = await grepTool({ pattern: 'TODO' }, storage as unknown as StorageService);
 
       expect(result.isError).toBe(false);
-      const matches = JSON.parse(result.content);
+      const matches = JSON.parse(result.content) as GrepMatchResult[];
       expect(matches.length).toBe(1);
       expect(matches[0].path).toBe('projects/app/notes.md');
       expect(matches[0].line).toBe(2);
@@ -63,7 +74,7 @@ describe('Grep Tool', () => {
       const result = await grepTool({ pattern: 'design' }, storage as unknown as StorageService);
 
       expect(result.isError).toBe(false);
-      const matches = JSON.parse(result.content);
+      const matches = JSON.parse(result.content) as GrepMatchResult[];
       expect(matches.length).toBeGreaterThanOrEqual(1);
       expect(matches.some((m: any) => m.path.includes('design'))).toBe(true);
     });
@@ -72,7 +83,7 @@ describe('Grep Tool', () => {
       const result = await grepTool({ pattern: 'react' }, storage as unknown as StorageService);
 
       expect(result.isError).toBe(false);
-      const matches = JSON.parse(result.content);
+      const matches = JSON.parse(result.content) as GrepMatchResult[];
       expect(matches.length).toBeGreaterThanOrEqual(1);
     });
 
@@ -80,7 +91,7 @@ describe('Grep Tool', () => {
       const result = await grepTool({ pattern: 'nonexistent pattern xyz123' }, storage as unknown as StorageService);
 
       expect(result.isError).toBe(false);
-      const matches = JSON.parse(result.content);
+      const matches = JSON.parse(result.content) as GrepMatchResult[];
       expect(matches.length).toBe(0);
     });
   });
@@ -93,7 +104,7 @@ describe('Grep Tool', () => {
       );
 
       expect(result.isError).toBe(false);
-      const matches = JSON.parse(result.content);
+      const matches = JSON.parse(result.content) as GrepMatchResult[];
       expect(matches.every((m: any) => m.path.startsWith('projects/app/'))).toBe(true);
     });
 
@@ -104,7 +115,7 @@ describe('Grep Tool', () => {
       );
 
       expect(result.isError).toBe(false);
-      const matches = JSON.parse(result.content);
+      const matches = JSON.parse(result.content) as GrepMatchResult[];
       expect(matches.every((m: any) => m.path.startsWith('areas/'))).toBe(true);
     });
 
@@ -115,7 +126,7 @@ describe('Grep Tool', () => {
       );
 
       expect(result.isError).toBe(false);
-      const matches = JSON.parse(result.content);
+      const matches = JSON.parse(result.content) as GrepMatchResult[];
       expect(matches.length).toBe(1);
       expect(matches[0].path).toBe('projects/app/notes.md');
     });
@@ -129,7 +140,7 @@ describe('Grep Tool', () => {
       );
 
       expect(result.isError).toBe(false);
-      const matches = JSON.parse(result.content);
+      const matches = JSON.parse(result.content) as GrepMatchResult[];
       expect(matches.length).toBe(1);
       expect(matches[0].context).toBeDefined();
       expect(matches[0].context.length).toBe(3); // 1 before + match + 1 after
@@ -144,7 +155,7 @@ describe('Grep Tool', () => {
       );
 
       expect(result.isError).toBe(false);
-      const matches = JSON.parse(result.content);
+      const matches = JSON.parse(result.content) as GrepMatchResult[];
       expect(matches[0].context.length).toBeLessThanOrEqual(2); // Only 2 lines in file
     });
 
@@ -155,7 +166,7 @@ describe('Grep Tool', () => {
       );
 
       expect(result.isError).toBe(false);
-      const matches = JSON.parse(result.content);
+      const matches = JSON.parse(result.content) as GrepMatchResult[];
       expect(matches[0].context).toBeUndefined();
     });
   });
@@ -165,7 +176,7 @@ describe('Grep Tool', () => {
       const result = await grepTool({ pattern: 'TODO:.*login' }, storage as unknown as StorageService);
 
       expect(result.isError).toBe(false);
-      const matches = JSON.parse(result.content);
+      const matches = JSON.parse(result.content) as GrepMatchResult[];
       expect(matches.length).toBeGreaterThanOrEqual(1);
     });
 
@@ -173,7 +184,7 @@ describe('Grep Tool', () => {
       const result = await grepTool({ pattern: '\\btest\\b' }, storage as unknown as StorageService);
 
       expect(result.isError).toBe(false);
-      const matches = JSON.parse(result.content);
+      const matches = JSON.parse(result.content) as GrepMatchResult[];
       expect(matches.length).toBeGreaterThanOrEqual(1);
     });
 
@@ -183,7 +194,7 @@ describe('Grep Tool', () => {
       const result = await grepTool({ pattern: '\\$100' }, storage as unknown as StorageService);
 
       expect(result.isError).toBe(false);
-      const matches = JSON.parse(result.content);
+      const matches = JSON.parse(result.content) as GrepMatchResult[];
       expect(matches.length).toBe(1);
     });
 
@@ -207,7 +218,7 @@ describe('Grep Tool', () => {
       );
 
       expect(result.isError).toBe(false);
-      const matches = JSON.parse(result.content);
+      const matches = JSON.parse(result.content) as GrepMatchResult[];
       expect(matches.length).toBe(10);
     });
 
@@ -218,7 +229,7 @@ describe('Grep Tool', () => {
       const result = await grepTool({ pattern: 'match' }, storage as unknown as StorageService);
 
       expect(result.isError).toBe(false);
-      const matches = JSON.parse(result.content);
+      const matches = JSON.parse(result.content) as GrepMatchResult[];
       expect(matches.length).toBe(50); // Default limit
     });
 
@@ -270,7 +281,7 @@ describe('Grep Tool', () => {
       const result = await grepTool({ pattern: 'TODO' }, storage as unknown as StorageService);
 
       expect(result.isError).toBe(false);
-      const matches = JSON.parse(result.content);
+      const matches = JSON.parse(result.content) as GrepMatchResult[];
       expect(matches[0]).toHaveProperty('path');
       expect(matches[0]).toHaveProperty('line');
       expect(matches[0]).toHaveProperty('match');
@@ -282,7 +293,7 @@ describe('Grep Tool', () => {
       const result = await grepTool({ pattern: 'Line 2' }, storage as unknown as StorageService);
 
       expect(result.isError).toBe(false);
-      const matches = JSON.parse(result.content);
+      const matches = JSON.parse(result.content) as GrepMatchResult[];
       expect(matches[0].line).toBe(2);
     });
   });
