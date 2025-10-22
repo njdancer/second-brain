@@ -142,11 +142,11 @@ export class MonitoringService {
    * @param filesSkipped Number of files skipped
    * @param totalBytes Total bytes backed up
    */
-  async recordBackupEvent(
+  recordBackupEvent(
     filesBackedUp: number,
     filesSkipped: number,
     totalBytes: number
-  ): Promise<void> {
+  ): void {
     try {
       this.analytics.writeDataPoint({
         indexes: ['backup'],

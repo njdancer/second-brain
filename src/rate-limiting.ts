@@ -55,7 +55,7 @@ export class RateLimiter {
 
     // Check if limit exceeded
     if (current >= limit) {
-      const retryAfter = await this.calculateRetryAfter(key);
+      const retryAfter = this.calculateRetryAfter(key);
       return {
         allowed: false,
         limit,
@@ -128,7 +128,7 @@ export class RateLimiter {
   /**
    * Calculate how long until the rate limit resets
    */
-  private async calculateRetryAfter(key: string): Promise<number> {
+  private calculateRetryAfter(key: string): number {
     // In a real implementation, we'd get the TTL from KV
     // For now, return a reasonable default based on the key
     if (key.includes(':minute')) {

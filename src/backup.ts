@@ -139,9 +139,14 @@ export class BackupService {
       }
 
       return true; // Different or missing ETag, backup needed
-    } catch (error: any) {
+    } catch (error: unknown) {
       // File doesn't exist in S3 (NotFound error)
-      if (error.name === 'NotFound' || error.name === 'NoSuchKey') {
+      if (
+        error &&
+        typeof error === 'object' &&
+        'name' in error &&
+        (error.name === 'NotFound' || error.name === 'NoSuchKey')
+      ) {
         return true;
       }
       // Other errors - backup to be safe
@@ -256,7 +261,7 @@ export class BackupService {
         lastBackupDate,
         totalBackups: dates.size,
       };
-    } catch (error) {
+    } catch (_error) {
       return {
         totalBackups: 0,
       };

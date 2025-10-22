@@ -54,11 +54,11 @@ export default new OAuthProvider({
   // API handler for authenticated MCP requests
   // OAuthProvider validates tokens and injects user info into the handler's ctx.props
   apiRoute: '/mcp',
-  apiHandler: MCPHandler as any,
+  apiHandler: MCPHandler,
 
   // Default handler for OAuth UI (GitHub authentication)
   // Handles /authorize and /callback endpoints
-  defaultHandler: GitHubHandler as any,
+  defaultHandler: GitHubHandler,
 
   // OAuth endpoints (library manages these automatically with PKCE)
   // Must match the routes in GitHubHandler (oauth-ui-handler.ts)

@@ -81,7 +81,7 @@ export interface LogContext {
   status?: number;
   window?: string;
   limit?: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export type LogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
