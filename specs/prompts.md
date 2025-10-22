@@ -180,7 +180,7 @@ The MCP server MUST expose these prompts through the standard MCP prompt listing
 
 **Server Name:** `second-brain`
 
-**Server Version:** (current version from package.json)
+**Server Version:** The MCP SDK provides version information from the server implementation. No explicit version management is required in the spec.
 
 **Server Description:** Multi-paragraph description visible to Claude explaining BASB methodology, PARA structure, and guidance for file organization (see bootstrap.md for full text).
 
