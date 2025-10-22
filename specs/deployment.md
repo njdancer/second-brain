@@ -53,7 +53,7 @@ Before any deployment can succeed, specific Cloudflare resources MUST exist with
 
 ### R2 Storage Buckets
 
-Two R2 buckets MUST exist (one per environment) bound to the Worker with binding name `STORAGE`. Buckets MUST be created in the same Cloudflare account as the Worker and MUST be located in a region supporting R2's object metadata features. The binding name `STORAGE` is hardcoded in the application and MUST NOT be changed without corresponding code changes.
+Two R2 buckets MUST exist (one per environment) bound to the Worker with binding name `SECOND_BRAIN_BUCKET`. Buckets MUST be created in the same Cloudflare account as the Worker and MUST be located in a region supporting R2's object metadata features. The binding name `SECOND_BRAIN_BUCKET` is hardcoded in the application and MUST NOT be changed without corresponding code changes.
 
 ### KV Namespaces
 
@@ -71,7 +71,7 @@ Feature flag sets are stored as JSON blobs with keys in format `flagset:{set_id}
 
 ### Durable Objects
 
-One Durable Object class named `MCPSessionDurableObject` MUST be bound to each environment with binding name `MCP_SESSION`. The Durable Object MUST support alarm scheduling for session cleanup. This binding is critical for session persistence and MUST NOT be omitted.
+One Durable Object class named `MCPSessionDurableObject` MUST be bound to each environment with binding name `MCP_SESSIONS`. The Durable Object MUST support alarm scheduling for session cleanup. This binding is critical for session persistence and MUST NOT be omitted.
 
 ### Analytics Engine
 
