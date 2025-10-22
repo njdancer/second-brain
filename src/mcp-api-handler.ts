@@ -9,7 +9,7 @@ import { isInitializeRequest } from './mcp-transport';
 import { RateLimiter } from './rate-limiting';
 import { MonitoringService } from './monitoring';
 import { Logger, generateRequestId } from './logger';
-import { Env } from './index';
+import type { Env } from './index';
 
 /**
  * Props injected by OAuthProvider after token validation

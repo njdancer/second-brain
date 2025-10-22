@@ -3,7 +3,7 @@
  * Find files matching a glob pattern
  */
 
-import { StorageService } from '../storage';
+import type { StorageService } from '../storage';
 
 export interface GlobParams {
   pattern: string;
@@ -22,7 +22,7 @@ const MAX_RESULTS_LIMIT = 1000;
  * Convert glob pattern to regex
  */
 function globToRegex(pattern: string): RegExp {
-  let regexPattern = pattern
+  const regexPattern = pattern
     // Replace ** with a placeholder FIRST (before everything else)
     .replace(/\*\*/g, '\x00DOUBLESTAR\x00')
     // Replace ? with placeholder (before escaping)

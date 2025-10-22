@@ -3,7 +3,7 @@
  * Triggers when /README.md does not exist in R2
  */
 
-import { StorageService } from './storage';
+import type { StorageService } from './storage';
 
 /**
  * Check if bootstrap is needed

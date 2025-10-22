@@ -103,10 +103,38 @@ jobs:
       - name: Run E2E tests
         run: pnpm run test:e2e
 
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install pnpm
+        run: corepack prepare pnpm@9.0.0 --activate
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run linter
+        run: pnpm run lint
+
+      - name: Check formatting
+        run: pnpm run format
+
   deploy-development:
     name: Deploy to Development
     runs-on: ubuntu-latest
-    needs: [type-check, unit-tests, e2e-tests]
+    needs: [type-check, unit-tests, e2e-tests, lint]
     environment:
       name: development
       url: https://second-brain-dev.your-subdomain.workers.dev

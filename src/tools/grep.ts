@@ -3,7 +3,7 @@
  * Search file contents using regex patterns
  */
 
-import { StorageService } from '../storage';
+import type { StorageService } from '../storage';
 
 export interface GrepParams {
   pattern: string;
@@ -31,7 +31,7 @@ const MAX_MATCHES_LIMIT = 1000;
  * Convert glob pattern to regex (for path filtering)
  */
 function globToRegex(pattern: string): RegExp {
-  let regexPattern = pattern
+  const regexPattern = pattern
     .replace(/\*\*/g, '\x00DOUBLESTAR\x00')
     .replace(/\?/g, '\x00QUESTION\x00')
     .replace(/[.+^${}()|[\]\\]/g, '\\$&')

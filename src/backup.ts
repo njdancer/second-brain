@@ -3,9 +3,10 @@
  * Daily automated backups with 30-day retention
  */
 
-import { StorageService } from './storage';
+import type { StorageService } from './storage';
+import type {
+  S3Client} from '@aws-sdk/client-s3';
 import {
-  S3Client,
   PutObjectCommand,
   HeadObjectCommand,
   ListObjectsV2Command,

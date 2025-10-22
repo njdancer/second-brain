@@ -31,7 +31,7 @@ export class ArcticGitHubOAuthProvider implements GitHubOAuthProvider {
       accessToken: tokens.accessToken(),
       refreshToken: tokens.refreshToken(),
       expiresIn: tokens.accessTokenExpiresAt()
-        ? Math.floor((tokens.accessTokenExpiresAt()!.getTime() - Date.now()) / 1000)
+        ? Math.floor((tokens.accessTokenExpiresAt().getTime() - Date.now()) / 1000)
         : undefined,
     };
   }

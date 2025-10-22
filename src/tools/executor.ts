@@ -3,9 +3,9 @@
  * Routes MCP tool calls to actual tool implementations
  */
 
-import { StorageService } from '../storage';
-import { RateLimiter } from '../rate-limiting';
-import { Logger } from '../logger';
+import type { StorageService } from '../storage';
+import type { RateLimiter } from '../rate-limiting';
+import type { Logger } from '../logger';
 import { readTool } from './read';
 import { writeTool } from './write';
 import { editTool } from './edit';

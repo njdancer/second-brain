@@ -3,7 +3,7 @@
  * Reads file contents with optional range selection and byte limits
  */
 
-import { StorageService } from '../storage';
+import type { StorageService } from '../storage';
 
 export interface ReadParams {
   path: string;

@@ -3,7 +3,7 @@
  * Edits existing files using string replacement, with optional move/rename/delete
  */
 
-import { StorageService } from '../storage';
+import type { StorageService } from '../storage';
 
 export interface EditParams {
   path: string; // Path to file to edit (REQUIRED)

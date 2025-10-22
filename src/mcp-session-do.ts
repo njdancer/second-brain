@@ -5,13 +5,13 @@
  */
 
 import { DurableObject } from 'cloudflare:workers';
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import type { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { StorageService } from './storage';
 import { RateLimiter } from './rate-limiting';
 import { Logger, generateRequestId } from './logger';
 import { createMCPServerInstance, isInitializeRequest } from './mcp-transport';
-import { Env } from './index';
+import type { Env } from './index';
 
 /**
  * Props passed from the main worker (after OAuth validation)

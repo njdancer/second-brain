@@ -3,7 +3,7 @@
  * Creates new files or overwrites existing files
  */
 
-import { StorageService } from '../storage';
+import type { StorageService } from '../storage';
 
 export interface WriteParams {
   path: string;

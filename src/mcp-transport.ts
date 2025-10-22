@@ -11,12 +11,12 @@ import {
   ListPromptsRequestSchema,
   GetPromptRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { StorageService } from './storage';
-import { RateLimiter } from './rate-limiting';
+import type { StorageService } from './storage';
+import type { RateLimiter } from './rate-limiting';
 import { MonitoringService } from './monitoring';
 import { bootstrapSecondBrain } from './bootstrap';
 import { executeTool } from './tools/executor';
-import { Logger } from './logger';
+import type { Logger } from './logger';
 import { Env } from './index';
 import { getVersionString } from './version';
 

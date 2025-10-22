@@ -8,7 +8,7 @@
 import type { OAuthHelpers } from '@cloudflare/workers-oauth-provider';
 import { MonitoringService } from './monitoring';
 import { Logger, generateRequestId } from './logger';
-import { Env } from './index';
+import type { Env } from './index';
 import type { GitHubOAuthProvider, GitHubUser } from './github-oauth-provider';
 import { VERSION_INFO, getVersionString } from './version';
 
