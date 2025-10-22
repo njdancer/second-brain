@@ -354,8 +354,8 @@ describe('Edit Tool', () => {
 
     it('should handle storage errors gracefully', async () => {
       const errorStorage = {
-        async getObject(): Promise<string | null> {
-          throw new Error('Storage failure');
+        getObject(): Promise<string | null> {
+          return Promise.reject(new Error('Storage failure'));
         },
       };
 

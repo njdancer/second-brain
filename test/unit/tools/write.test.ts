@@ -194,6 +194,7 @@ describe('Write Tool', () => {
 
     it('should reject null path', async () => {
       const result = await writeTool(
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
         { path: null as any, content: 'test' },
         storage as unknown as StorageService,
         'user123'
@@ -254,18 +255,18 @@ describe('Write Tool', () => {
   describe('error handling', () => {
     it('should handle storage errors gracefully', async () => {
       const errorStorage = {
-        async putObject(): Promise<void> {
-          throw new Error('Storage failure');
+        putObject(): Promise<void> {
+          return Promise.reject(new Error('Storage failure'));
         },
-        async checkStorageQuota(): Promise<QuotaStatus> {
-          return {
+        checkStorageQuota(): Promise<QuotaStatus> {
+          return Promise.resolve({
             withinQuota: true,
             totalBytes: 0,
             totalFiles: 0,
             maxBytes: 10 * 1024 * 1024 * 1024,
             maxFiles: 10000,
             maxFileSize: 10 * 1024 * 1024,
-          };
+          });
         },
       };
 
@@ -281,6 +282,7 @@ describe('Write Tool', () => {
 
     it('should validate content parameter', async () => {
       const result = await writeTool(
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
         { path: 'test.md', content: null as any },
         storage as unknown as StorageService,
         'user123'

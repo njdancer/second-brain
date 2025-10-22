@@ -204,8 +204,8 @@ describe('Read Tool', () => {
   describe('error handling', () => {
     it('should handle storage errors gracefully', async () => {
       const errorStorage = {
-        async getObject(): Promise<string | null> {
-          throw new Error('Storage failure');
+        getObject(): Promise<string | null> {
+          return Promise.reject(new Error('Storage failure'));
         },
       };
 
@@ -223,7 +223,11 @@ describe('Read Tool', () => {
     });
 
     it('should handle null path', async () => {
-      const result = await readTool({ path: null as any }, storage as unknown as StorageService);
+      const result = await readTool(
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
+        { path: null as any },
+        storage as unknown as StorageService
+      );
 
       expect(result.isError).toBe(true);
     });

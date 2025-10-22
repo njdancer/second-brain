@@ -242,15 +242,19 @@ describe('Grep Tool', () => {
     });
 
     it('should return error for null pattern', async () => {
-      const result = await grepTool({ pattern: null as any }, storage as unknown as StorageService);
+      const result = await grepTool(
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
+        { pattern: null as any },
+        storage as unknown as StorageService
+      );
 
       expect(result.isError).toBe(true);
     });
 
     it('should handle storage errors gracefully', async () => {
       const errorStorage = {
-        async listObjects(): Promise<StorageObject[]> {
-          throw new Error('Storage failure');
+        listObjects(): Promise<StorageObject[]> {
+          return Promise.reject(new Error('Storage failure'));
         },
       };
 
