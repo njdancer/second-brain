@@ -5,6 +5,11 @@
 **Last Updated:** 2025-10-22
 
 **Recent Changes:**
+- ✅ Implemented runtime version embedding (Phase 18.2.4)
+  - Version info embedded at build time in src/version.ts
+  - MCP server metadata includes version (e.g., "25.1.0 (abc123d)")
+  - /health endpoint returns version, commit, build time, environment
+  - Deployment workflows inject version via sed replacement
 - ✅ Implemented hotfix workflow (Phase 18.2.1)
   - Create hotfix branch from production commit via GitHub Deployments API
   - Hotfix branches auto-deploy to development on every push
@@ -178,7 +183,7 @@ After auditing deployment.md and release.md specs against the actual implementat
 
 ### Phase 18.2: High Priority Features (DO SOON) 🟡
 
-**Status:** 🔨 In Progress (1/4 complete)
+**Status:** 🔨 In Progress (2/4 complete)
 
 #### Task 18.2.1: Implement Hotfix Workflow ✅ **COMPLETE**
 
@@ -224,21 +229,17 @@ After auditing deployment.md and release.md specs against the actual implementat
 - Env interface includes binding
 - Can read/write to namespace in both environments
 
-#### Task 18.2.4: Embed Runtime Version Information
-- [ ] **Create version module:** `src/version.ts` with placeholder constants
-- [ ] **Build-time injection:** In deploy workflow, replace placeholders
-- [ ] **Capture git tag:** At deployment time
-- [ ] **Capture commit SHA:** Full SHA from GitHub context
-- [ ] **Capture build timestamp:** ISO 8601 format
-- [ ] **Export version:** Make available to MCP server metadata
-- [ ] **MCP initialization:** Include version in server info
-- [ ] **Health endpoint:** Return version in response
+#### Task 18.2.4: Embed Runtime Version Information ✅ **COMPLETE**
 
-**Acceptance Criteria:**
-- Version info embedded at build time (not runtime git queries)
-- MCP clients see version in server metadata
-- /health endpoint returns version info
-- Version format: "25.1.0 (abc123d)" for production
+**Implemented:**
+- Created `src/version.ts` with placeholder constants
+- VERSION_INFO object with version, commit, buildTime, environment
+- getVersionString() returns formatted version (e.g., "25.1.0 (abc123d)")
+- isDevelopment() helper function
+- Deployment workflows inject values via sed replacement
+- MCP server metadata includes version
+- /health endpoint returns version, commit, build time, environment
+- Development shows "dev" for placeholders
 
 ### Phase 18.3: Medium Priority Improvements (NICE TO HAVE) 🟢
 
