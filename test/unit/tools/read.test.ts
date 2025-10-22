@@ -3,17 +3,17 @@
  */
 
 import { readTool } from '../../../src/tools/read';
-import { StorageService } from '../../../src/storage';
+import type { StorageService } from '../../../src/storage';
 
 // Mock storage service
 class MockStorageService {
   private files: Map<string, string> = new Map();
 
-  async getObject(path: string): Promise<string | null> {
+  getObject(path: string): Promise<string | null> {
     if (this.files.has(path)) {
-      return this.files.get(path)!;
+      return Promise.resolve(this.files.get(path)!);
     }
-    return null;
+    return Promise.resolve(null);
   }
 
   setFile(path: string, content: string): void {
