@@ -17,6 +17,11 @@ id = "96dc84c8c72141e998c004cbab2fc695"
 binding = "RATE_LIMIT_KV"
 id = "40096f26b84842c3a160501230ca74ca"
 
+[[kv_namespaces]]
+binding = "FEATURE_FLAGS_KV"
+id = "fb64fa41cebe4a10874b8ebf93079299"
+preview_id = "06ceaef041914f20ba4ca885212d4e06"
+
 # Analytics Engine binding
 [[analytics_engine_datasets]]
 binding = "ANALYTICS"
@@ -65,6 +70,10 @@ id = "b39b7475acd0425ab46881ab1d701226"
 [[env.development.kv_namespaces]]
 binding = "RATE_LIMIT_KV"
 id = "6f08a90245f34ff5afc335a3105a57d3"
+
+[[env.development.kv_namespaces]]
+binding = "FEATURE_FLAGS_KV"
+id = "fb64fa41cebe4a10874b8ebf93079299"
 
 [[env.development.analytics_engine_datasets]]
 binding = "ANALYTICS"

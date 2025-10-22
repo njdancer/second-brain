@@ -21,6 +21,7 @@ export interface Env {
   // KV namespace bindings
   OAUTH_KV: KVNamespace;
   RATE_LIMIT_KV: KVNamespace;
+  FEATURE_FLAGS_KV: KVNamespace;
 
   // Analytics Engine binding
   ANALYTICS: AnalyticsEngineDataset;
