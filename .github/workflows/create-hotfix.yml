@@ -1,0 +1,188 @@
+name: Create Hotfix Branch
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue_description:
+        description: 'Brief summary of the production issue'
+        required: true
+        type: string
+      severity:
+        description: 'Severity level'
+        required: true
+        type: choice
+        options:
+          - Critical
+          - High
+        default: 'Critical'
+
+permissions:
+  contents: write
+  pull-requests: write
+  deployments: read
+
+jobs:
+  create-hotfix:
+    name: Create Hotfix Branch and PR
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Need full history to create branch from production commit
+
+      - name: Check for existing hotfix PRs
+        id: check_existing
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'hotfix'
+            });
+
+            if (prs.length > 0) {
+              core.setFailed(`⛔ A hotfix PR is already open: ${prs[0].html_url}\n\nOnly one hotfix incident can be active at a time. Please resolve the existing hotfix before creating a new one.`);
+              return false;
+            }
+
+            return true;
+
+      - name: Get production commit from Deployments API
+        id: prod_commit
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Query GitHub Deployments API for production environment
+            const { data: deployments } = await github.rest.repos.listDeployments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              environment: 'production',
+              per_page: 100
+            });
+
+            // Find most recent successful deployment
+            for (const deployment of deployments) {
+              const { data: statuses } = await github.rest.repos.listDeploymentStatuses({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                deployment_id: deployment.id
+              });
+
+              // Check if deployment succeeded
+              const successStatus = statuses.find(s => s.state === 'success');
+              if (successStatus) {
+                console.log(`Found successful production deployment: ${deployment.sha.substring(0, 7)}`);
+                console.log(`Deployed at: ${successStatus.created_at}`);
+                return deployment.sha;
+              }
+            }
+
+            core.setFailed('❌ No successful production deployment found. Cannot create hotfix branch.');
+            return null;
+
+      - name: Create hotfix branch
+        id: create_branch
+        run: |
+          PROD_COMMIT="${{ steps.prod_commit.outputs.result }}"
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+          ISSUE_SLUG=$(echo "${{ github.event.inputs.issue_description }}" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cd '[:alnum:]-' | cut -c1-50)
+          BRANCH_NAME="hotfix/${TIMESTAMP}-${ISSUE_SLUG}"
+
+          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_OUTPUT
+          echo "PROD_COMMIT=$PROD_COMMIT" >> $GITHUB_OUTPUT
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git checkout -b "$BRANCH_NAME" "$PROD_COMMIT"
+          git push origin "$BRANCH_NAME"
+
+          echo "✅ Created hotfix branch: $BRANCH_NAME"
+          echo "📍 Branched from production commit: ${PROD_COMMIT:0:7}"
+
+      - name: Create hotfix PR
+        id: create_pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const branchName = '${{ steps.create_branch.outputs.BRANCH_NAME }}';
+            const prodCommit = '${{ steps.create_branch.outputs.PROD_COMMIT }}';
+            const severity = '${{ github.event.inputs.severity }}';
+            const issueDescription = '${{ github.event.inputs.issue_description }}';
+
+            const { data: pr } = await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `[Hotfix] ${issueDescription}`,
+              head: branchName,
+              base: 'main',
+              body: `## 🚨 Hotfix Incident Response
+
+            **Severity:** ${severity}
+            **Issue:** ${issueDescription}
+            **Production Commit:** \`${prodCommit.substring(0, 7)}\`
+            **Created:** ${new Date().toISOString()}
+
+            ---
+
+            ### Incident Response Workflow
+
+            1. **Implement Fix:**
+               \`\`\`bash
+               git checkout ${branchName}
+               # Make your changes
+               git commit -m "fix: description"
+               git push origin ${branchName}
+               \`\`\`
+
+            2. **Automated Testing:**
+               - Every push automatically deploys to development
+               - Verify fix in development environment
+               - Iterate until fix is correct
+
+            3. **Deploy to Production:**
+               - Manually trigger production deployment via GitHub Actions UI
+               - Multiple deployments possible from this branch
+               - Each deployment creates a new version tag
+
+            4. **Resolution:**
+               - Merge this PR when incident is resolved
+               - Development environment will return to tracking main
+
+            ---
+
+            ### Deployment History
+
+            <!-- Deployment history will be tracked here -->
+            `
+            });
+
+            // Add hotfix label
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              labels: ['hotfix']
+            });
+
+            return pr.html_url;
+
+      - name: Create summary
+        run: |
+          echo "### 🚨 Hotfix Branch Created" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Severity:** ${{ github.event.inputs.severity }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Issue:** ${{ github.event.inputs.issue_description }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** \`${{ steps.create_branch.outputs.BRANCH_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Production Commit:** \`${{ steps.create_branch.outputs.PROD_COMMIT }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Pull Request:** ${{ steps.create_pr.outputs.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "1. Check out the hotfix branch locally" >> $GITHUB_STEP_SUMMARY
+          echo "2. Implement the fix and push" >> $GITHUB_STEP_SUMMARY
+          echo "3. Verify in development (auto-deployed)" >> $GITHUB_STEP_SUMMARY
+          echo "4. Manually deploy to production when ready" >> $GITHUB_STEP_SUMMARY

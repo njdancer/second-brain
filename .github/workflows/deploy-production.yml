@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
     inputs:
       deployment_type:
-        description: 'Deployment type'
-        required: true
+        description: 'Deployment type (auto-detected for hotfix branches)'
+        required: false
         type: choice
         options:
           - release
@@ -80,7 +80,19 @@ jobs:
         id: version
         run: |
           YEAR=$(date +%y)
-          DEPLOYMENT_TYPE="${{ github.event.inputs.deployment_type }}"
+
+          # Auto-detect deployment type from branch name
+          BRANCH_NAME="${{ github.ref_name }}"
+          if [[ "$BRANCH_NAME" == hotfix/* ]]; then
+            DEPLOYMENT_TYPE="hotfix"
+            echo "🚨 Hotfix deployment detected (branch: $BRANCH_NAME)"
+          elif [ -n "${{ github.event.inputs.deployment_type }}" ]; then
+            DEPLOYMENT_TYPE="${{ github.event.inputs.deployment_type }}"
+          else
+            DEPLOYMENT_TYPE="release"
+          fi
+
+          echo "DEPLOYMENT_TYPE=$DEPLOYMENT_TYPE" >> $GITHUB_OUTPUT
 
           # Get all tags for current year
           TAGS=$(git tag --list "v${YEAR}.*" | sort -V)
@@ -172,7 +184,7 @@ jobs:
             --notes "## Release v${VERSION}
 
           **Deployed to production:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')
-          **Deployment type:** ${{ github.event.inputs.deployment_type }}
+          **Deployment type:** ${{ steps.version.outputs.DEPLOYMENT_TYPE }}
 
           See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for detailed release notes.
 
@@ -195,7 +207,8 @@ jobs:
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "**Environment:** Production" >> $GITHUB_STEP_SUMMARY
             echo "**Version:** v${VERSION}" >> $GITHUB_STEP_SUMMARY
-            echo "**Deployment Type:** ${{ github.event.inputs.deployment_type }}" >> $GITHUB_STEP_SUMMARY
+            echo "**Deployment Type:** ${{ steps.version.outputs.DEPLOYMENT_TYPE }}" >> $GITHUB_STEP_SUMMARY
+            echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
             echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
             echo "**Deployed at:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
             echo "**URL:** https://second-brain-mcp.nick-01a.workers.dev" >> $GITHUB_STEP_SUMMARY
