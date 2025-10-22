@@ -13,6 +13,6 @@
     "isolatedModules": true,
     "outDir": "./dist"
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "test", "src/archive"]
+  "include": ["src/**/*", "test/**/*", "scripts/**/*"],
+  "exclude": ["node_modules", "src/archive"]
 }

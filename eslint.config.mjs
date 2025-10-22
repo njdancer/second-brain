@@ -5,20 +5,18 @@ import eslintConfigPrettier from 'eslint-config-prettier';
 
 export default tseslint.config(
   {
-    // Ignore generated files, dependencies, and test files
+    // Ignore generated files and dependencies only
     ignores: [
       'node_modules/**',
       'dist/**',
       'coverage/**',
       '.wrangler/**',
-      'test/**',
-      'scripts/**',
       '*.config.js',
       '*.config.mjs',
     ],
   },
   {
-    files: ['src/**/*.ts'],
+    files: ['src/**/*.ts', 'test/**/*.ts', 'scripts/**/*.ts'],
     extends: [
       eslint.configs.recommended,
       ...tseslint.configs.recommendedTypeChecked,
@@ -31,25 +29,18 @@ export default tseslint.config(
       },
     },
     rules: {
-      // Allow unused vars that start with underscore
+      // Allow unused vars/args that start with underscore (default doesn't have this)
       '@typescript-eslint/no-unused-vars': [
-        'warn',
+        'error',
         {
           argsIgnorePattern: '^_',
           varsIgnorePattern: '^_',
         },
       ],
-      // Allow explicit any (useful for testing and type guards)
-      '@typescript-eslint/no-explicit-any': 'warn',
-      // Require consistent type imports (warning only for now)
-      '@typescript-eslint/consistent-type-imports': 'warn',
-      // Disable some overly strict rules
-      '@typescript-eslint/no-unsafe-assignment': 'off',
-      '@typescript-eslint/no-unsafe-member-access': 'off',
-      '@typescript-eslint/no-unsafe-argument': 'off',
-      '@typescript-eslint/require-await': 'off',
-      '@typescript-eslint/restrict-template-expressions': 'warn',
-      'no-control-regex': 'warn',
+      // Enforce consistent type imports (not enabled by default)
+      '@typescript-eslint/consistent-type-imports': 'error',
+      // All other strict rules (no-explicit-any, no-unsafe-*, require-await)
+      // are already "error" by default in recommendedTypeChecked
     },
   },
 );
