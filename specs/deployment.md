@@ -165,6 +165,49 @@ Certain deployment scenarios are explicitly NOT supported:
 
 **[DEFERRED]** Automated performance regression detection. While desirable, defining objective performance regression criteria requires production baseline data not yet available.
 
+## Runtime Version Access
+
+The system MUST provide runtime access to version information for observability, debugging, and MCP server metadata. Version information is derived from git tags and commit history, not from files in the repository (see [Release](./release.md) for versioning strategy).
+
+### Development Environment
+
+During local development, the system MUST support querying version information from the local git repository:
+
+**Version components:**
+- **Latest tag** - Most recent git tag (e.g., `v25.1.0`) to identify base version
+- **Commit hash** - Current commit SHA (short or full form) for precise build identification
+- **Dirty status** - Boolean indicating if working directory has uncommitted changes
+
+**Access mechanism:** The development build SHOULD provide a mechanism to query this information at runtime. This MAY be implemented through build-time code generation, environment variable injection, or dynamic git command execution during development server startup.
+
+### Production Environment
+
+During production deployment, the system MUST embed static version information that was current at build time:
+
+**Version components:**
+- **Git tag** - The git tag at deployment time (e.g., `v25.1.0`)
+- **Commit hash** - The exact commit SHA deployed to production
+- **Build timestamp** - ISO 8601 timestamp of when the build was created
+
+**Embedding mechanism:** The deployment workflow MUST capture version information during the build process and embed it in the deployed Worker code. This MAY be accomplished through:
+- Environment variables set during `wrangler deploy` (if Cloudflare Workers supports build-time variable substitution)
+- Code generation that replaces placeholder values with actual version data
+- Build script that injects version constants into the compiled output
+
+**Constraint:** The embedded version information MUST be static constants in the deployed code, not runtime git queries. Production Workers MUST NOT depend on git being available at runtime.
+
+### MCP Server Version Reporting
+
+The MCP server initialization MUST include version information in the server metadata provided to MCP clients. This allows Claude and other MCP clients to identify which server version they're communicating with for debugging and compatibility purposes.
+
+The version string format SHOULD combine git tag and commit hash (e.g., `25.1.0 (abc123d)` for production, `25.1.0-dev (abc123d-dirty)` for development).
+
+See [Prompts](./prompts.md) for MCP server metadata requirements.
+
+### Implementation Flexibility
+
+The exact mechanism for accessing and embedding version information is an implementation detail. The requirement is that version information MUST be available at runtime in both development and production environments, using appropriate sources for each (git repository for development, static embedded values for production).
+
 ## Related Specifications
 
 See [Release](./release.md) for CI/CD pipeline, branching strategy, and deployment triggering mechanisms.
