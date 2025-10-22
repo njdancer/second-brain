@@ -137,6 +137,19 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Get current deployment for rollback
+        id: current_deployment
+        continue-on-error: true
+        run: |
+          # Get the most recent deployment version ID for rollback
+          CURRENT_VERSION=$(pnpm wrangler deployments list --json 2>/dev/null | jq -r '.[0].versions[0].id // ""')
+          echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          if [ -n "$CURRENT_VERSION" ]; then
+            echo "📌 Current deployment captured for rollback: $CURRENT_VERSION"
+          else
+            echo "⚠️  No previous deployment found (first deployment)"
+          fi
+
       - name: Inject version information
         run: |
           VERSION="${{ steps.version.outputs.VERSION }}"
@@ -167,20 +180,51 @@ jobs:
           echo "Waiting 30 seconds for edge propagation..."
           sleep 30
 
-      - name: Health check
+      - name: Health check with retries
         id: health_check
         run: |
-          echo "Checking health endpoint..."
-          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://second-brain-mcp.nick-01a.workers.dev/health || echo "000")
+          echo "Checking health endpoint (3 attempts with 10s delays)..."
 
-          if [ "$RESPONSE" == "200" ]; then
-            echo "✅ Health check passed (HTTP $RESPONSE)"
-            echo "HEALTH_STATUS=success" >> $GITHUB_OUTPUT
-          else
+          for attempt in 1 2 3; do
+            echo "Attempt $attempt/3..."
+            RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://second-brain-mcp.nick-01a.workers.dev/health || echo "000")
+
+            if [ "$RESPONSE" == "200" ]; then
+              echo "✅ Health check passed (HTTP $RESPONSE)"
+              echo "HEALTH_STATUS=success" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+
             echo "❌ Health check failed (HTTP $RESPONSE)"
-            echo "HEALTH_STATUS=failure" >> $GITHUB_OUTPUT
-            exit 1
-          fi
+
+            if [ $attempt -lt 3 ]; then
+              echo "⏳ Waiting 10 seconds before retry..."
+              sleep 10
+            fi
+          done
+
+          echo "❌ Health check failed after 3 attempts"
+          echo "HEALTH_STATUS=failure" >> $GITHUB_OUTPUT
+          exit 1
+
+      - name: Automatic rollback on health check failure
+        if: failure() && steps.health_check.conclusion == 'failure' && steps.current_deployment.outputs.CURRENT_VERSION != ''
+        run: |
+          echo "🔙 Health check failed - triggering automatic rollback"
+          ROLLBACK_VERSION="${{ steps.current_deployment.outputs.CURRENT_VERSION }}"
+          echo "Rolling back to version: $ROLLBACK_VERSION"
+
+          pnpm wrangler rollback --version-id "$ROLLBACK_VERSION"
+
+          echo "✅ Rollback completed"
+          echo "### ⚠️ Automatic Rollback Executed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Reason:** Health check failed after 3 attempts" >> $GITHUB_STEP_SUMMARY
+          echo "**Rolled back to:** $ROLLBACK_VERSION" >> $GITHUB_STEP_SUMMARY
+          echo "**Failed version:** ${{ steps.version.outputs.VERSION }}" >> $GITHUB_STEP_SUMMARY
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Create git tag after successful deployment
         if: success()
