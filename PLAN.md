@@ -147,14 +147,6 @@ After auditing deployment.md and release.md specs against the actual implementat
 - **Current (rollback.yml:74):** Checks out old version, runs tests, deploys
 - **Impact:** Slow rollback (minutes vs seconds)
 
-### Minor Mismatches (CAN DEFER)
-
-#### 12. **Binding Name Mismatches** ⚪
-- **Spec says:** `STORAGE` binding for R2, `MCP_SESSION` for DO
-- **Current:** `SECOND_BRAIN_BUCKET` for R2, `MCP_SESSIONS` for DO
-- **Impact:** Spec documentation doesn't match code
-- **Note:** Code works fine, just a documentation mismatch
-
 ---
 
 ## 📋 Phase 18: CI/CD Pipeline Compliance (URGENT)
@@ -330,22 +322,6 @@ After auditing deployment.md and release.md specs against the actual implementat
 - No redeployment needed
 - Uses Cloudflare instant rollback feature
 - GitHub Deployments API reflects rollback
-
-### Phase 18.4: Documentation Updates (CLEANUP) ⚪
-
-**Status:** 🔜 Not Started
-
-#### Task 18.4.1: Fix Binding Name Documentation
-- [ ] **Option A (update specs):** Change specs to match code (STORAGE → SECOND_BRAIN_BUCKET, MCP_SESSION → MCP_SESSIONS)
-- [ ] **Option B (update code):** Change code to match specs (requires testing)
-- [ ] **Recommendation:** Update specs (less risky, code works)
-- [ ] **Update deployment.md:** Lines 56, 74 with actual binding names
-- [ ] **Add note:** Explain binding names are implementation details
-
-**Acceptance Criteria:**
-- Specs match actual binding names in code
-- No confusion between spec and implementation
-- Note explains binding names can vary
 
 ### Success Criteria for Phase 18
 
