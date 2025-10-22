@@ -2,6 +2,7 @@
  * MCP Session Durable Object tests
  */
 
+import type { R2Bucket, KVNamespace } from '@cloudflare/workers-types';
 import { MCPSessionDurableObject } from '../../src/mcp-session-do';
 import { MockR2Bucket } from '../mocks/r2';
 import { MockKVNamespace } from '../mocks/kv';
@@ -30,9 +31,9 @@ describe('MCPSessionDurableObject', () => {
 
     // Mock environment
     mockEnv = {
-      SECOND_BRAIN_BUCKET: new MockR2Bucket() as any,
-      RATE_LIMIT_KV: new MockKVNamespace() as any,
-      OAUTH_KV: new MockKVNamespace() as any,
+      SECOND_BRAIN_BUCKET: new MockR2Bucket() as unknown as R2Bucket,
+      RATE_LIMIT_KV: new MockKVNamespace() as unknown as KVNamespace,
+      OAUTH_KV: new MockKVNamespace() as unknown as KVNamespace,
       ANALYTICS: {
         writeDataPoint: jest.fn(),
       } as any,
