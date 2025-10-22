@@ -10,6 +10,7 @@ import { MonitoringService } from './monitoring';
 import { Logger, generateRequestId } from './logger';
 import { Env } from './index';
 import type { GitHubOAuthProvider, GitHubUser } from './github-oauth-provider';
+import { VERSION_INFO, getVersionString } from './version';
 
 /**
  * Extended environment with OAuth helpers injected by OAuthProvider
@@ -209,7 +210,13 @@ export async function githubOAuthHandler(
     return new Response(JSON.stringify({
       status: 'ok',
       timestamp: new Date().toISOString(),
-      service: 'second-brain-mcp'
+      service: 'second-brain-mcp',
+      version: getVersionString(),
+      build: {
+        commit: VERSION_INFO.commit !== '__COMMIT_SHA__' ? VERSION_INFO.commit : 'dev',
+        time: VERSION_INFO.buildTime !== '__BUILD_TIME__' ? VERSION_INFO.buildTime : new Date().toISOString(),
+        environment: VERSION_INFO.environment !== '__ENVIRONMENT__' ? VERSION_INFO.environment : 'development'
+      }
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }

@@ -18,6 +18,7 @@ import { bootstrapSecondBrain } from './bootstrap';
 import { executeTool } from './tools/executor';
 import { Logger } from './logger';
 import { Env } from './index';
+import { getVersionString } from './version';
 
 /**
  * Create MCP server with tool and prompt handlers
@@ -34,7 +35,7 @@ export function createMCPServerInstance(
   const server = new Server(
     {
       name: 'second-brain',
-      version: '1.1.0',
+      version: getVersionString(),
     },
     {
       capabilities: {

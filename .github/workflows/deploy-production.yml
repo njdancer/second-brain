@@ -137,6 +137,24 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Inject version information
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          COMMIT_SHA="${{ github.sha }}"
+
+          # Replace placeholders in version.ts
+          sed -i "s/__VERSION__/$VERSION/g" src/version.ts
+          sed -i "s/__COMMIT_SHA__/$COMMIT_SHA/g" src/version.ts
+          sed -i "s/__BUILD_TIME__/$BUILD_TIME/g" src/version.ts
+          sed -i "s/__ENVIRONMENT__/production/g" src/version.ts
+
+          echo "✅ Injected version information:"
+          echo "  Version: $VERSION"
+          echo "  Commit: ${COMMIT_SHA:0:7}"
+          echo "  Build Time: $BUILD_TIME"
+          echo "  Environment: production"
+
       - name: Deploy to Cloudflare Workers (Production)
         id: deploy
         run: pnpm run deploy
