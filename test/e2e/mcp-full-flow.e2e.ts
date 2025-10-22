@@ -130,6 +130,12 @@ describe('MCP Full Flow E2E (Real MCP Client)', () => {
         status: 'ok',
         timestamp: expect.any(String),
         service: 'second-brain-mcp',
+        version: expect.any(String),
+        build: expect.objectContaining({
+          commit: expect.any(String),
+          time: expect.any(String),
+          environment: expect.any(String),
+        }),
       }));
     });
   });
