@@ -3,6 +3,7 @@
  * Tests for the tool execution router
  */
 
+import type { KVNamespace, R2Bucket } from '@cloudflare/workers-types';
 import type { ToolContext } from '../../../src/tools/executor';
 import { executeTool } from '../../../src/tools/executor';
 import { MockR2Bucket } from '../../mocks/r2';
@@ -21,9 +22,9 @@ describe('Tool Executor', () => {
 
   beforeEach(() => {
     mockBucket = new MockR2Bucket();
-    storage = new StorageService(mockBucket as any);
+    storage = new StorageService(mockBucket as unknown as R2Bucket);
     rateLimitKV = new MockKVNamespace();
-    rateLimiter = new RateLimiter(rateLimitKV as any);
+    rateLimiter = new RateLimiter(rateLimitKV as unknown as KVNamespace);
     logger = new Logger({ userId: 'test-user', requestId: 'test-request' });
     context = {
       storage,

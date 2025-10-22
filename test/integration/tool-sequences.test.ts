@@ -3,6 +3,7 @@
  * Tests the full lifecycle of operations: create → read → edit → delete
  */
 
+import type { R2Bucket } from '@cloudflare/workers-types';
 import { StorageService } from '../../src/storage';
 import { readTool } from '../../src/tools/read';
 import { writeTool } from '../../src/tools/write';
@@ -17,7 +18,7 @@ describe('Integration: Tool Sequences', () => {
 
   beforeEach(() => {
     mockBucket = new MockR2Bucket();
-    storage = new StorageService(mockBucket as any);
+    storage = new StorageService(mockBucket as unknown as R2Bucket);
   });
 
   afterEach(() => {

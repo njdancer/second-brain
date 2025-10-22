@@ -2,6 +2,7 @@
  * Unit tests for bootstrap system
  */
 
+import type { R2Bucket } from '@cloudflare/workers-types';
 import { bootstrapSecondBrain, shouldBootstrap } from '../../src/bootstrap';
 import { StorageService } from '../../src/storage';
 import { MockR2Bucket } from '../mocks/r2';
@@ -12,7 +13,7 @@ describe('Bootstrap System', () => {
 
   beforeEach(() => {
     mockBucket = new MockR2Bucket();
-    storage = new StorageService(mockBucket as any);
+    storage = new StorageService(mockBucket as unknown as R2Bucket);
   });
 
   afterEach(() => {
@@ -34,7 +35,7 @@ describe('Bootstrap System', () => {
     it('should handle storage errors gracefully', async () => {
       const failingStorage = new StorageService({
         get: jest.fn().mockRejectedValue(new Error('Storage error')),
-      } as any);
+      } as unknown as R2Bucket);
 
       await expect(shouldBootstrap(failingStorage)).rejects.toThrow('Storage error');
     });
