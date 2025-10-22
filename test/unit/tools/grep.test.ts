@@ -76,7 +76,7 @@ describe('Grep Tool', () => {
       expect(result.isError).toBe(false);
       const matches = JSON.parse(result.content) as GrepMatchResult[];
       expect(matches.length).toBeGreaterThanOrEqual(1);
-      expect(matches.some((m: any) => m.path.includes('design'))).toBe(true);
+      expect(matches.some((m: GrepMatchResult) => m.path.includes('design'))).toBe(true);
     });
 
     it('should be case-insensitive by default', async () => {
@@ -105,7 +105,7 @@ describe('Grep Tool', () => {
 
       expect(result.isError).toBe(false);
       const matches = JSON.parse(result.content) as GrepMatchResult[];
-      expect(matches.every((m: any) => m.path.startsWith('projects/app/'))).toBe(true);
+      expect(matches.every((m: GrepMatchResult) => m.path.startsWith('projects/app/'))).toBe(true);
     });
 
     it('should support glob patterns in path', async () => {
@@ -116,7 +116,7 @@ describe('Grep Tool', () => {
 
       expect(result.isError).toBe(false);
       const matches = JSON.parse(result.content) as GrepMatchResult[];
-      expect(matches.every((m: any) => m.path.startsWith('areas/'))).toBe(true);
+      expect(matches.every((m: GrepMatchResult) => m.path.startsWith('areas/'))).toBe(true);
     });
 
     it('should handle specific file path', async () => {

@@ -55,7 +55,7 @@ describe('Glob Tool', () => {
       expect(result.isError).toBe(false);
       const files = JSON.parse(result.content) as GlobFileResult[];
       expect(files.length).toBe(7); // All .md files
-      expect(files.every((f: any) => f.path.endsWith('.md'))).toBe(true);
+      expect(files.every((f: GlobFileResult) => f.path.endsWith('.md'))).toBe(true);
     });
 
     it('should match files in specific directory with projects/**', async () => {
@@ -64,7 +64,7 @@ describe('Glob Tool', () => {
       expect(result.isError).toBe(false);
       const files = JSON.parse(result.content) as GlobFileResult[];
       expect(files.length).toBe(3);
-      expect(files.every((f: any) => f.path.startsWith('projects/'))).toBe(true);
+      expect(files.every((f: GlobFileResult) => f.path.startsWith('projects/'))).toBe(true);
     });
 
     it('should match files at root level with *.md', async () => {
@@ -82,7 +82,7 @@ describe('Glob Tool', () => {
       expect(result.isError).toBe(false);
       const files = JSON.parse(result.content) as GlobFileResult[];
       expect(files.length).toBe(2);
-      expect(files.every((f: any) => f.path.includes('health/'))).toBe(true);
+      expect(files.every((f: GlobFileResult) => f.path.includes('health/'))).toBe(true);
     });
 
     it('should match specific directory with areas/health/*', async () => {
@@ -91,7 +91,7 @@ describe('Glob Tool', () => {
       expect(result.isError).toBe(false);
       const files = JSON.parse(result.content) as GlobFileResult[];
       expect(files.length).toBe(2);
-      expect(files.every((f: any) => f.path.startsWith('areas/health/'))).toBe(true);
+      expect(files.every((f: GlobFileResult) => f.path.startsWith('areas/health/'))).toBe(true);
     });
 
     it('should match by extension with **/*.txt', async () => {
@@ -229,7 +229,7 @@ describe('Glob Tool', () => {
       const result = await globTool({ pattern: '[[[invalid' }, storage as unknown as StorageService);
 
       // Should either return error or empty results
-      expect(result.isError || JSON.parse(result.content).length === 0).toBe(true);
+      expect(result.isError || (JSON.parse(result.content) as GlobFileResult[]).length === 0).toBe(true);
     });
   });
 
