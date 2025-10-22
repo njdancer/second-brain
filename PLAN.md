@@ -232,9 +232,9 @@ After auditing deployment.md and release.md specs against the actual implementat
 - /health endpoint returns version, commit, build time, environment
 - Development shows "dev" for placeholders
 
-### Phase 18.3: Medium Priority Improvements (NICE TO HAVE) 🟢
+### Phase 18.3: Medium Priority Improvements (NICE TO HAVE) ✅ **COMPLETE**
 
-**Status:** 🔨 In Progress (2/3 tasks complete)
+**Status:** ✅ Complete (3/3 tasks - 2025-10-22)
 
 #### Task 18.3.1: Parallelize CI Pipeline ✅ **COMPLETE**
 
@@ -269,19 +269,26 @@ After auditing deployment.md and release.md specs against the actual implementat
 
 **Note:** Existing code violations are warnings only to avoid breaking the working codebase. New code should follow linting rules.
 
-#### Task 18.3.3: Use Instant Rollback in Manual Workflow
-- [ ] **Update rollback.yml:** Remove checkout, test, and redeploy steps
-- [ ] **Use Cloudflare API:** `wrangler rollback --version-id <id>`
-- [ ] **Lookup version:** Query Cloudflare Workers deployment history
-- [ ] **Accept version input:** User provides version tag or deployment ID
-- [ ] **Verify health:** After rollback completes
-- [ ] **Update Deployment record:** Reflect rollback in GitHub Deployments
+#### Task 18.3.3: Use Instant Rollback in Manual Workflow ✅ **COMPLETE**
 
-**Acceptance Criteria:**
-- Manual rollback completes in <60 seconds
-- No redeployment needed
-- Uses Cloudflare instant rollback feature
-- GitHub Deployments API reflects rollback
+**Implemented:**
+- Replaced deploy-based rollback with Cloudflare instant rollback
+- Uses `wrangler rollback --version-id <id>` for instant rollback
+- Queries Cloudflare deployment history via `wrangler deployments list`
+- Accepts version ID input or "latest" to rollback one version
+- Verifies health with retry logic after rollback
+- Updates GitHub Deployments API with rollback record
+- Removed code checkout, tests, and rebuild steps
+
+**Key Changes:**
+- Version input changed from git tag to Cloudflare version ID
+- Default "latest" automatically gets previous deployment
+- Rollback completes in <60 seconds (vs minutes for redeploy)
+- No code rebuild or test execution required
+- Health check with 3 retries and 10 second delays
+- Creates incident report artifact for documentation
+
+**Result:** Rollback is now instant and doesn't require rebuilding or retesting the code, matching the spec requirements.
 
 ### Success Criteria for Phase 18
 
