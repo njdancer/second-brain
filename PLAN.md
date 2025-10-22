@@ -2,22 +2,17 @@
 
 **Project:** MCP Server for Building a Second Brain (BASB)
 **Status:** 🎉 **PRODUCTION - Claude Integration Working!**
-**Version:** v1.2.19 (tagged: `v1.2.18-claude-working`)
-**Last Updated:** 2025-10-17
+**Last Updated:** 2025-10-22
 
 **Recent Changes:**
-- ✅ Audited and refactored security spec (Issue #15)
-  - Removed ~60 lines of OAuth architecture duplication (now in architecture.md)
-  - Simplified authentication flow section with cross-references
-  - Converted error codes to table format for clarity
-  - Added [DEFERRED] scope markers to future features
-  - Improved alignment with spec guidelines (prose over lists, requirements focus)
-- ✅ Refactored deployment and release specs (Issue #10)
-  - Split monolithic deployment.md into focused deployment.md and release.md
-  - deployment.md: hosting, environments, infrastructure, secrets (requirements-focused)
-  - release.md: CI/CD, branching, GitHub Deployments API (continuous deployment model)
-  - Created specs/index.md to catalog all specifications
-  - Follows spec-guidelines.md (prose over lists, requirements not instructions)
+- ✅ Implemented CI/CD pipeline compliance (Phase 18.1 - Critical Fixes)
+  - Reversed deployment/tagging flow: tags created AFTER successful deployment
+  - Development auto-deploys on every main commit
+  - Production deployment triggered manually via GitHub Actions UI
+  - GitHub Deployments API integrated for all deployments
+  - Version auto-determined from git tags (YEAR.RELEASE.HOTFIX format)
+  - Removed version from package.json and PLAN.md (versions only in git tags)
+  - Removed release script (deployment workflow handles everything)
 
 ---
 
@@ -155,62 +150,26 @@ After auditing deployment.md and release.md specs against the actual implementat
 
 **Principle:** Fix the pipeline FIRST, then use it. Don't deploy more changes with a broken pipeline.
 
-### Phase 18.1: Critical Fixes (MUST DO NOW) 🔴
+### Phase 18.1: Critical Fixes ✅ **COMPLETE**
 
-**Status:** 🔜 Not Started
+**Status:** ✅ Complete (2025-10-22)
 
-#### Task 18.1.1: Reverse Deployment/Tagging Flow
-- [ ] **Change deploy.yml:** Remove git tag trigger
-- [ ] **Add trigger:** `push: branches: [main]` for production (with workflow_dispatch for manual control)
-- [ ] **After deployment:** Create git tag using GitHub API or git commands
-- [ ] **Tag format:** `v${YEAR}.${RELEASE}.${HOTFIX}` (e.g., v25.1.0)
-- [ ] **Query existing tags:** Determine next version number automatically
-- [ ] **Update release.ts:** Remove tag creation, script only updates files
+**Implemented:**
+- Created `deploy-development.yml` workflow that auto-deploys on main commits
+- Created `deploy-production.yml` workflow with manual trigger
+- Workflows auto-determine version from git tags (YEAR.RELEASE.HOTFIX format)
+- Tags created AFTER successful deployment (not before)
+- GitHub Deployments API integrated for all deployments
+- Removed version from package.json and PLAN.md (versions only in git tags)
+- Deleted release script (deployment workflows handle everything)
+- Updated CLAUDE.md with new deployment process
 
-**Acceptance Criteria:**
-- Deployment creates tags, not vice versa
-- Tags only created on SUCCESSFUL deployment
-- Version numbers follow YEAR.RELEASE.HOTFIX format
-
-#### Task 18.1.2: Auto-Deploy Development on Main Commits
-- [ ] **Create new workflow:** `deploy-development.yml` OR modify deploy.yml
-- [ ] **Trigger:** `push: branches: [main]` for development
-- [ ] **After CI passes:** Automatically deploy to development environment
-- [ ] **No manual approval:** Fast feedback for every merge to main
-- [ ] **Add GitHub comment:** Post deployment URL to related PR if available
-
-**Acceptance Criteria:**
-- Every commit to main deploys to development automatically
-- Development deployment happens within 5 minutes of merge
-- PR gets comment with development deployment URL
-
-#### Task 18.1.3: Integrate GitHub Deployments API
-- [ ] **All deployments:** Create GitHub Deployment record before deploying
-- [ ] **Set environment:** "development" or "production"
-- [ ] **Update status:** "in_progress" → "success" or "failure"
-- [ ] **Include URL:** Deployment URL in status update
-- [ ] **Track commit:** Record exact commit SHA deployed
-- [ ] **Test queries:** Verify can retrieve current production commit via API
-
-**Acceptance Criteria:**
-- All deployments visible at github.com/{repo}/deployments
-- Can query "what commit is in production?" via API
-- Deployment history shows environment, status, URL, timestamp
-
-#### Task 18.1.4: Fix Version Numbering
-- [ ] **Audit PLAN.md:** Change version from 1.2.19 → 25.1.X (where X = next number)
-- [ ] **Audit package.json:** Match PLAN.md version
-- [ ] **Update release.ts:** Use YEAR.RELEASE.HOTFIX format
-- [ ] **Determine YEAR:** Last two digits of current year (25 for 2025)
-- [ ] **Determine RELEASE:** Count production deployments in current year (via git tags)
-- [ ] **HOTFIX starts at 0:** Increment only for hotfix deployments
-- [ ] **Update workflows:** Use new version format in tags and release notes
-
-**Acceptance Criteria:**
-- All versions follow YEAR.RELEASE.HOTFIX format
-- release.ts automatically determines next version number
-- Git tags match version number (e.g., v25.1.0)
-- package.json version matches git tag
+**Key Changes:**
+- Development: Auto-deploys on every `main` commit
+- Production: Manual trigger via GitHub Actions UI (workflow_dispatch)
+- Version: Auto-determined by querying git tags, format: v25.1.0
+- Deployment creates tag AFTER success (deployment→tag, not tag→deployment)
+- GitHub Deployments API tracks all deployments with status
 
 ### Phase 18.2: High Priority Features (DO SOON) 🟡
 

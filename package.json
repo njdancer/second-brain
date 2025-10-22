@@ -1,6 +1,5 @@
 {
   "name": "second-brain-mcp",
-  "version": "1.2.19",
   "description": "Model Context Protocol server for Building a Second Brain methodology",
   "packageManager": "pnpm@9.0.0",
   "scripts": {
@@ -12,11 +11,7 @@
     "test:coverage": "jest --coverage",
     "test:e2e": "jest --config=jest.e2e.config.js test/e2e/mcp-full-flow.e2e.ts",
     "lint": "eslint src/**/*.ts",
-    "type-check": "tsc --noEmit",
-    "release": "tsx scripts/release.ts",
-    "release:patch": "tsx scripts/release.ts patch",
-    "release:minor": "tsx scripts/release.ts minor",
-    "release:major": "tsx scripts/release.ts major"
+    "type-check": "tsc --noEmit"
   },
   "keywords": [
     "mcp",

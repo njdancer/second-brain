@@ -123,38 +123,51 @@ pnpm run test:mcp:oauth
 9. Manual testing in development environment
 
 ### Release & Deployment Strategy
-**CRITICAL: ALWAYS deploy via GitHub Actions using the release process. NEVER use `pnpm deploy` directly.**
+**CRITICAL: ALWAYS deploy via GitHub Actions. NEVER use `pnpm deploy` directly.**
 
-Production deployments are triggered by git tags, not by regular commits. Use the release script:
+**Version Management:**
+- Versions exist ONLY in git tags (format: YEAR.RELEASE.HOTFIX, e.g., v25.1.0)
+- NO version stored in package.json, PLAN.md, or anywhere in the repo
+- Deployment workflow auto-determines next version from git tags
+- Tags are created AFTER successful deployment, not before
 
-```bash
-# Release process (creates version bump, changelog, git tag in one operation)
-pnpm run release        # Patch version (1.2.3 -> 1.2.4)
-pnpm run release:minor  # Minor version (1.2.3 -> 1.3.0)
-pnpm run release:major  # Major version (1.2.3 -> 2.0.0)
+**Deployment Flow:**
 
-# The script will:
-# 1. Run all tests and type checking
-# 2. Update version in package.json, PLAN.md
-# 3. Update CHANGELOG.md (opens editor for release notes)
-# 4. Commit changes with tag
-# 5. Prompt you to push: git push origin main --tags
+1. **Development (Automatic)**
+   - Every commit to `main` automatically deploys to development
+   - Triggered after PR merge
+   - Tests must pass before deployment
+   - GitHub Deployments API tracks all deployments
 
-# Push to deploy
-git push origin main --tags
+2. **Production (Manual via GitHub UI)**
+   ```bash
+   # 1. Push your changes to main
+   git push origin main
 
-# GitHub Actions will:
-# 1. Run all tests
-# 2. Run type checking
-# 3. Deploy to production automatically
-# 4. Create GitHub release
-```
+   # 2. Go to GitHub Actions UI:
+   #    https://github.com/{repo}/actions/workflows/deploy-production.yml
+
+   # 3. Click "Run workflow"
+   #    - Select deployment type: "release" or "hotfix"
+   #    - Release: increments RELEASE number (e.g., 25.1.0 → 25.2.0)
+   #    - Hotfix: increments HOTFIX number (e.g., 25.1.0 → 25.1.1)
+
+   # 4. Workflow will:
+   #    - Auto-determine next version from git tags
+   #    - Run all tests and type checking
+   #    - Deploy to production
+   #    - Run health checks
+   #    - Create git tag AFTER successful deployment
+   #    - Create GitHub release
+   #    - Update GitHub Deployments API
+   ```
 
 The development environment (`pnpm run deploy:dev`) can be used for quick testing, but all production deployments MUST go through GitHub Actions to ensure:
 - All tests pass before deployment
 - Type checking is successful
-- Version is properly tracked across all files
+- Versions are auto-determined correctly
 - Deployment is tracked in CI/CD history
+- Tags only created after successful deployment
 - Rollback is possible via GitHub
 
 ## Essential Commands
@@ -171,11 +184,9 @@ pnpm run test:coverage      # Coverage report
 pnpm run type-check         # TypeScript check (or: mise run build)
 pnpm run dev                # Local dev server (or: mise run dev)
 
-# Release & Deployment
-pnpm run release            # Create release (patch: 1.2.3 -> 1.2.4)
-pnpm run release:minor      # Minor release (1.2.3 -> 1.3.0)
-pnpm run release:major      # Major release (1.2.3 -> 2.0.0)
-git push origin main --tags # Deploy release to production
+# Deployment
+git push origin main        # Auto-deploys to development
+# Production: Manually trigger via GitHub Actions UI
 pnpm run deploy:dev         # Deploy to development (for quick testing only)
 
 # Running single test
