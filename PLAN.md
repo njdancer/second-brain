@@ -1,23 +1,18 @@
 # Implementation Plan
 
 **Project:** MCP Server for Building a Second Brain (BASB)
-**Status:** 🎉 **PRODUCTION - Claude Integration Working!**
+**Status:** ⚠️ **PRODUCTION - Working but Server Description Incomplete**
 **Version:** v1.2.19 (tagged: `v1.2.18-claude-working`)
-**Last Updated:** 2025-10-17
+**Last Updated:** 2025-10-22
 
 **Recent Changes:**
-- ✅ Audited and refactored security spec (Issue #15)
-  - Removed ~60 lines of OAuth architecture duplication (now in architecture.md)
-  - Simplified authentication flow section with cross-references
-  - Converted error codes to table format for clarity
-  - Added [DEFERRED] scope markers to future features
-  - Improved alignment with spec guidelines (prose over lists, requirements focus)
-- ✅ Refactored deployment and release specs (Issue #10)
-  - Split monolithic deployment.md into focused deployment.md and release.md
-  - deployment.md: hosting, environments, infrastructure, secrets (requirements-focused)
-  - release.md: CI/CD, branching, GitHub Deployments API (continuous deployment model)
-  - Created specs/index.md to catalog all specifications
-  - Follows spec-guidelines.md (prose over lists, requirements not instructions)
+- ✅ Comprehensive spec-to-code audit completed (Issue #18)
+  - All 12 spec documents reviewed against implementation
+  - Architecture: 95% aligned, all components implemented
+  - Security: Strong implementation, backup system disabled
+  - Tools: All 5 tools production-ready, excellent test coverage
+  - Prompts/Bootstrap/Methodology: Implemented but missing Claude guidance
+  - Identified critical gaps in server description and several deferred features
 
 ---
 
@@ -71,7 +66,97 @@
 
 ---
 
-## 📋 Phase 17: Proper Integration Test Suite (URGENT - NON-NEGOTIABLE)
+## 📋 Phase 18: Server Description & Critical Fixes (URGENT)
+
+**Goal:** Fix critical gaps identified in spec audit to ensure Claude receives proper BASB guidance.
+
+### 18.1: Server Description Compliance (CRITICAL - BLOCKING OPTIMAL UX)
+
+**Problem:** Server description in `src/mcp-transport.ts` is missing the entire "GUIDANCE FOR CLAUDE" section required by specs/bootstrap.md and specs/methodology.md. This means Claude is not receiving proper instruction on how to assist users with BASB methodology.
+
+**Tasks:**
+- [ ] Add "GUIDANCE FOR CLAUDE" section to server description (src/mcp-transport.ts:44-64)
+  - Suggest descriptive, kebab-case filenames
+  - Help users decide PARA placement based on actionability
+  - Create connections between notes (markdown links)
+  - Add metadata during capture (tags, context)
+  - Encourage progressive summarization
+  - Suggest moving completed projects to archives
+  - Identify orphaned notes during reviews
+  - Recommend specific, outcome-oriented project names
+- [ ] Implement dynamic version string (replace hardcoded '1.1.0')
+  - Option A: Read from package.json at build time
+  - Option B: Embed git tag/commit at build time (per specs/prompts.md:183-186)
+- [ ] Update tests to validate server description completeness
+- [ ] Deploy and verify Claude provides better BASB-aligned suggestions
+
+**Impact:** HIGH - Claude currently lacks guidance to optimally assist users with Second Brain methodology.
+
+### 18.2: Backup System Restoration (CRITICAL - DATA LOSS RISK)
+
+**Problem:** Backup system is completely disabled. Both scheduled (cron) and manual (admin endpoint) backups are non-functional.
+
+**Current State:**
+- ✅ BackupService class exists (src/backup.ts)
+- ✅ Cron trigger configured (wrangler.toml:37)
+- ❌ Cron handler DISABLED (src/index.ts:77-80)
+- ❌ Manual backup endpoint NOT IMPLEMENTED (specs/security.md:156-161)
+
+**Tasks:**
+- [ ] Re-enable scheduled handler in src/index.ts
+- [ ] Implement POST /admin/backup endpoint
+  - Requires valid OAuth token
+  - Same authorization as tool calls
+  - Logged to analytics
+- [ ] Add backup status endpoint (GET /admin/backup/status)
+- [ ] Test backup to S3 in development environment
+- [ ] Deploy and verify daily backups are running
+
+**Impact:** CRITICAL - No backups = potential data loss.
+
+### 18.3: Security Cleanup (MEDIUM PRIORITY)
+
+**Problem:** Several security-related discrepancies found during audit.
+
+**Tasks:**
+- [ ] Remove or verify COOKIE_ENCRYPTION_KEY usage
+  - Defined in Env interface but never used
+  - Check if @cloudflare/workers-oauth-provider actually uses it
+  - If not used: Remove from secrets and Env interface
+- [ ] Remove or implement OAuth scopes
+  - Currently defined: `scopesSupported: ['read', 'write']`
+  - Not enforced anywhere in application
+  - Decision: Remove if not needed, implement if useful
+- [ ] Update specs/security.md for accuracy
+  - Line 193: Change "Zod schemas" → "JSON Schema (MCP SDK)"
+  - Lines 111-114: Clarify CORS policy (not needed for OAuth 2.1)
+  - Line 109: Clarify HTTPS is platform-enforced
+  - Add Durable Objects session management section
+  - Add structured logging section
+
+**Impact:** MEDIUM - Security hygiene and spec accuracy.
+
+### 18.4: Bootstrap Template Consolidation (LOW PRIORITY)
+
+**Problem:** Bootstrap content exists in two places (hardcoded strings + template files), creating maintenance burden.
+
+**Current State:**
+- Template files exist: `/templates/bootstrap/*.md`
+- Content hardcoded: `/src/bootstrap.ts:60-146`
+- Files are identical but must be kept in sync manually
+
+**Tasks:**
+- [ ] Refactor bootstrap.ts to read from template files
+  - Option A: Read at runtime from R2/embedded resources
+  - Option B: Inline at build time
+- [ ] Remove hardcoded strings
+- [ ] Update tests to verify templates are used
+
+**Impact:** LOW - Code quality improvement, easier maintenance.
+
+---
+
+## 📋 Phase 17: Proper Integration Test Suite (COMPLETE)
 
 **Goal:** Build comprehensive E2E integration tests around the working implementation. **WITHOUT changing the working code**.
 
@@ -239,6 +324,35 @@ The goal is automated E2E tests that run in CI/CD and prove the server works.
 
 ## Parking Lot (Lower Priority)
 
+### Spec Documentation Updates
+
+**specs/tools.md** - Clarify error handling philosophy:
+- Document that tools return MCP format errors (`{content: "Error...", isError: true}`) rather than HTTP status codes
+- Clarify two-tier file size limits (1MB write API, 10MB storage layer)
+- Document silent result truncation design (glob/grep return first N results vs error 413)
+
+**specs/architecture.md** - Minor updates:
+- Update hardcoded version reference (line 37) or make dynamic
+- Document TEST_MODE environment variable pattern
+- Add `/health` endpoint documentation
+- Remove `[DEFERRED]` markers for implemented features (abstracted GitHub provider)
+- Add note about backup scheduling being disabled
+
+**specs/prompts.md** - Server metadata:
+- Update hardcoded version reference to match actual deployment version
+
+### Code Quality Improvements
+
+**Path Validation Consolidation:**
+- Remove redundant `..` check in write.ts (line 38)
+- Storage service already validates this (storage.ts:181)
+- Benefit: DRY principle, single source of truth
+
+**Prompt Execution Testing:**
+- E2E tests validate prompt listing but not prompt execution (GetPromptRequestSchema)
+- Add Phase 17.3.1: Test actual prompt execution for all 3 prompts
+- Low priority (prompts are implemented and work in Claude)
+
 ### Durable Object Alarm Cleanup (Bug)
 **Problem:** Alarms fire continuously every 5 minutes indefinitely, even after sessions are cleaned up.
 
@@ -259,7 +373,7 @@ The goal is automated E2E tests that run in CI/CD and prove the server works.
 ### Fix OAuth Test Script Timeout
 The current script times out at step 8 (GET request). This is lower priority now that:
 - Claude integration is confirmed working
-- We'll replace this with proper integration tests
+- We have proper E2E integration tests (Phase 17)
 
 ### Additional Monitoring
 - Tool execution duration tracking
@@ -270,19 +384,24 @@ The current script times out at step 8 (GET request). This is lower priority now
 
 ## Current Status
 
-**Deployed:** v1.2.13 (deployed but broken)
+**Deployed:** v1.2.19 (working in Claude, but server description incomplete)
 **CI/CD:** ✅ Operational (GitHub Actions, ~35s cycle time)
-**Test Coverage:** ✅ 278 tests passing, 85.05% function coverage
+**Test Coverage:** ✅ 288 tests passing, 85% function coverage (includes E2E tests)
 **Architecture:** Durable Objects for stateful sessions, direct Fetch API handlers
 **Release Process:** ✅ Automated release script working
 
-**Recent Deployments:**
-- ⚠️ **v1.2.13:** Fixed rate limit double-increment bug, improved test coverage (BUT MCP endpoint still broken)
-- ⚠️ **v1.2.12:** Enhanced structured logging (BUT MCP endpoint still broken)
-- ⚠️ **v1.2.9-11:** Durable Objects migration (BUT never validated MCP endpoint actually works)
+**Implementation Quality (Post-Audit):**
+- ✅ Architecture: 95% spec-aligned, all core components implemented correctly
+- ✅ Security: OAuth 2.1 + PKCE working, rate limiting operational, path validation solid
+- ✅ Tools: All 5 tools production-ready with comprehensive test coverage
+- ⚠️ Server Description: Missing "GUIDANCE FOR CLAUDE" section (Phase 18.1)
+- ❌ Backup System: Completely disabled, needs restoration (Phase 18.2)
+- ✅ E2E Testing: Full automated test suite with real MCP SDK client (Phase 17)
 
-**The Problem:**
-We've been deploying code with unit tests passing, but never validated the actual MCP protocol works end-to-end with real clients. The OAuth test script exists to catch this, but it's incomplete.
+**Recent Milestones:**
+- 🎉 **v1.2.18:** Claude Desktop/Web integration confirmed working
+- ✅ **Phase 17:** E2E test suite complete with automated OAuth flow
+- ✅ **Issue #18:** Comprehensive spec-to-code audit completed
 
 ---
 
@@ -331,21 +450,105 @@ We've been deploying code with unit tests passing, but never validated the actua
 
 ---
 
+## Spec-to-Code Audit Summary (Issue #18)
+
+**Audit Date:** 2025-10-22
+**Scope:** All 12 specification documents vs implementation
+**Method:** Subagent per spec category with detailed code review
+
+### High-Level Findings
+
+**✅ STRENGTHS:**
+- Architecture is 95% spec-aligned with all major components correctly implemented
+- Security implementation is strong (OAuth 2.1 + PKCE, rate limiting, path validation)
+- All 5 MCP tools are production-ready with excellent test coverage
+- E2E test infrastructure is comprehensive and fully automated
+- Dual OAuth architecture (server + client) is correctly implemented
+- Durable Objects session management works as designed
+
+**⚠️ CRITICAL GAPS:**
+- Server description missing "GUIDANCE FOR CLAUDE" section → Claude lacks BASB methodology guidance
+- Backup system completely disabled → Data loss risk
+- Version string hardcoded at 1.1.0 → Doesn't match deployed v1.2.19
+
+**📝 DOCUMENTATION GAPS:**
+- Specs reference outdated terminology (Zod schemas, CORS requirements)
+- Several implemented features not documented in specs (health endpoint, TEST_MODE)
+- Some deferred features still have [DEFERRED] markers despite being implemented
+
+### Detailed Findings by Spec
+
+**Architecture (specs/architecture.md):**
+- ✅ All 7 core components implemented
+- ✅ Request flow matches spec exactly
+- ⚠️ Minor version mismatch (spec shows 1.1.0, deployed is 1.2.19)
+- ➕ Health endpoint implemented but not in spec
+
+**Security (specs/security.md):**
+- ✅ OAuth 2.1 + PKCE working correctly
+- ✅ Rate limiting operational (100/min, 1000/hr, 10000/day)
+- ✅ Path validation prevents traversal attacks
+- ❌ Backup system completely disabled (cron handler + admin endpoint)
+- ⚠️ COOKIE_ENCRYPTION_KEY defined but never used
+- ⚠️ OAuth scopes defined but not enforced
+
+**Tools (specs/tools.md):**
+- ✅ All 5 tools fully implemented (read, write, edit, glob, grep)
+- ✅ Comprehensive test coverage
+- ⚠️ Error handling uses MCP format vs HTTP codes (correct, but spec unclear)
+- ⚠️ Two-tier file size limits (1MB API, 10MB storage) not clearly documented
+
+**Prompts (specs/prompts.md):**
+- ✅ All 3 prompts implemented (capture-note, weekly-review, research-summary)
+- ✅ E2E tests confirm prompts are discoverable
+- ❌ Server description missing "GUIDANCE FOR CLAUDE" section
+- ⚠️ Hardcoded version doesn't match deployment
+
+**Bootstrap (specs/bootstrap.md):**
+- ✅ All 5 bootstrap files created correctly
+- ✅ Idempotency working
+- ⚠️ Template files exist but content is hardcoded (duplicate maintenance)
+- ⚠️ Bootstrap timing (first tool call vs first initialize) differs from spec
+
+**Methodology (specs/methodology.md):**
+- ✅ BASB framework described in server instructions
+- ✅ CODE workflow supported by prompts
+- ✅ PARA structure enforced by bootstrap
+- ❌ Missing Claude guidance on how to assist users with methodology
+
+**Operations Specs (deployment, release, testing, etc.):**
+- ✅ CI/CD pipeline operational
+- ✅ E2E tests fully automated
+- ✅ Release process working
+- ✅ Structured logging implemented
+- ⚠️ Feature flags spec exists but no implementation
+- ⚠️ Observability spec mentions alerts but none configured
+
+### Recommendations Applied to PLAN.md
+
+1. **Phase 18.1:** Fix server description (add Claude guidance, dynamic version)
+2. **Phase 18.2:** Restore backup system (re-enable cron, implement admin endpoint)
+3. **Phase 18.3:** Security cleanup (COOKIE_ENCRYPTION_KEY, OAuth scopes, spec updates)
+4. **Phase 18.4:** Bootstrap template consolidation (remove hardcoded content)
+5. **Parking Lot:** Various spec documentation updates and minor code quality improvements
+
+---
+
 ## Future Phases (Parking Lot)
 
-### Phase 17: Storage Quota Warnings (Nice to Have)
+### Storage Quota Warnings (Nice to Have)
 Add proactive warnings when approaching storage limits:
 - Warning at 80% of quota
 - Alert at 90% of quota
 - Graceful degradation near limits
 
-### Phase 18: Response Adapter Extraction (Low Priority)
+### Response Adapter Extraction (Low Priority)
 Extract response adapter to separate module for better testability.
 
-### Phase 19: Additional Monitoring (Future)
-- Tool execution duration tracking
-- Error rate monitoring
-- Usage patterns analysis
+### Feature Flags Implementation (Deferred)
+- Specs/feature-flags.md exists but no implementation
+- Would enable runtime toggles for controlled rollout
+- Currently not needed (single-user system)
 
 ---
 
