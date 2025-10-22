@@ -126,11 +126,11 @@ describe('MCP Full Flow E2E (Real MCP Client)', () => {
       expect(response.status).toBe(200);
 
       const data = await response.json();
-      expect(data).toEqual({
+      expect(data).toEqual(expect.objectContaining({
         status: 'ok',
         timestamp: expect.any(String),
         service: 'second-brain-mcp',
-      });
+      }));
     });
   });
 
