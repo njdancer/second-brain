@@ -3,34 +3,34 @@
  */
 
 import { writeTool } from '../../../src/tools/write';
-import type { QuotaStatus } from '../../../src/storage';
-import { StorageService } from '../../../src/storage';
+import type { QuotaStatus, StorageService } from '../../../src/storage';
 
 // Mock storage service
 class MockStorageService {
   private files: Map<string, string> = new Map();
   private quotaExceeded = false;
 
-  async putObject(path: string, content: string): Promise<void> {
+  putObject(path: string, content: string): Promise<void> {
     this.files.set(path, content);
+    return Promise.resolve();
   }
 
-  async getObject(path: string): Promise<string | null> {
+  getObject(path: string): Promise<string | null> {
     if (this.files.has(path)) {
-      return this.files.get(path)!;
+      return Promise.resolve(this.files.get(path)!);
     }
-    return null;
+    return Promise.resolve(null);
   }
 
-  async checkStorageQuota(userId: string): Promise<QuotaStatus> {
-    return {
+  checkStorageQuota(_userId: string): Promise<QuotaStatus> {
+    return Promise.resolve({
       withinQuota: !this.quotaExceeded,
       totalBytes: 1000,
       totalFiles: 10,
       maxBytes: 10 * 1024 * 1024 * 1024, // 10GB
       maxFiles: 10000,
       maxFileSize: 10 * 1024 * 1024, // 10MB
-    };
+    });
   }
 
   setQuotaExceeded(exceeded: boolean): void {
