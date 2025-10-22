@@ -261,7 +261,7 @@ export class BackupService {
         lastBackupDate,
         totalBackups: dates.size,
       };
-    } catch (_error) {
+    } catch {
       return {
         totalBackups: 0,
       };
