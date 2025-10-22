@@ -34,7 +34,9 @@ While isolated, both environments MUST maintain configuration parity to ensure c
 
 **Secrets:** Both environments require the same secret keys (GitHub OAuth credentials, cookie encryption keys, S3 backup credentials) though the actual secret values MAY differ. Development MAY use test credentials where appropriate.
 
-**Dependencies:** Package versions and runtime configuration MUST match. Feature flags MAY differ between environments to enable testing of incomplete features in development before production enablement. See [Feature Flags](./feature-flags.md) for flag set configuration and flag lifecycle management.
+**Dependencies:** Package versions and runtime configuration MUST match across environments.
+
+**Feature Flags:** Development and production MAY use different flag sets to enable testing incomplete features in development before production release. See [Feature Flags](./feature-flags.md) for flag set configuration and management.
 
 ### Environment URLs
 
@@ -60,12 +62,12 @@ Six KV namespaces MUST exist:
 - `OAUTH_KV` (development) - OAuth provider state storage
 - `RATE_LIMIT_KV` (production) - Rate limiting counters
 - `RATE_LIMIT_KV` (development) - Rate limiting counters
-- `FEATURE_FLAGS_KV` (production) - Feature flag configuration
-- `FEATURE_FLAGS_KV` (development) - Feature flag configuration
+- `FEATURE_FLAGS_KV` (production) - Feature flag sets
+- `FEATURE_FLAGS_KV` (development) - Feature flag sets
 
 KV namespaces MUST support the standard Cloudflare KV API including TTL-based expiration. The binding names `OAUTH_KV`, `RATE_LIMIT_KV`, and `FEATURE_FLAGS_KV` are hardcoded and MUST NOT be changed without code modifications.
 
-**[NEEDS CLARIFICATION]** Feature flags KV namespace structure and requirements are detailed in [Feature Flags](./feature-flags.md). The namespace binding must be available in request context for flag set evaluation.
+Feature flag sets are stored as JSON blobs with keys in format `flagset:{set_id}`. See [Feature Flags](./feature-flags.md) for flag set structure and management.
 
 ### Durable Objects
 
@@ -83,7 +85,9 @@ Sensitive credentials MUST be stored as Cloudflare Worker secrets (encrypted at 
 
 **GITHUB_CLIENT_ID** and **GITHUB_CLIENT_SECRET** contain OAuth application credentials for GitHub authentication. These MUST correspond to a GitHub OAuth App configured with the correct callback URL for each environment. The client secret MUST be treated as highly sensitive and rotated periodically.
 
-**COOKIE_ENCRYPTION_KEY** contains a 32-byte hex-encoded key for encrypting OAuth state cookies. This MUST be generated using a cryptographically secure random source (e.g., `openssl rand -hex 32`). Rotating this secret invalidates all in-flight OAuth sessions.
+**COOKIE_ENCRYPTION_KEY** contains a 32-byte hex-encoded key for encrypting OAuth state cookies. This MUST be generated using a cryptographically secure random source. Rotating this secret invalidates all in-flight OAuth sessions.
+
+**[DEFERRED]** Specific tools for secret generation are implementation details. Any cryptographically secure random generator is acceptable.
 
 **S3_BACKUP_ACCESS_KEY**, **S3_BACKUP_SECRET_KEY**, **S3_BACKUP_BUCKET**, and **S3_BACKUP_REGION** contain AWS credentials for optional R2-to-S3 backup functionality. These are REQUIRED if backup features are enabled, OPTIONAL otherwise.
 
@@ -161,10 +165,53 @@ Certain deployment scenarios are explicitly NOT supported:
 
 **[DEFERRED]** Automated performance regression detection. While desirable, defining objective performance regression criteria requires production baseline data not yet available.
 
+## Runtime Version Access
+
+The system MUST provide runtime access to version information for observability, debugging, and MCP server metadata. Version information is derived from git tags and commit history, not from files in the repository (see [Release](./release.md) for versioning strategy).
+
+### Development Environment
+
+During local development, the system MUST support querying version information from the local git repository:
+
+**Version components:**
+- **Latest tag** - Most recent git tag (e.g., `v25.1.0`) to identify base version
+- **Commit hash** - Current commit SHA (short or full form) for precise build identification
+- **Dirty status** - Boolean indicating if working directory has uncommitted changes
+
+**Access mechanism:** The development build SHOULD provide a mechanism to query this information at runtime. This MAY be implemented through build-time code generation, environment variable injection, or dynamic git command execution during development server startup.
+
+### Production Environment
+
+During production deployment, the system MUST embed static version information that was current at build time:
+
+**Version components:**
+- **Git tag** - The git tag at deployment time (e.g., `v25.1.0`)
+- **Commit hash** - The exact commit SHA deployed to production
+- **Build timestamp** - ISO 8601 timestamp of when the build was created
+
+**Embedding mechanism:** The deployment workflow MUST capture version information during the build process and embed it in the deployed Worker code. This MAY be accomplished through:
+- Environment variables set during `wrangler deploy` (if Cloudflare Workers supports build-time variable substitution)
+- Code generation that replaces placeholder values with actual version data
+- Build script that injects version constants into the compiled output
+
+**Constraint:** The embedded version information MUST be static constants in the deployed code, not runtime git queries. Production Workers MUST NOT depend on git being available at runtime.
+
+### MCP Server Version Reporting
+
+The MCP server initialization MUST include version information in the server metadata provided to MCP clients. This allows Claude and other MCP clients to identify which server version they're communicating with for debugging and compatibility purposes.
+
+The version string format SHOULD combine git tag and commit hash (e.g., `25.1.0 (abc123d)` for production, `25.1.0-dev (abc123d-dirty)` for development).
+
+See [Prompts](./prompts.md) for MCP server metadata requirements.
+
+### Implementation Flexibility
+
+The exact mechanism for accessing and embedding version information is an implementation detail. The requirement is that version information MUST be available at runtime in both development and production environments, using appropriate sources for each (git repository for development, static embedded values for production).
+
 ## Related Specifications
 
 See [Release](./release.md) for CI/CD pipeline, branching strategy, and deployment triggering mechanisms.
 
 See [Security](./security.md) for OAuth configuration, token management, and credential handling requirements.
 
-See [Monitoring](./monitoring.md) for detailed observability, alerting, and metrics collection requirements.
+See [Observability](./observability.md) for detailed observability, alerting, and metrics collection requirements.

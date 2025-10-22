@@ -7,7 +7,6 @@ Central registry of all technical specification documents for the Second Brain M
 ## Core Specifications
 
 - [Architecture](./architecture.md) - System design, component interactions, and technical decisions
-- [Implementation](./implementation.md) - Module structure, configuration details, and code organization
 - [Security](./security.md) - OAuth architecture, authentication flows, and security requirements
 
 ## MCP Interface
@@ -21,6 +20,7 @@ Central registry of all technical specification documents for the Second Brain M
 
 - [Deployment](./deployment.md) - Hosting platform, environment configuration, and infrastructure requirements
 - [Release](./release.md) - CI/CD pipeline, branching strategy, and deployment automation
-- [Feature Flags](./feature-flags.md) - Runtime feature toggle system, flag sets, and controlled rollout mechanisms
-- [Monitoring](./monitoring.md) - Observability, logging, metrics, and alerting requirements
+- [Feature Flags](./feature-flags.md) - Runtime feature toggles for controlled rollout and experimentation
+- [Observability](./observability.md) - Logging, metrics, debugging, and alerting requirements
 - [Testing](./testing.md) - Test strategy, coverage requirements, and quality standards
+- [Code Checks](./code-checks.md) - Linting, formatting, type checking, and code quality enforcement

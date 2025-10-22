@@ -57,146 +57,39 @@ When working with the second brain:
 8. Recommend specific, outcome-oriented project names over vague ones
 ```
 
-This description MUST be provided through the MCP server's metadata endpoint and SHOULD match the text in `src/mcp-transport.ts` server initialization.
+This description MUST be provided through the MCP server's metadata endpoint and MUST remain consistent with the content presented to Claude across all MCP protocol interactions.
 
 ---
 
 ## Bootstrap Files
 
-When bootstrap is triggered, the system MUST create these five files in the user's R2 bucket. Files are created using the standard `write` tool implementation.
+When bootstrap is triggered, the system MUST create five README files in the user's R2 bucket. Files are created using the standard `write` tool implementation.
 
-### File 1: /README.md
+The exact content for each file MUST be read from the bootstrap templates directory during implementation. Template files define the structure and explanatory content for each PARA category.
 
-The root README introduces the second brain concept and provides quick-start guidance.
+**Required files:**
 
-**Required Path:** `/README.md`
+| Path | Purpose | Content Source |
+|------|---------|----------------|
+| `/README.md` | Root introduction to second brain concept and quick-start guidance | `templates/bootstrap/README.md` |
+| `/projects/README.md` | Explains Projects category with criteria and examples | `templates/bootstrap/projects/README.md` |
+| `/areas/README.md` | Explains Areas category with criteria and examples | `templates/bootstrap/areas/README.md` |
+| `/resources/README.md` | Explains Resources category with criteria and examples | `templates/bootstrap/resources/README.md` |
+| `/archives/README.md` | Explains Archives category with criteria | `templates/bootstrap/archives/README.md` |
 
-**Required Content:**
+**Content requirements for all bootstrap README files:**
+- MUST use markdown format
+- MUST explain the purpose of each PARA category
+- MUST provide clear criteria for when content belongs in that category
+- MUST include concrete examples users can relate to
+- SHOULD encourage users to adapt the structure to their needs
+- SHOULD reference Claude as a helper for organization decisions
 
-```markdown
-# My Second Brain
-
-This is your personal knowledge management system using the BASB methodology.
-
-## PARA Structure
-
-- **projects/** - Active initiatives with specific goals and deadlines
-- **areas/** - Ongoing responsibilities that need sustained attention
-- **resources/** - Topics of interest and reference material
-- **archives/** - Completed projects and inactive items
-
-## Getting Started
-
-Start capturing notes! The structure will emerge naturally as you use it.
-
-Ask Claude to help you:
-- Capture new notes: "Save this idea to my second brain"
-- Find information: "What notes do I have about [topic]?"
-- Weekly review: "Let's review my projects and areas"
-- Process research: "Summarize my research on [topic]"
-
-## Tips
-
-- Notes are markdown files - use headers, lists, and links freely
-- Link between notes using relative paths: `[related note](./other-note.md)`
-- Let Claude suggest organization - it understands BASB principles
-- Review and refine regularly - knowledge management is iterative
-```
-
-### File 2: /projects/README.md
-
-Explains the Projects category with clear criteria and examples.
-
-**Required Path:** `/projects/README.md`
-
-**Required Content:**
-
-```markdown
-# Projects
-
-Short-term efforts with defined goals and deadlines.
-
-A project should:
-- Have a clear outcome you're working toward
-- Have a deadline (even if approximate)
-- End at some point (then move to archives)
-
-Examples:
-- Launch new website by Q4
-- Learn Spanish for vacation in June
-- Plan and execute office move
-```
-
-### File 3: /areas/README.md
-
-Explains the Areas category with clear criteria and examples.
-
-**Required Path:** `/areas/README.md`
-
-**Required Content:**
-
-```markdown
-# Areas
-
-Ongoing responsibilities requiring sustained attention.
-
-An area should:
-- Be a long-term responsibility
-- Require maintenance to uphold a standard
-- Never truly be "done"
-
-Examples:
-- Health & Fitness
-- Career Development
-- Home Maintenance
-- Relationships
-```
-
-### File 4: /resources/README.md
-
-Explains the Resources category with clear criteria and examples.
-
-**Required Path:** `/resources/README.md`
-
-**Required Content:**
-
-```markdown
-# Resources
-
-Topics of interest and reference material.
-
-Resources are:
-- Things you're interested in learning about
-- Reference material for future use
-- Not tied to current responsibilities
-
-Examples:
-- Web Design principles
-- Productivity techniques
-- Favorite recipes
-- Book notes
-```
-
-### File 5: /archives/README.md
-
-Explains the Archives category with clear criteria.
-
-**Required Path:** `/archives/README.md`
-
-**Required Content:**
-
-```markdown
-# Archives
-
-Inactive items from Projects, Areas, and Resources.
-
-Move here when:
-- Projects are completed or abandoned
-- Areas are no longer responsibilities
-- Resources are no longer interesting
-
-Keep archives organized by year for easy retrieval.
-```
+**Root README additional requirements:**
+- MUST introduce the BASB methodology at high level
+- MUST provide quick-start suggestions for common workflows
+- MUST mention all four PARA categories with brief descriptions
+- SHOULD include tips for linking between notes and iterative refinement
 
 ---
 
@@ -236,5 +129,4 @@ The system MUST validate paths for security (no `..`, null bytes, control charac
 
 - [Methodology](./methodology.md) - BASB principles explained in bootstrap files
 - [Prompts](./prompts.md) - Workflow prompts mentioned in README.md
-- [Architecture](./architecture.md) - Bootstrap implementation in src/bootstrap.ts
-- [Implementation](./implementation.md) - Bootstrap module specifications
+- [Architecture](./architecture.md) - System architecture and component interactions

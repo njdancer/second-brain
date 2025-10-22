@@ -24,147 +24,180 @@ Direct commits to `main` are PROHIBITED except for emergency hotfixes when the p
 
 All development work MUST occur on feature branches created from `main`. Feature branches SHOULD follow the naming convention `feature/{description}` or `fix/{description}` to indicate intent. Branch names MUST use kebab-case and SHOULD be concise but descriptive (e.g., `feature/oauth-pkce-support`, `fix/session-timeout-bug`).
 
-Feature branches MUST be short-lived, typically merged within 1-3 days of creation. Long-running feature branches increase merge conflicts and defer integration issues. For large features requiring longer development, use feature flags to merge incomplete work while keeping the functionality disabled in production. See [Feature Flags](./feature-flags.md) for the runtime feature toggle system, flag set management, and flag lifecycle requirements.
+Feature branches MUST be short-lived, typically merged within 1-3 days of creation. Long-running feature branches increase merge conflicts and defer integration issues. For large features requiring longer development, feature flags MAY be used to merge incomplete work while keeping functionality disabled in production. See [Feature Flags](./feature-flags.md) for flag management and controlled rollout.
 
 Feature branches SHOULD be deleted immediately after merge to reduce repository clutter and prevent accidental continued development on stale branches.
 
 ### Hotfix Workflow
 
-Critical production issues requiring immediate deployment MAY bypass the standard pull request review process through an automated PR-based hotfix workflow that deploys to development on every push and requires explicit approval for production deployment.
+Critical production issues requiring immediate deployment MUST use a PR-based hotfix workflow that serves as the central coordination point during an incident. The hotfix PR enables rapid iteration through automated development deployments while maintaining manual control over production deployments.
 
-**Hotfix workflow MUST be PR-based with automatic CI/CD triggers.** The workflow automates hotfix branch creation, continuous dev deployment on push, and production deployment approval through GitHub Environment protection. This approach allows rapid iteration (push multiple fixes without manual workflow re-runs) while maintaining safety gates for production.
+**Key Principles:**
+- The hotfix branch becomes the **trunk during the incident**
+- Development deploys automatically on every push (rapid testing)
+- Production deploys manually on demand (controlled releases)
+- Multiple production deployments possible from a single PR (iterative fixes)
+- Parallel work can occur in feature branches that merge into the hotfix branch
+- Regular development can continue on `main` during the incident (dev deployment blocked until hotfix resolved)
 
-#### Automated Hotfix Workflow Requirements
+#### Hotfix Initiation
 
-The `.github/workflows/hotfix-create.yml` and `.github/workflows/hotfix-deploy.yml` workflows MUST implement the following automation:
+A manual GitHub Actions workflow MUST be available to initiate the hotfix process:
 
-**Workflow 1: Hotfix Branch Creation (`hotfix-create.yml`)**
+**Workflow: "Create Hotfix Branch"**
 
-Triggered via workflow dispatch to create the hotfix branch from current production commit.
+Triggered manually via GitHub Actions workflow dispatch when a critical production issue is identified.
 
-**Inputs:**
-- `issue_description` (required): Brief description of the production issue
-- `severity` (required): Critical (auth/data loss/security) or High (degraded performance)
+**Required inputs:**
+- Issue description (brief summary of the production problem)
+- Severity level (Critical: auth/data loss/security; High: degraded performance)
 
-**Steps:**
+**Workflow steps:**
 1. Query GitHub Deployments API for environment "production"
 2. Extract commit SHA from most recent successful deployment
-3. Create branch `hotfix/{timestamp}-{issue-slug}` from production commit
-4. Read current version from `package.json` (e.g., `25.1.0`)
-5. Increment HOTFIX number (e.g., `25.1.0` → `25.1.1`)
-6. Update `package.json` and `PLAN.md` with new version
-7. Commit version bump to hotfix branch
-8. Create draft pull request from hotfix branch to `main`:
-   - PR title: `[Hotfix] {issue_description}`
-   - PR body: Severity, production commit SHA, instructions for developer
-   - Labels: `hotfix`, `draft`
-9. Output PR URL and hotfix branch name
+3. Create hotfix branch from production commit: `hotfix/{timestamp}-{issue-slug}`
+4. Create pull request from hotfix branch to `main`:
+   - Title: `[Hotfix] {issue_description}`
+   - Body: Severity, production commit SHA, incident tracking info
+   - Labels: `hotfix`
+5. Output PR URL and hotfix branch name for developer
 
-**Workflow 2: Hotfix CI/CD Pipeline (`hotfix-deploy.yml`)**
+**Result:** A pull request is created that will serve as the central coordination point for the entire incident response.
 
-Triggered automatically on every push to `hotfix/*` branches and on PR approval.
+#### Incident Response Process
 
-**Trigger conditions:**
-```yaml
-on:
-  push:
-    branches:
-      - 'hotfix/**'
-  pull_request:
-    types: [opened, synchronize, ready_for_review]
-    branches:
-      - main
-  pull_request_review:
-    types: [submitted]
-```
+Once the hotfix PR is created, developers iterate on fixes using the following process:
 
-**Pipeline stages:**
+**1. Implement Fix**
+- Check out the hotfix branch locally
+- Implement the fix and add/update tests
+- Commit changes with descriptive messages
+- Push to the hotfix branch
 
-1. **Run Tests** (on every push to hotfix/\* branch)
-   - Check out hotfix branch
-   - Run type checking (MUST pass)
-   - Run unit tests (MUST pass)
-   - Run E2E tests (MUST pass)
-   - Verify coverage meets thresholds
-   - Fail workflow if any test fails (blocks dev deployment)
-   - Update PR status check (tests passing/failing)
+**2. Automated Testing and Development Deployment**
+- Every push to the hotfix branch automatically triggers:
+  - Full CI checks (type checking, linting, tests, coverage)
+  - Automatic deployment to development environment (even if tests fail, to enable rapid testing)
+  - CI status posted to PR (test failures do not block development deployment during hotfix)
+- Developer verifies fix in development environment
+- If fix is incomplete or incorrect, push more commits (process repeats)
 
-2. **Deploy to Development** (on every push after tests pass)
-   - Trigger internal workflow call to `deploy.yml` with:
-     - `branch`: hotfix branch name
-     - `environment`: development
-   - Wait for deployment completion
-   - Verify health check passes (blocks production deployment if health check fails)
-   - GitHub Deployments API automatically updates PR with deployment status
+**3. Deploy to Production (Manual)**
+- When confident the fix is ready, manually trigger production deployment
+- Deployment mechanism: GitHub Actions workflow dispatch or environment approval
+- Deployment process:
+  - Run full pre-deployment checks (tests MUST pass, type checking MUST pass, health checks MUST pass)
+  - Deploy hotfix branch to production
+  - Verify production health check
+  - If health check fails: Automatic rollback
+  - If health check passes: Create version tag
+- Monitor production to verify fix is working
 
-3. **Deploy to Production** (on explicit approval only)
-   - Requires PR marked "Ready for review" (not draft)
-   - Requires explicit production deployment approval via GitHub Environment protection
-   - Approval mechanism: Manual approval gate (not PR review - single maintainer cannot self-approve PRs)
-   - After approval, trigger internal workflow call to `deploy.yml` with:
-     - `branch`: hotfix branch name
-     - `environment`: production
-   - Wait for deployment completion
-   - Verify health check passes (automatic rollback on failure)
-   - GitHub Deployments API automatically updates PR with deployment status
+**4. Iterate if Needed**
+- If the issue is not fully resolved or a new problem emerges:
+  - Return to step 1 (implement additional fixes)
+  - Push more commits to the hotfix branch
+  - Deploy to development for testing
+  - Deploy to production again when ready
+- Each production deployment creates a new version tag (e.g., `v25.1.1`, `v25.1.2`, `v25.1.3`)
+- The hotfix PR remains open throughout the incident
 
-4. **Merge and Tag** (after successful production deployment)
-   - Auto-merge PR to `main` (squash merge)
-   - Read version from merged commit in `package.json` (e.g., `25.1.1`)
-   - Create git tag `v25.1.1` on merged commit
-   - Push tag to remote
-   - Label merged PR with `deployed`
+#### Parallel Work During Incident
 
-**Workflow execution requirements:**
-- Tests and dev deployment MUST complete within 5 minutes of push
-- Production deployment MUST complete within 5 minutes of approval
-- Developer MUST be able to push multiple commits without manually re-running workflows
-- Each push re-deploys to dev automatically (rapid iteration)
+The hotfix branch serves as the trunk during the incident. To collaborate or work on related fixes in parallel:
 
-**Error handling:**
-- Test failures block dev deployment, post PR comment with error details
-- Dev deployment failures rollback automatically, post PR comment
-- Prod deployment failures rollback automatically, block PR merge
-- Developer fixes issues and pushes again → workflow re-runs automatically
+1. Create a feature branch from the hotfix branch (not from `main`)
+2. Implement changes and test locally
+3. Create a PR from feature branch to the hotfix branch (not to `main`)
+4. Merge feature branch into hotfix branch
+5. Hotfix branch deployment pipeline runs automatically with the merged changes
 
-#### Developer Hotfix Process
+This allows multiple developers or workstreams to contribute fixes that are tested together before production deployment.
 
-When a critical production issue is identified:
+#### Development Environment Blocking
 
-1. **Initiate Hotfix**
-   - Navigate to GitHub Actions → "Create Hotfix Branch" workflow
-   - Click "Run workflow"
-   - Enter issue description (e.g., "OAuth callback returning 500 errors")
-   - Select severity level (Critical or High)
-   - Click "Run workflow"
-   - Workflow creates hotfix branch and draft PR
+To prevent confusion during incidents, the normal development deployment workflow SHOULD be modified to block deployments when a hotfix PR is open:
 
-2. **Implement and Test Fix** (iterative process)
-   - Check out hotfix branch locally: `git fetch && git checkout hotfix/...`
-   - Implement fix, add/update tests
-   - Commit: `git commit -m "fix: resolve OAuth callback error"`
-   - Push: `git push origin hotfix/...`
-   - **Workflow automatically runs tests and deploys to dev**
-   - Check PR for dev deployment URL
-   - Verify fix works in dev
-   - If fix incomplete, push more commits → auto-redeploy to dev
-   - Repeat until fix verified in dev
+**Blocking behavior:**
+- Check for open PRs with the `hotfix` label before deploying to development
+- If a hotfix PR exists: Skip development deployment, post comment explaining dev is in "hotfix mode"
+- Block creation of new hotfix PRs while an existing hotfix PR is open (only one hotfix incident at a time)
+- Regular development work can still merge to `main` during the incident
+- Development environment remains at the hotfix branch state until incident is resolved
 
-3. **Deploy to Production**
-   - Mark PR as "Ready for review" (remove draft status)
-   - Request review from maintainer (or self-approve if sole maintainer)
-   - Approve PR review
-   - **Workflow automatically deploys to production after approval**
-   - Monitor PR comments for production deployment confirmation
-   - Verify fix in production
+**Rationale:** This ensures the development environment accurately reflects the production hotfix state and prevents unrelated `main` changes from overwriting the hotfix deployment during testing. Single hotfix at a time prevents overlapping incident response efforts.
 
-4. **Complete Incident Response**
-   - Workflow automatically merges PR to `main` after successful production deployment
-   - Version bump and git tag created automatically
-   - **Optional:** Add post-mortem analysis to merged PR as follow-up comment
-   - **Optional:** Create incident report issue linking to merged hotfix PR
+#### Resolution and Merge
 
-**Time to production target:** Critical hotfixes MUST deploy to production within 1 hour of identification. The PR-based workflow enables rapid iteration without manual workflow re-runs, reducing time to resolution.
+When the incident is fully resolved and production is stable:
+
+**1. Manual Merge**
+- Manually merge the hotfix PR to `main` (do not auto-merge)
+- Use squash merge or regular merge based on commit history clarity preferences
+- Ensure PR has final incident summary and deployed version tags documented
+
+**2. Automatic Development Deployment**
+- Merging the hotfix PR to `main` automatically triggers the normal CI/CD pipeline
+- This deploys `main` (now including all hotfix changes) to development
+- Development environment is restored to track `main` instead of the hotfix branch
+- The merge removes the blocking condition, allowing normal dev deployments to resume
+
+**3. Post-Incident Documentation**
+- Add incident summary to the merged PR as a comment (optional but recommended)
+- Link to any post-mortem documents or incident reports
+- Document what was learned and any follow-up work needed
+
+#### Workflow Requirements
+
+The automated portions of the hotfix workflow MUST satisfy these requirements:
+
+**Hotfix branch creation:**
+- Runs on manual trigger (GitHub Actions workflow dispatch)
+- Creates branch from actual production commit (via Deployments API)
+- Generates unique, timestamped branch names
+- Creates PR with proper labels and metadata
+- Blocks creation if another hotfix PR is already open
+
+**Continuous deployment to development:**
+- Triggers on every push to `hotfix/*` branches
+- Runs full CI checks
+- Deploys automatically regardless of CI check results (rapid testing during incident)
+- Updates PR with deployment status, CI check results, and URLs
+- Completes within 5 minutes of push
+
+**Manual deployment to production:**
+- Triggers on manual approval or workflow dispatch
+- Runs full pre-deployment verification (tests MUST pass before production deployment)
+- Deploys hotfix branch to production
+- Verifies health checks before finalizing
+- Rolls back automatically on failure
+- Creates version tag on success
+- Can be triggered multiple times from the same hotfix branch
+- Completes within 5 minutes of trigger
+
+**Development deployment blocking:**
+- Checks for open hotfix PRs before deploying to development
+- Skips deployment and posts informative comment if hotfix in progress
+- Resumes normal behavior when hotfix PR is merged
+
+**Performance target:** The entire incident response (from issue identification to production fix deployed) SHOULD complete within 1 hour for critical issues.
+
+**Hotfix PR concurrency:**
+- Only one hotfix PR MAY be open at a time
+- Hotfix branch creation workflow MUST check for existing open hotfix PRs and fail if one exists
+- This prevents overlapping incident response efforts and development environment conflicts
+
+#### Error Handling
+
+The hotfix workflow MUST handle errors gracefully:
+
+- **Test failures during development deployment:** Post CI check results to PR, proceed with development deployment for rapid testing
+- **Test failures during production deployment:** Block production deployment, update PR with details, developer fixes and pushes again
+- **Development deployment failures:** Rollback development, post PR comment with error details
+- **Production deployment failures:** Automatic rollback to previous production version, update PR with failure notification
+- **Health check failures:** Trigger automatic rollback, require manual investigation before retry
+
+All errors MUST be surfaced in the PR as comments so the incident response team has full visibility.
 
 ### Production Commit Tracking
 
@@ -271,23 +304,22 @@ For each deployment, the workflow MUST:
 
 ## Versioning Strategy
 
-The project uses a simplified YEAR.RELEASE.HOTFIX versioning scheme for tracking releases. Version numbers exist for documentation and identification purposes but do NOT trigger deployments or control which code runs in production.
+The project uses a simplified YEAR.RELEASE.HOTFIX versioning scheme for tracking releases via git tags. Version numbers exist solely in git tags as historical markers and do NOT trigger deployments or control which code runs in production.
 
 Version number format:
 - **YEAR:** Last two digits of the year (e.g., `25` for 2025)
 - **RELEASE:** Sequential release number within the year, incremented for each production deployment (e.g., `1`, `2`, `3`...)
 - **HOTFIX:** Sequential hotfix number for emergency patches to a specific release (e.g., `0` for initial release, `1` for first hotfix)
 
-Examples: `25.1.0` (first release of 2025), `25.1.1` (hotfix to first release), `25.2.0` (second release of 2025)
+Examples: `v25.1.0` (first release of 2025), `v25.1.1` (hotfix to first release), `v25.2.0` (second release of 2025)
 
-Version number management SHOULD be automated to the greatest degree possible:
-- Version bumps SHOULD occur automatically during the production deployment workflow
-- The workflow SHOULD read the current version from `package.json` and `PLAN.md`
-- The workflow SHOULD increment the RELEASE number for standard deployments
+Version management:
+- Git tags are the ONLY source of version information
+- The deployment workflow SHOULD automatically create version tags on successful production deployments
+- The workflow SHOULD query existing git tags to determine the next version number
+- The workflow SHOULD increment the RELEASE number for standard deployments from `main`
 - The workflow SHOULD increment the HOTFIX number for hotfix deployments
-- Manual version management SHOULD be avoided to reduce human error
-
-Git tags MAY be created automatically by the deployment workflow for release tracking, but tags MUST NOT trigger automated deployments. Tags serve as bookmarks in history, not deployment triggers.
+- Tags serve as bookmarks in git history, not deployment triggers
 
 ## Deployment Verification
 
@@ -415,23 +447,18 @@ This history MUST be maintained for all deployments and MUST include:
 
 ## Release Documentation
 
-**[DEFERRED]** Automated changelog generation and GitHub Releases are deferred for future implementation. For now, git commit history serves as the changelog. If better release documentation is needed in the future, implement a process where:
+**[DEFERRED]** Automated changelog generation and GitHub Releases are deferred for future implementation. For now, git commit history and git tags serve as the changelog. If better release documentation is needed in the future, implement a process where:
 - Each feature branch records changes in a fragment file
 - The production deployment workflow combines fragments into a changelog entry
 - Version numbers are automatically incremented based on change types
 
-This level of automation is currently overkill for the project scope. Git commit history provides sufficient traceability.
+This level of automation is currently overkill for the project scope. Git commit history and tags provide sufficient traceability.
 
 ### Release Markers
 
-When production deployments occur, the deployment workflow SHOULD automatically:
+When production deployments occur, the deployment workflow SHOULD automatically create git tags for historical reference (e.g., `v25.1.0`).
 
-1. Update version in `package.json` following YEAR.RELEASE.HOTFIX scheme
-2. Update PLAN.md to reflect the deployed version
-3. Commit version updates to the repository
-4. Create git tag for historical reference (e.g., `v25.1.0`)
-
-These markers serve documentation purposes and MUST NOT trigger deployment automation (deployments trigger markers, not the reverse).
+These tags serve documentation purposes and MUST NOT trigger deployment automation (deployments trigger tags, not the reverse). Tags are the authoritative record of what version was deployed and when.
 
 ## Emergency Response
 
@@ -467,4 +494,4 @@ See [Deployment](./deployment.md) for environment configuration, infrastructure 
 
 See [Testing](./testing.md) for test coverage requirements, test execution standards, and E2E test implementation.
 
-See [Monitoring](./monitoring.md) for post-deployment observability, alerting, and metrics collection.
+See [Observability](./observability.md) for post-deployment observability, alerting, and metrics collection.
