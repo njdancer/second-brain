@@ -283,8 +283,9 @@ describe('Monitoring System', () => {
 
       const monitoringWithFailure = new MonitoringService(failingAnalytics as any);
 
-      await expect(monitoringWithFailure.recordBackupEvent(10, 2, 1500000))
-        .resolves.not.toThrow();
+      // recordBackupEvent is synchronous, should not throw even if analytics fails
+      expect(() => monitoringWithFailure.recordBackupEvent(10, 2, 1500000))
+        .not.toThrow();
     });
   });
 

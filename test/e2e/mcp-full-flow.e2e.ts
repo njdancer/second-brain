@@ -460,6 +460,67 @@ describe('MCP Full Flow E2E (Real MCP Client)', () => {
       console.log(`✅ Prompts listed: ${promptNames.join(', ')}`);
     });
 
+    test('should list resource templates', async () => {
+      const templates = await mcpClient.listResourceTemplates();
+
+      expect(templates.resourceTemplates).toHaveLength(1);
+      expect(templates.resourceTemplates[0].uriTemplate).toBe('file:///{path}');
+      expect(templates.resourceTemplates[0].name).toBe('Second Brain Documents');
+
+      console.log(`✅ Resource templates listed`);
+    });
+
+    test('should list resources (all documents)', async () => {
+      const resources = await mcpClient.listResources();
+
+      // Resources should be an array (may be empty if no files yet)
+      expect(Array.isArray(resources.resources)).toBe(true);
+
+      // If there are resources, check structure
+      if (resources.resources.length > 0) {
+        const firstResource = resources.resources[0];
+        expect(firstResource.uri).toMatch(/^file:\/\/\//);
+        expect(firstResource.name).toBeTruthy();
+        expect(firstResource.mimeType).toBeTruthy();
+      }
+
+      console.log(`✅ Resources listed: ${resources.resources.length} documents`);
+    });
+
+    test('should read a resource after writing a file', async () => {
+      // First, create a test file using the write tool
+      const writeResult = await mcpClient.callTool({
+        name: 'write',
+        arguments: {
+          path: 'test-resource.md',
+          content: '# Test Resource\n\nThis is a test document for resources.',
+        },
+      });
+
+      expect(writeResult.content).toBeTruthy();
+
+      // Now list resources to verify it appears
+      const resources = await mcpClient.listResources();
+      const testResource = resources.resources.find(
+        (r: any) => r.uri === 'file:///test-resource.md'
+      );
+      expect(testResource).toBeTruthy();
+      expect(testResource?.name).toBe('test-resource.md');
+      expect(testResource?.mimeType).toBe('text/markdown');
+
+      // Now read the resource
+      const resourceContent = await mcpClient.readResource({
+        uri: 'file:///test-resource.md',
+      });
+
+      expect(resourceContent.contents).toHaveLength(1);
+      expect(resourceContent.contents[0].uri).toBe('file:///test-resource.md');
+      expect(resourceContent.contents[0].text).toBe('# Test Resource\n\nThis is a test document for resources.');
+      expect(resourceContent.contents[0].mimeType).toBe('text/markdown');
+
+      console.log(`✅ Resource read successfully`);
+    });
+
     test('should execute glob tool successfully', async () => {
       const result = await mcpClient.callTool({
         name: 'glob',
