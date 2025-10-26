@@ -427,9 +427,11 @@ Every deployment MUST create a GitHub Actions step summary with:
 - Health check status
 - Link to Cloudflare Workers dashboard
 
-### Pull Request Comments
+### Deployment Status Tracking
 
-When a pull request is merged and triggers development deployment, the workflow SHOULD post a comment to the pull request with deployment status and URL for testing.
+Deployment status MUST be tracked via the GitHub Deployments API, not PR comments. Each deployment creates a deployment record with environment, commit SHA, and deployment URL. Deployment statuses (in_progress, success, failure) update the deployment record throughout the deployment lifecycle.
+
+Coverage reports and other test-related information MAY be posted as PR comments where appropriate.
 
 ### Deployment History
 
