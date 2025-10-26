@@ -171,17 +171,30 @@ jobs:
     if: always() && needs.rollback.result == 'success'
 
     steps:
+      - name: Checkout code (for config extraction)
+        uses: actions/checkout@v4
+
+      - name: Extract deployment URL
+        id: config
+        run: |
+          if [ "${{ github.event.inputs.environment }}" == "production" ]; then
+            # Production worker name
+            WORKER_NAME=$(grep -E '^name = "([^"]+)"' wrangler.toml | head -1 | sed -E 's/name = "([^"]+)"/\1/')
+          else
+            # Development worker name
+            WORKER_NAME=$(grep -E '^\[env\.development\]' -A 10 wrangler.toml | grep -E '^name = "([^"]+)"' | sed -E 's/name = "([^"]+)"/\1/')
+          fi
+
+          URL="https://${WORKER_NAME}.${{ vars.CLOUDFLARE_SUBDOMAIN }}.workers.dev/health"
+          echo "health_url=$URL" >> $GITHUB_OUTPUT
+          echo "Deployment URL: $URL"
+
       - name: Wait for CDN propagation
         run: sleep 10
 
       - name: Health check
         run: |
-          if [ "${{ github.event.inputs.environment }}" == "production" ]; then
-            URL="https://second-brain-mcp.nick-01a.workers.dev/health"
-          else
-            URL="https://second-brain-dev.your-subdomain.workers.dev/health"
-          fi
-
+          URL="${{ steps.config.outputs.health_url }}"
           echo "Checking health endpoint: $URL"
 
           # Retry health check up to 3 times with 10 second delays

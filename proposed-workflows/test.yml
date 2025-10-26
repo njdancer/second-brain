@@ -141,22 +141,14 @@ jobs:
           fi
           echo "✅ Coverage thresholds met"
 
-      - name: Upload coverage reports
-        uses: codecov/codecov-action@v4
+      - name: Report code coverage
+        uses: clearlyip/code-coverage-report-action@v5
         if: always()
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage/lcov.info
-          flags: unittests
-          name: codecov-umbrella
-          fail_ci_if_error: false
-
-      - name: Comment coverage on PR
-        if: github.event_name == 'pull_request'
-        uses: romeovs/lcov-reporter-action@v0.3.1
-        with:
-          lcov-file: ./coverage/lcov.info
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          filename: 'coverage/lcov.info'
+          overall-coverage-fail-threshold: '95'
+          badge: true
+          fail-on-negative-difference: true
 
   e2e-tests:
     name: E2E Tests
