@@ -9,14 +9,12 @@ import { MockR2Bucket } from '../mocks/r2';
 import { MockKVNamespace } from '../mocks/kv';
 
 describe('MCPSessionDurableObject', () => {
-  // @ts-expect-error - Mock Durable Object state with simplified structure
   let mockState: any;
   let mockEnv: Env;
   let durableObject: MCPSessionDurableObject;
 
   beforeEach(() => {
     // Mock DurableObjectState
-    // @ts-expect-error - Mock DO state doesn't implement full interface
     mockState = {
       id: { toString: () => 'test-do-id' },
       storage: {
@@ -38,7 +36,6 @@ describe('MCPSessionDurableObject', () => {
       RATE_LIMIT_KV: new MockKVNamespace() as unknown as KVNamespace,
       OAUTH_KV: new MockKVNamespace() as unknown as KVNamespace,
       FEATURE_FLAGS_KV: new MockKVNamespace() as unknown as KVNamespace,
-      // @ts-expect-error - Mock Analytics Engine with minimal implementation
       ANALYTICS: {
         writeDataPoint: jest.fn(),
       } as any,
