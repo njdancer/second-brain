@@ -267,6 +267,7 @@ export async function mcpApiHandler(
  * Export the handler for OAuthProvider apiHandler configuration
  */
 export const MCPHandler = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async fetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
     return mcpApiHandler(request, env as Env, ctx as MCPExecutionContext);
   }

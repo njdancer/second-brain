@@ -53,7 +53,7 @@ describe('Tool Executor', () => {
     it('should throw error for invalid path', async () => {
       await expect(
         executeTool('read', { path: '' }, context)
-      ).rejects.toThrow('path parameter is required');
+      ).rejects.toThrow('Invalid read parameters: path is required');
     });
   });
 
@@ -139,7 +139,7 @@ describe('Tool Executor', () => {
     it('should throw error for invalid pattern', async () => {
       await expect(
         executeTool('glob', { pattern: '' }, context)
-      ).rejects.toThrow('pattern parameter is required');
+      ).rejects.toThrow('Invalid glob parameters: pattern is required');
     });
 
     it('should return empty results when no matches', async () => {

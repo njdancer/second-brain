@@ -232,6 +232,7 @@ export async function githubOAuthHandler(
  * Export the handler for OAuthProvider defaultHandler configuration
  */
 export const GitHubHandler = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async fetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
     return githubOAuthHandler(request, env as OAuthEnv, ctx);
   }

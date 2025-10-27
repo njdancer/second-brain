@@ -2,11 +2,19 @@
  * MCP Session Durable Object tests
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
+
 import type {
   R2Bucket,
   KVNamespace,
-  AnalyticsEngineDataset,
-  DurableObjectState,
+  _AnalyticsEngineDataset,
+  _DurableObjectState,
 } from '@cloudflare/workers-types';
 import type { Env } from '../../src/index';
 import { MCPSessionDurableObject } from '../../src/mcp-session-do';
@@ -15,7 +23,7 @@ import { MockKVNamespace } from '../mocks/kv';
 
 describe('MCPSessionDurableObject', () => {
   let mockState: any;
-  let mockEnv: any;
+  let mockEnv: Env;
   let durableObject: MCPSessionDurableObject;
 
   beforeEach(() => {

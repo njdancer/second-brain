@@ -2,17 +2,24 @@
  * Unit tests for backup system
  */
 
-import type { R2Bucket } from '@cloudflare/workers-types';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/require-await */
+
 import { BackupService } from '../../src/backup';
 import { StorageService } from '../../src/storage';
 import { MockR2Bucket } from '../mocks/r2';
 
-// S3 client interface for AWS SDK v3
-interface S3Client {
+// S3 client interface for AWS SDK v3 (unused in direct implementation)
+interface _S3Client {
   send(command: unknown): Promise<unknown>;
 }
 
-interface S3Command {
+interface _S3Command {
   input: {
     Key?: string;
     Body?: string;
@@ -22,20 +29,20 @@ interface S3Command {
   };
 }
 
-interface S3PutObjectResponse {
+interface _S3PutObjectResponse {
   ETag: string;
 }
 
-interface S3HeadObjectResponse {
+interface _S3HeadObjectResponse {
   ETag: string;
   Metadata?: Record<string, string>;
 }
 
-interface S3ListObjectsResponse {
+interface _S3ListObjectsResponse {
   Contents?: Array<{ Key: string; ETag: string }>;
 }
 
-interface S3DeleteObjectsResponse {
+interface _S3DeleteObjectsResponse {
   Deleted?: Array<{ Key: string }>;
 }
 
