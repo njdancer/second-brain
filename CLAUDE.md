@@ -117,45 +117,73 @@ pnpm run test:mcp:oauth
 
 **Core Principle:** Tests validate runtime behavior, not compile-time types. Type safety in tests serves maintainability, not correctness.
 
-**Guidelines:**
-1. **Use `@ts-expect-error` for intentional type flexibility** - Make it clear WHY type safety is relaxed
-   ```typescript
-   // Good
-   // @ts-expect-error - Mock S3 client uses any for command flexibility
-   async send(command: any): Promise<any> { ... }
+**Centralized Mocks** (test/mocks/):
+- External APIs (R2, KV, S3, GitHub OAuth) have centralized mocks
+- R2 mock uses `implements Pick<R2Bucket, 'get' | 'put' | 'delete' | 'list'>` for type safety
+- KV/S3 mocks document they match the API but don't use Pick<> due to complex generics
+- When external APIs change, TypeScript catches it in ONE place (for R2)
+- Tests use `as any` when passing mocks (ESLint allows this)
 
-   // Bad - defeats the purpose
-   /* eslint-disable @typescript-eslint/no-explicit-any */
-   ```
+**Test Code Should Be Verbose**:
+- **NO test factories or helpers** (except centralized mocks)
+- **NO custom DSL to keep tests DRY**
+- Tests should be boring, explicit, repetitive
+- Copy-paste setup code between tests - that's GOOD
+- A half-asleep developer should understand the test immediately
 
-2. **Never disable 5+ type rules file-wide** - This indicates fighting TypeScript, not working with it. Use targeted comments instead.
+**Example - Good Test:**
+```typescript
+it('should backup file to S3', async () => {
+  // Explicit setup - boring but clear
+  const mockBucket = new MockR2Bucket();
+  const storage = new StorageService(mockBucket as any);
+  const mockS3 = new MockS3Client();
+  const backupService = new BackupService(storage, mockS3 as any, 'test-bucket');
 
-3. **Mocks should be simple** - Partial implementations are OK with explicit documentation
-   ```typescript
-   // Good - documents what's actually used
-   type TestR2Object = Pick<R2Object, 'key' | 'size' | 'httpEtag'>;
+  // Put file in R2
+  await mockBucket.put('test.txt', 'content', {});
 
-   // Bad - over-specified with unused properties
-   // Implementing full R2Object interface with 20+ properties
-   ```
+  // Backup to S3
+  await backupService.backupFile('test.txt');
 
-4. **Type assertions in tests should be minimal** - Test behavior, not types
-   ```typescript
-   // Good - pragmatic
-   const body = await response.json();
-   // @ts-expect-error - testing error response shape
-   expect(body.error.message).toContain('Session not initialized');
+  // Explicit assertion
+  const s3Object = mockS3.getObject('test.txt');
+  expect(s3Object).toBeDefined();
+  expect(s3Object!.body).toBe('content');
+});
+```
 
-   // Bad - brittle coupling to implementation
-   const body = await response.json() as { error: { code: number; message: string } };
-   ```
+**Example - Bad Test (DON'T DO THIS):**
+```typescript
+it('should backup file to S3', async () => {
+  // BAD: Using factory abstraction
+  const { backupService, storage, mockS3 } = createBackupTestContext();
 
-5. **Dead code should be deleted** - Use git history, not comments or archive directories
+  // BAD: Helper function hiding setup
+  await setupTestFile(storage, 'test.txt', 'content');
+
+  // BAD: Custom assertion DSL
+  await expect(backupService).toBackupFile('test.txt');
+  expectS3Object(mockS3, 'test.txt').toHaveBody('content');
+});
+```
+
+**Why Verbose Is Better:**
+- No hidden magic - everything is visible
+- Easy to debug - just read the test
+- Easy to modify - no shared abstractions to break
+- Easy to understand - no need to jump between files
+- Tests are documentation - show exactly what happens
+
+**Type Assertions:**
+- Use `as any` in tests - it's intentional and clear
+- ESLint rules are OFF (not warnings) for test files
+- Production code (`src/`) maintains strict type safety
 
 **ESLint Configuration:**
-- Test files have relaxed rules (warnings instead of errors) for pragmatic mock usage
-- Production code (`src/`) maintains strict type safety
-- See `eslint.config.mjs` for test-specific overrides
+- `test/**/*.ts`: All `no-explicit-any` and `no-unsafe-*` rules are **OFF**
+- `src/**/*.ts`: All rules are ERRORS (strict type safety)
+- See `eslint.config.mjs` for configuration
 
 ### Development Workflow
 1. **Check PLAN.md** - Review current phase and next task
