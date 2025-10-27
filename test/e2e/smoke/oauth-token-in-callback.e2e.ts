@@ -15,6 +15,17 @@ import { describe, it, expect } from '@jest/globals';
 
 const SERVER_URL = process.env.MCP_SERVER_URL || 'https://second-brain-mcp.nick-01a.workers.dev';
 
+interface OAuthCallbackResponse {
+  success?: boolean;
+  access_token?: string;
+  token_type?: string;
+  scope?: string;
+  userId?: string;
+  login?: string;
+  error?: string;
+  error_description?: string;
+}
+
 describe('E2E: OAuth Callback Contract', () => {
   it('CRITICAL: OAuth callback must return access_token to client', async () => {
     // This is a contract test - we can't easily get a real auth code,
@@ -22,20 +33,20 @@ describe('E2E: OAuth Callback Contract', () => {
 
     // Test with invalid code to see error format
     const response = await fetch(`${SERVER_URL}/callback?code=test_invalid_code`);
-    const data = await response.json() as any;
+    const data = await response.json() as OAuthCallbackResponse;
 
     // Even on error, response should be JSON
     expect(typeof data).toBe('object');
 
     // Document the expected success response format
     // This serves as living documentation and contract definition
-    const expectedSuccessResponse = {
+    const expectedSuccessResponse: Record<string, unknown> = {
       success: true,
-      access_token: expect.any(String),  // ← MUST be present!
-      token_type: expect.stringMatching(/bearer/i),
-      scope: expect.stringMatching(/read:user/),
-      userId: expect.any(String),
-      login: expect.any(String),
+      access_token: expect.any(String) as unknown,  // ← MUST be present!
+      token_type: expect.stringMatching(/bearer/i) as unknown,
+      scope: expect.stringMatching(/read:user/) as unknown,
+      userId: expect.any(String) as unknown,
+      login: expect.any(String) as unknown,
     };
 
     // Add note about what this test prevents
