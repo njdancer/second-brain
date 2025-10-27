@@ -38,7 +38,7 @@ describe('Monitoring System', () => {
 
   beforeEach(() => {
     mockAnalytics = new MockAnalyticsEngine();
-    monitoring = new MonitoringService(mockAnalytics as unknown as AnalyticsEngineDataset);
+    monitoring = new MonitoringService(mockAnalytics as any);
   });
 
   afterEach(() => {
@@ -96,7 +96,7 @@ describe('Monitoring System', () => {
       };
 
       const monitoringWithFailure = new MonitoringService(
-        failingAnalytics as unknown as AnalyticsEngineDataset,
+        failingAnalytics as any,
       );
 
       // Should not throw, just log error
@@ -142,7 +142,7 @@ describe('Monitoring System', () => {
       };
 
       const monitoringWithFailure = new MonitoringService(
-        failingAnalytics as unknown as AnalyticsEngineDataset,
+        failingAnalytics as any,
       );
 
       await expect(monitoringWithFailure.recordError(500, 'user1', 'Error')).resolves.not.toThrow();
@@ -183,7 +183,7 @@ describe('Monitoring System', () => {
       };
 
       const monitoringWithFailure = new MonitoringService(
-        failingAnalytics as unknown as AnalyticsEngineDataset,
+        failingAnalytics as any,
       );
 
       await expect(
@@ -229,7 +229,7 @@ describe('Monitoring System', () => {
       };
 
       const monitoringWithFailure = new MonitoringService(
-        failingAnalytics as unknown as AnalyticsEngineDataset,
+        failingAnalytics as any,
       );
 
       await expect(
@@ -272,7 +272,7 @@ describe('Monitoring System', () => {
       };
 
       const monitoringWithFailure = new MonitoringService(
-        failingAnalytics as unknown as AnalyticsEngineDataset,
+        failingAnalytics as any,
       );
 
       await expect(
@@ -308,7 +308,7 @@ describe('Monitoring System', () => {
       };
 
       const monitoringWithFailure = new MonitoringService(
-        failingAnalytics as unknown as AnalyticsEngineDataset,
+        failingAnalytics as any,
       );
 
       expect(() => monitoringWithFailure.recordBackupEvent(10, 2, 1500000)).not.toThrow();
@@ -344,7 +344,7 @@ describe('Monitoring System', () => {
       };
 
       const failingMonitoring = new MonitoringService(
-        failingAnalytics as unknown as AnalyticsEngineDataset,
+        failingAnalytics as any,
       );
 
       // Should not throw

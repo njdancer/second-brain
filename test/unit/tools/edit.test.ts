@@ -56,7 +56,7 @@ describe('Edit Tool', () => {
           old_str: 'This is a test',
           new_str: 'This is updated',
         },
-        storage as unknown as StorageService,
+        storage as any,
       );
 
       expect(result.isError).toBe(false);
@@ -72,7 +72,7 @@ describe('Edit Tool', () => {
           old_str: 'Hello',
           new_str: 'Hi',
         },
-        storage as unknown as StorageService,
+        storage as any,
       );
 
       expect(result.isError).toBe(true);
@@ -88,7 +88,7 @@ describe('Edit Tool', () => {
           old_str: 'Not present',
           new_str: 'Updated',
         },
-        storage as unknown as StorageService,
+        storage as any,
       );
 
       expect(result.isError).toBe(true);
@@ -104,7 +104,7 @@ describe('Edit Tool', () => {
           old_str: '\nDelete this line',
           new_str: '',
         },
-        storage as unknown as StorageService,
+        storage as any,
       );
 
       expect(result.isError).toBe(false);
@@ -120,7 +120,7 @@ describe('Edit Tool', () => {
           old_str: 'Normal text',
           new_str: 'Special chars: $100 (50%) [test]',
         },
-        storage as unknown as StorageService,
+        storage as any,
       );
 
       expect(result.isError).toBe(false);
@@ -136,7 +136,7 @@ describe('Edit Tool', () => {
           old_str: 'English text',
           new_str: '日本語 🎉 Émojis',
         },
-        storage as unknown as StorageService,
+        storage as any,
       );
 
       expect(result.isError).toBe(false);
@@ -152,7 +152,7 @@ describe('Edit Tool', () => {
           old_str: 'Line 2\nLine 3',
           new_str: 'Combined line',
         },
-        storage as unknown as StorageService,
+        storage as any,
       );
 
       expect(result.isError).toBe(false);
@@ -169,7 +169,7 @@ describe('Edit Tool', () => {
           path: 'old.md',
           new_path: 'projects/new.md',
         },
-        storage as unknown as StorageService,
+        storage as any,
       );
 
       expect(result.isError).toBe(false);
@@ -185,7 +185,7 @@ describe('Edit Tool', () => {
           path: 'old-name.md',
           new_path: 'new-name.md',
         },
-        storage as unknown as StorageService,
+        storage as any,
       );
 
       expect(result.isError).toBe(false);
@@ -202,7 +202,7 @@ describe('Edit Tool', () => {
           path: 'file1.md',
           new_path: 'file2.md',
         },
-        storage as unknown as StorageService,
+        storage as any,
       );
 
       expect(result.isError).toBe(true);
@@ -217,7 +217,7 @@ describe('Edit Tool', () => {
           path: 'note.md',
           new_path: 'archives/2024/old/note.md',
         },
-        storage as unknown as StorageService,
+        storage as any,
       );
 
       expect(result.isError).toBe(false);
@@ -234,7 +234,7 @@ describe('Edit Tool', () => {
           path: 'delete-me.md',
           delete: true,
         },
-        storage as unknown as StorageService,
+        storage as any,
       );
 
       expect(result.isError).toBe(false);
@@ -247,7 +247,7 @@ describe('Edit Tool', () => {
           path: 'does-not-exist.md',
           delete: true,
         },
-        storage as unknown as StorageService,
+        storage as any,
       );
 
       expect(result.isError).toBe(true);
@@ -265,7 +265,7 @@ describe('Edit Tool', () => {
           new_path: 'ignored-path.md',
           delete: true,
         },
-        storage as unknown as StorageService,
+        storage as any,
       );
 
       expect(result.isError).toBe(false);
@@ -285,7 +285,7 @@ describe('Edit Tool', () => {
           new_str: 'Status: Completed',
           new_path: 'archives/2024/active.md',
         },
-        storage as unknown as StorageService,
+        storage as any,
       );
 
       expect(result.isError).toBe(false);
@@ -303,7 +303,7 @@ describe('Edit Tool', () => {
           new_str: 'Updated line',
           new_path: 'moved.md',
         },
-        storage as unknown as StorageService,
+        storage as any,
       );
 
       expect(result.isError).toBe(false);
@@ -319,7 +319,7 @@ describe('Edit Tool', () => {
           old_str: 'test',
           new_str: 'updated',
         },
-        storage as unknown as StorageService,
+        storage as any,
       );
 
       expect(result.isError).toBe(true);
@@ -333,7 +333,7 @@ describe('Edit Tool', () => {
           old_str: 'test',
           new_str: 'updated',
         },
-        storage as unknown as StorageService,
+        storage as any,
       );
 
       expect(result.isError).toBe(true);
@@ -347,7 +347,7 @@ describe('Edit Tool', () => {
         {
           path: 'test.md',
         },
-        storage as unknown as StorageService,
+        storage as any,
       );
 
       expect(result.isError).toBe(true);
@@ -367,7 +367,7 @@ describe('Edit Tool', () => {
           old_str: 'test',
           new_str: 'updated',
         },
-        errorStorage as unknown as StorageService,
+        errorStorage as any,
       );
 
       expect(result.isError).toBe(true);
@@ -382,7 +382,7 @@ describe('Edit Tool', () => {
           path: 'test.md',
           new_str: 'updated',
         },
-        storage as unknown as StorageService,
+        storage as any,
       );
 
       expect(result.isError).toBe(true);

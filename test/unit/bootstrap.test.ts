@@ -13,7 +13,7 @@ describe('Bootstrap System', () => {
 
   beforeEach(() => {
     mockBucket = new MockR2Bucket();
-    storage = new StorageService(mockBucket as unknown as R2Bucket);
+    storage = new StorageService(mockBucket as any);
   });
 
   afterEach(() => {
@@ -35,7 +35,7 @@ describe('Bootstrap System', () => {
     it('should handle storage errors gracefully', async () => {
       const failingStorage = new StorageService({
         get: jest.fn().mockRejectedValue(new Error('Storage error')),
-      } as unknown as R2Bucket);
+      } as any);
 
       await expect(shouldBootstrap(failingStorage)).rejects.toThrow('Storage error');
     });

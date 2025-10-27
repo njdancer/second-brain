@@ -19,7 +19,7 @@ describe('Integration: Tool Sequences', () => {
 
   beforeEach(() => {
     mockBucket = new MockR2Bucket();
-    storage = new StorageService(mockBucket as unknown as R2Bucket);
+    storage = new StorageService(mockBucket as any);
   });
 
   afterEach(() => {

@@ -23,12 +23,12 @@ describe('MCP Transport', () => {
 
   beforeEach(() => {
     mockBucket = new MockR2Bucket();
-    storage = new StorageService(mockBucket as unknown as R2Bucket);
+    storage = new StorageService(mockBucket as any);
     rateLimitKV = new MockKVNamespace();
-    rateLimiter = new RateLimiter(rateLimitKV as unknown as KVNamespace);
+    rateLimiter = new RateLimiter(rateLimitKV as any);
     analytics = {
       writeDataPoint: jest.fn(),
-    } as unknown as AnalyticsEngineDataset;
+    } as any;
     logger = new Logger({ userId: 'test-user', requestId: 'test-request' });
   });
 

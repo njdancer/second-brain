@@ -12,7 +12,7 @@ describe('RateLimiter', () => {
 
   beforeEach(() => {
     mockKV = new MockKVNamespace();
-    rateLimiter = new RateLimiter(mockKV as unknown as KVNamespace);
+    rateLimiter = new RateLimiter(mockKV as any);
   });
 
   afterEach(() => {

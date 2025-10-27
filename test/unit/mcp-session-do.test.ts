@@ -32,10 +32,10 @@ describe('MCPSessionDurableObject', () => {
 
     // Mock environment
     mockEnv = {
-      SECOND_BRAIN_BUCKET: new MockR2Bucket() as unknown as R2Bucket,
-      RATE_LIMIT_KV: new MockKVNamespace() as unknown as KVNamespace,
-      OAUTH_KV: new MockKVNamespace() as unknown as KVNamespace,
-      FEATURE_FLAGS_KV: new MockKVNamespace() as unknown as KVNamespace,
+      SECOND_BRAIN_BUCKET: new MockR2Bucket() as any,
+      RATE_LIMIT_KV: new MockKVNamespace() as any,
+      OAUTH_KV: new MockKVNamespace() as any,
+      FEATURE_FLAGS_KV: new MockKVNamespace() as any,
       ANALYTICS: {
         writeDataPoint: jest.fn(),
       } as any,
