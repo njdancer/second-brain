@@ -146,7 +146,7 @@ jobs:
         id: coverage
         if: always()
         with:
-          filename: 'coverage/lcov.info'
+          filename: 'coverage/clover.xml'
           overall_coverage_fail_threshold: '95'
           badge: true
           fail_on_negative_difference: true
