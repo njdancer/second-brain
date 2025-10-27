@@ -1,14 +1,19 @@
 /**
  * Mock R2 bucket for testing
+ *
+ * Note: Only implements R2 properties actually used by tests and application code.
+ * Properties used: key, size, httpEtag, uploaded, customMetadata, text(), json(), arrayBuffer(), blob()
  */
 
-// Mock implementation of R2Checksums
-const createMockChecksums = (): R2Checksums => ({
-  toJSON: () => ({}),
-});
+// Simplified R2 types for testing - only properties actually used
+type TestR2Object = Pick<R2Object, 'key' | 'size' | 'httpEtag' | 'uploaded' | 'customMetadata'>;
 
-// Mock implementation of R2HTTPMetadata
-const createMockHttpMetadata = (): R2HTTPMetadata => ({});
+type TestR2ObjectBody = TestR2Object & {
+  text: () => Promise<string>;
+  json: () => Promise<unknown>;
+  arrayBuffer: () => Promise<ArrayBuffer>;
+  blob: () => Promise<Blob>;
+};
 
 export interface MockR2Object {
   key: string;
@@ -38,37 +43,16 @@ export class MockR2Bucket {
       return Promise.resolve(null);
     }
 
-    // Create ReadableStream from string value
-    const stream = new ReadableStream({
-      start(controller) {
-        controller.enqueue(new TextEncoder().encode(obj.value));
-        controller.close();
-      },
-    });
-
+    // Return only the properties actually used by tests
     return Promise.resolve({
       key: obj.key,
-      version: 'mock-version',
       size: obj.size,
-      etag: obj.httpEtag.replace(/"/g, ''),
       httpEtag: obj.httpEtag,
-      checksums: createMockChecksums(),
       uploaded: obj.uploaded,
-      httpMetadata: createMockHttpMetadata(),
       customMetadata: obj.metadata || {},
-      range: undefined,
-      storageClass: 'STANDARD',
-      writeHttpMetadata: () => {},
-      get body() {
-        return stream;
-      },
-      get bodyUsed() {
-        return false;
-      },
       text: () => Promise.resolve(obj.value),
       json: () => Promise.resolve(JSON.parse(obj.value) as unknown),
       arrayBuffer: () => Promise.resolve(new TextEncoder().encode(obj.value).buffer),
-      bytes: () => Promise.resolve(new TextEncoder().encode(obj.value)),
       blob: () => Promise.resolve(new Blob([obj.value])),
     } as R2ObjectBody);
   }
@@ -98,19 +82,13 @@ export class MockR2Bucket {
     this.objects.set(key, obj);
     this.failureCount = 0;
 
+    // Return only the properties actually used by tests
     return Promise.resolve({
       key: obj.key,
-      version: 'mock-version',
       size: obj.size,
-      etag: obj.httpEtag.replace(/"/g, ''),
       httpEtag: obj.httpEtag,
-      checksums: createMockChecksums(),
       uploaded: obj.uploaded,
-      httpMetadata: createMockHttpMetadata(),
       customMetadata: obj.metadata || {},
-      range: undefined,
-      storageClass: 'STANDARD',
-      writeHttpMetadata: () => {},
     } as R2Object);
   }
 
@@ -144,19 +122,13 @@ export class MockR2Bucket {
       filtered = filtered.filter((obj) => obj.key.startsWith(options.prefix!));
     }
 
+    // Return only the properties actually used by tests
     const objects = filtered.map((obj) => ({
       key: obj.key,
-      version: 'mock-version',
       size: obj.size,
-      etag: obj.httpEtag.replace(/"/g, ''),
       httpEtag: obj.httpEtag,
-      checksums: createMockChecksums(),
       uploaded: obj.uploaded,
-      httpMetadata: createMockHttpMetadata(),
       customMetadata: obj.metadata || {},
-      range: undefined,
-      storageClass: 'STANDARD',
-      writeHttpMetadata: () => {},
     })) as R2Object[];
 
     return Promise.resolve({
