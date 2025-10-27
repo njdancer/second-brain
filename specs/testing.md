@@ -68,33 +68,51 @@ Mocks should mirror API contracts without implementing internal logic. Keep them
 
 **Core Principle**: Tests validate runtime behavior, not compile-time types. Type safety in tests serves maintainability, not correctness.
 
-**Guidelines**:
+**Centralized Mocks** (`test/mocks/`):
+- External APIs (R2, KV, S3, GitHub OAuth) have centralized mocks
+- R2 mock: `implements Pick<R2Bucket, 'get' | 'put' | 'delete' | 'list'>` - TypeScript verifies API match
+- KV/S3 mocks: Document they match API but don't use Pick<> (complex generics make it impractical)
+- When external APIs change, fix mock once
+- Tests use `as any` when passing mocks (intentional and clear)
 
-1. **Use targeted `@ts-expect-error` over file-wide disables**
-   - Make it clear WHY type safety is relaxed at specific points
-   - Never disable 5+ type rules file-wide (indicates fighting TypeScript)
-   - ESLint config relaxes test rules to warnings (not errors)
+**Test Philosophy - Verbose Over DRY**:
 
-2. **Keep mocks simple with Partial types**
-   - Document what properties are actually used
-   - Don't over-specify with unused properties
-   - Example: `type TestR2Object = Pick<R2Object, 'key' | 'size' | 'httpEtag'>`
+Tests should be **boring, explicit, and repetitive**. A half-asleep developer should understand the test immediately.
 
-3. **Minimize type assertions in tests**
-   - Test behavior, not types
-   - Prefer pragmatic `@ts-expect-error` comments over verbose inline types
-   - Avoid brittle coupling to implementation details
+**DO:**
+- Copy-paste setup code between tests
+- Explicitly create mocks in each test
+- Write explicit assertions
+- Make every step visible
 
-4. **Delete dead code immediately**
-   - Use git history as archive, not comments or `archive/` directories
-   - Don't keep commented-out tests "just in case"
+**DON'T:**
+- Create test factories or helper functions
+- Build custom assertion DSLs
+- Hide setup in shared utilities
+- Make tests "DRY" at the expense of clarity
 
-**ESLint Configuration**: Test files (`test/**/*.ts`) have relaxed rules via `eslint.config.mjs`:
-- `no-explicit-any`: error → warn
-- `no-unsafe-*`: error → warn
-- `require-await`: error → off (common in mocks)
+**Why Verbose Is Better:**
+- No hidden magic - everything is visible in the test
+- Easy to debug - just read the test top to bottom
+- Easy to modify - no shared abstractions to break
+- Easy to understand - no jumping between files
+- Tests serve as documentation
 
-Production code (`src/`) maintains strict type safety.
+**Type Assertions:**
+- Use `as any` freely in tests - it's clear and intentional
+- ESLint rules for `any` and `no-unsafe-*` are **OFF** (not warnings)
+- Production code (`src/`) maintains strict type safety with all rules as errors
+
+**ESLint Configuration** (`eslint.config.mjs`):
+```javascript
+// test/**/*.ts - pragmatic for mocks
+'@typescript-eslint/no-explicit-any': 'off',
+'@typescript-eslint/no-unsafe-*': 'off',
+'@typescript-eslint/require-await': 'off',
+
+// src/**/*.ts - strict type safety
+// All rules remain 'error'
+```
 
 ---
 
