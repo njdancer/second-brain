@@ -5,7 +5,7 @@
  * Direct Fetch API handler (no Hono)
  */
 
-import type { OAuthHelpers } from '@cloudflare/workers-oauth-provider';
+import type { OAuthHelpers, AuthRequest } from '@cloudflare/workers-oauth-provider';
 import { MonitoringService } from './monitoring';
 import { Logger, generateRequestId } from './logger';
 import type { Env } from './index';

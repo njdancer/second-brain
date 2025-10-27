@@ -42,7 +42,7 @@ export async function executeTool(
         if (!args.path || typeof args.path !== 'string') {
           throw new Error('Invalid read parameters: path is required');
         }
-        result = await readTool(args as ReadParams, storage);
+        result = await readTool(args as unknown as ReadParams, storage);
         break;
 
       case 'write':
@@ -53,7 +53,7 @@ export async function executeTool(
         if (!args.content || typeof args.content !== 'string') {
           throw new Error('Invalid write parameters: content is required');
         }
-        result = await writeTool(args as WriteParams, storage, userId);
+        result = await writeTool(args as unknown as WriteParams, storage, userId);
         break;
 
       case 'edit':
@@ -61,7 +61,7 @@ export async function executeTool(
         if (!args.path || typeof args.path !== 'string') {
           throw new Error('Invalid edit parameters: path is required');
         }
-        result = await editTool(args as EditParams, storage);
+        result = await editTool(args as unknown as EditParams, storage);
         break;
 
       case 'glob':
@@ -69,7 +69,7 @@ export async function executeTool(
         if (!args.pattern || typeof args.pattern !== 'string') {
           throw new Error('Invalid glob parameters: pattern is required');
         }
-        result = await globTool(args as GlobParams, storage);
+        result = await globTool(args as unknown as GlobParams, storage);
         break;
 
       case 'grep':
@@ -77,7 +77,7 @@ export async function executeTool(
         if (!args.pattern || typeof args.pattern !== 'string') {
           throw new Error('Invalid grep parameters: pattern is required');
         }
-        result = await grepTool(args as GrepParams, storage);
+        result = await grepTool(args as unknown as GrepParams, storage);
         break;
 
       default:

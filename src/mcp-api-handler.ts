@@ -20,13 +20,10 @@ interface MCPProps {
 }
 
 /**
- * ExecutionContext extended with OAuth props
- * props is required per the ExecutionContext contract in Workers,
- * but we need to validate it exists since it's set by OAuthProvider
+ * ExecutionContext with OAuth props typed using the generic parameter
+ * OAuthProvider sets props after token validation
  */
-interface MCPExecutionContext extends ExecutionContext {
-  props: MCPProps | undefined;
-}
+type MCPExecutionContext = ExecutionContext<MCPProps>;
 
 /**
  * MCP JSON-RPC request body
@@ -65,10 +62,10 @@ export async function mcpApiHandler(
   try {
     // Get user ID from props (set by OAuthProvider after token validation)
     const props = ctx.props;
-    const userId = props?.userId;
 
-    if (!userId) {
-      logger.warn('Unauthorized MCP request - missing user ID');
+    // Type guard to ensure props is defined (should always be set by OAuthProvider)
+    if (!props || !props.userId) {
+      logger.warn('Unauthorized MCP request - missing user ID in props');
       return new Response(
         JSON.stringify({
           jsonrpc: '2.0',
@@ -84,6 +81,8 @@ export async function mcpApiHandler(
         }
       );
     }
+
+    const userId = props.userId;
 
     // Create child logger with user context
     const userLogger = logger.child({
@@ -103,7 +102,7 @@ export async function mcpApiHandler(
     userLogger.info('MCP request authenticated', {
       httpMethod: request.method,
       method: body?.method,
-      requestId: body?.id ?? undefined,
+      requestId: typeof body?.id === 'number' ? body.id.toString() : typeof body?.id === 'string' ? body.id : undefined,
       isInitialize,
     });
 
