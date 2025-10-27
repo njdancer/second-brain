@@ -130,7 +130,18 @@ describe('MCP Full Flow E2E (Real MCP Client)', () => {
       const response = await fetch(`${baseUrl}/health`);
       expect(response.status).toBe(200);
 
-      const data = await response.json();
+      const data: {
+        status: string;
+        timestamp: string;
+        service: string;
+        version: string;
+        build: {
+          commit: string;
+          time: string;
+          environment: string;
+        };
+      } = await response.json();
+      /* eslint-disable @typescript-eslint/no-unsafe-assignment */
       expect(data).toEqual(expect.objectContaining({
         status: 'ok',
         timestamp: expect.any(String),
@@ -142,6 +153,7 @@ describe('MCP Full Flow E2E (Real MCP Client)', () => {
           environment: expect.any(String),
         }),
       }));
+      /* eslint-enable @typescript-eslint/no-unsafe-assignment */
     });
   });
 
@@ -161,7 +173,7 @@ describe('MCP Full Flow E2E (Real MCP Client)', () => {
       });
 
       expect(response.status).toBe(201); // Created
-      const data = await response.json() as { client_id: string; client_secret?: string; redirect_uris?: string[] };
+      const data: { client_id: string; client_secret?: string; redirect_uris?: string[] } = await response.json();
       expect(data).toHaveProperty('client_id');
       expect(typeof data.client_id).toBe('string');
 
@@ -179,7 +191,7 @@ describe('MCP Full Flow E2E (Real MCP Client)', () => {
           token_endpoint_auth_method: 'none',
         }),
       });
-      const { client_id } = (await registerResponse.json()) as { client_id: string };
+      const { client_id }: { client_id: string } = await registerResponse.json();
 
       // Generate PKCE parameters
       codeVerifier = crypto.randomBytes(32).toString('base64url');
@@ -219,7 +231,7 @@ describe('MCP Full Flow E2E (Real MCP Client)', () => {
           token_endpoint_auth_method: 'none',
         }),
       });
-      const { client_id } = (await registerResponse.json()) as { client_id: string };
+      const { client_id }: { client_id: string } = await registerResponse.json();
 
       // Generate PKCE
       const verifier = crypto.randomBytes(32).toString('base64url');
@@ -293,7 +305,7 @@ describe('MCP Full Flow E2E (Real MCP Client)', () => {
       });
 
       expect(tokenResponse.status).toBe(200);
-      const tokenData = await tokenResponse.json() as { access_token: string; token_type: string; expires_in?: number };
+      const tokenData: { access_token: string; token_type: string; expires_in?: number } = await tokenResponse.json();
       expect(tokenData).toHaveProperty('access_token');
       expect(tokenData.token_type.toLowerCase()).toBe('bearer');
 
@@ -338,7 +350,7 @@ describe('MCP Full Flow E2E (Real MCP Client)', () => {
           token_endpoint_auth_method: 'none',
         }),
       });
-      const { client_id } = (await registerResponse.json()) as { client_id: string };
+      const { client_id }: { client_id: string } = await registerResponse.json();
 
       // Generate PKCE
       const verifier = crypto.randomBytes(32).toString('base64url');
@@ -393,7 +405,7 @@ describe('MCP Full Flow E2E (Real MCP Client)', () => {
         }),
       });
 
-      const tokenData = await tokenResponse.json() as { access_token: string; token_type: string };
+      const tokenData: { access_token: string; token_type: string } = await tokenResponse.json();
       accessToken = tokenData.access_token;
       sharedAccessToken = accessToken; // Store in shared variable
 
@@ -527,7 +539,7 @@ describe('MCP Full Flow E2E (Real MCP Client)', () => {
 
       // Server should reject with error response, not crash
       expect(response.status).toBeLessThan(500); // Not a server error
-      const result = await response.json() as { error?: unknown; result?: { isError?: boolean } };
+      const result: { error?: unknown; result?: { isError?: boolean } } = await response.json();
       expect(result.error || result.result?.isError).toBeTruthy();
 
       console.log('✅ Invalid tool parameters handled gracefully');

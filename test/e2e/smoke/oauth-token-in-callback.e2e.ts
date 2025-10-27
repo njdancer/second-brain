@@ -11,9 +11,7 @@
  *   { success: true, access_token: "gho_...", userId: "...", login: "..." }
  */
 
-import { describe, it, expect } from '@jest/globals';
-
-const SERVER_URL = process.env.MCP_SERVER_URL || 'https://second-brain-mcp.nick-01a.workers.dev';
+// Jest globals (describe, it, expect) available via test environment
 
 interface OAuthCallbackResponse {
   success?: boolean;
@@ -27,13 +25,15 @@ interface OAuthCallbackResponse {
 }
 
 describe('E2E: OAuth Callback Contract', () => {
+  const SERVER_URL = process.env.MCP_SERVER_URL || 'https://second-brain-mcp.nick-01a.workers.dev';
+
   it('CRITICAL: OAuth callback must return access_token to client', async () => {
     // This is a contract test - we can't easily get a real auth code,
     // but we can verify the response structure when it succeeds
 
     // Test with invalid code to see error format
     const response = await fetch(`${SERVER_URL}/callback?code=test_invalid_code`);
-    const data = await response.json() as OAuthCallbackResponse;
+    const data: OAuthCallbackResponse = await response.json();
 
     // Even on error, response should be JSON
     expect(typeof data).toBe('object');
@@ -63,7 +63,7 @@ describe('E2E: OAuth Callback Contract', () => {
     console.log(JSON.stringify(expectedSuccessResponse, null, 2));
   });
 
-  it('verifies OAuth callback response structure matches MCP client expectations', async () => {
+  it('verifies OAuth callback response structure matches MCP client expectations', () => {
     // MCP clients expect OAuth callbacks to return the token
     // so they can use it in Authorization headers
 

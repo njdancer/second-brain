@@ -13,15 +13,12 @@
  * E2E tests would have failed because production returns null.
  */
 
-import { describe, it, expect, beforeAll } from '@jest/globals';
-
-const SERVER_URL = process.env.MCP_SERVER_URL || 'https://second-brain-mcp.nick-01a.workers.dev';
-
-// For full E2E test, you'd need a real GitHub token
-// For smoke tests, we verify the response format
-const TEST_TOKEN = process.env.E2E_GITHUB_TOKEN; // Real token from .env.e2e
+// Jest globals (describe, it, expect) available via test environment
 
 describe('E2E: GitHub Token Validation', () => {
+  const SERVER_URL = process.env.MCP_SERVER_URL || 'https://second-brain-mcp.nick-01a.workers.dev';
+  const TEST_TOKEN = process.env.E2E_GITHUB_TOKEN; // Real token from .env.e2e
+
   it('CRITICAL: Server must validate tokens via GitHub API, not just KV lookup', async () => {
     if (!TEST_TOKEN) {
       console.warn('Skipping token validation test - no E2E_GITHUB_TOKEN set');
@@ -48,7 +45,7 @@ describe('E2E: GitHub Token Validation', () => {
       }),
     });
 
-    const data = await response.json() as any;
+    const data: { error?: { message?: string }; result?: { capabilities?: unknown } } = await response.json();
 
     // Should NOT return "Invalid or expired token"
     if (data.error && data.error.message === 'Invalid or expired token') {
@@ -64,7 +61,7 @@ describe('E2E: GitHub Token Validation', () => {
     // Should return capabilities for authenticated user
     expect(response.status).toBe(200);
     expect(data.result).toBeDefined();
-    expect(data.result.capabilities).toBeDefined();
+    expect(data.result?.capabilities).toBeDefined();
     expect(data.error).toBeUndefined();
 
     console.log('✅ Token validation working - server called GitHub API');
@@ -96,7 +93,7 @@ describe('E2E: GitHub Token Validation', () => {
     expect(tokenValidationFlow.step4).toContain('api.github.com');
   });
 
-  it('verifies token validation does not rely solely on KV storage', async () => {
+  it('verifies token validation does not rely solely on KV storage', () => {
     // The bug was that validateToken() only worked if token was in KV
     // But fresh tokens from OAuth won't be in KV yet!
 
