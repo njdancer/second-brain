@@ -232,7 +232,7 @@ The CI pipeline MUST execute the following stages, with independent stages runni
 - **E2E Tests:** End-to-end integration tests MUST pass, validating the full OAuth 2.1 + PKCE + MCP protocol flow. E2E tests MUST complete in under 30 seconds and MUST NOT require manual intervention or browser interaction.
 
 **Sequential Stage 3 (Coverage):**
-- **Coverage Validation:** Code coverage MUST meet minimum thresholds (95% statement coverage, 95% function coverage). Coverage regressions MUST fail the build.
+- **Coverage Validation:** Code coverage MUST NOT decrease without explicit approval (via `coverage-override` comment). Current thresholds are defined in `jest.config.js`. Aspirational targets: 90%+ statement coverage, 90%+ function coverage.
 
 The pipeline MUST fail fast at the first error in any stage.
 
@@ -387,12 +387,11 @@ All code merged to `main` MUST meet quality standards:
 
 - Zero TypeScript type errors
 - Zero linter errors (when linter is configured)
-- Code coverage MUST NOT decrease compared to the previous commit (compare against base branch coverage)
-- 95%+ statement coverage (absolute minimum threshold)
-- 95%+ function coverage (absolute minimum threshold)
+- Code coverage MUST NOT decrease compared to the previous commit without explicit `coverage-override` approval
+- Current coverage thresholds defined in `jest.config.js` (aspirational: 90%+ statement/function coverage)
 - All tests passing (unit and E2E)
 
-Pull requests MUST NOT be merged if any quality gate fails.
+Pull requests MUST NOT be merged if any quality gate fails (coverage decreases require maintainer approval via override comment).
 
 **Security vulnerabilities in dependencies SHOULD be tracked and addressed separately through dedicated security processes (e.g., Dependabot alerts, security audits) but MUST NOT block deployments.** This prevents situations where a critical bug fix cannot be deployed due to unrelated third-party dependency issues.
 

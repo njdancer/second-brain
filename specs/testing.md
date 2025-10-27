@@ -125,9 +125,16 @@ Automated coverage tracking via GitHub Actions monitors trends across commits, v
 **Architectural Decision**: Coverage tracking is implemented using GitHub Actions (e.g., `clearlyip/code-coverage-report-action`) rather than third-party services, keeping all CI/CD infrastructure within GitHub's ecosystem and avoiding external service dependencies.
 
 **Coverage drops fail CI by default**, requiring:
-- PR comment explaining the decrease
-- Maintainer approval via review
+- PR comment with pattern `coverage-override: <explanation>`
+- Maintainer approval via PR review
 - Plan to recover coverage (if applicable)
+
+**Override Process:**
+1. When coverage decreases, CI fails with message "Coverage decreased"
+2. Maintainer adds comment: `coverage-override: Reason for decrease`
+3. CI re-runs and detects override comment
+4. Build passes but coverage decrease remains visible in report
+5. PR requires explicit maintainer approval before merge
 
 This prevents accidental quality degradation while allowing intentional trade-offs.
 
