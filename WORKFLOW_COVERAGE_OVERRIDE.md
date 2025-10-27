@@ -35,6 +35,7 @@ Replace the current coverage reporting section (lines 144-159) with the followin
           filename: 'coverage/clover.xml'
           badge: true
           fail_on_negative_difference: true
+          only_list_changed_files: true  # Only show coverage for changed files in PRs
           # No overall_coverage_fail_threshold - use trend-based monitoring only
 
       - name: Check coverage override
@@ -84,6 +85,7 @@ Replace the current coverage reporting section (lines 144-159) with the followin
 1. **Coverage Report** - Uses clearlyip action with `continue-on-error: true`
    - Generates coverage report
    - Compares against base branch
+   - **Only shows changed files in PRs** (reduces noise, keeps review focused)
    - Sets outcome to 'failure' if coverage decreased
    - Doesn't fail the build yet
 
