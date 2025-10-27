@@ -280,9 +280,11 @@ export class MCPSessionDurableObject extends DurableObject {
 
       // Handle request through transport
       // Pass pre-parsed body as third parameter (per MCP SDK documentation)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
+      // Type system boundary: adapting Workers Request/Response to Node.js IncomingMessage/ServerResponse that MCP SDK expects
       const handlePromise = this.transport.handleRequest(
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
         nodeRequest as any,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
         nodeResponse as any,
         body,
       );

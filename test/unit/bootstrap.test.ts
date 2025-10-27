@@ -2,7 +2,6 @@
  * Unit tests for bootstrap system
  */
 
-import type { R2Bucket } from '@cloudflare/workers-types';
 import { bootstrapSecondBrain, shouldBootstrap } from '../../src/bootstrap';
 import { StorageService } from '../../src/storage';
 import { MockR2Bucket } from '../mocks/r2';

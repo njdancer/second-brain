@@ -3,7 +3,6 @@
  */
 
 import { readTool } from '../../../src/tools/read';
-import type { StorageService } from '../../../src/storage';
 
 // Mock storage service
 class MockStorageService {
@@ -227,7 +226,7 @@ describe('Read Tool', () => {
 
     it('should handle null path', async () => {
       const result = await readTool(
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
+         
         { path: null as any },
         storage as any,
       );

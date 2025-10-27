@@ -7,7 +7,7 @@
  * If these fail, deployment should be rolled back automatically.
  */
 
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+ 
 
 // Jest globals (describe, it, expect) available via test environment
 

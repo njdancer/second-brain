@@ -2,7 +2,6 @@
  * Unit tests for storage abstraction
  */
 
-import type { R2Bucket } from '@cloudflare/workers-types';
 import { StorageService } from '../../src/storage';
 import { MockR2Bucket } from '../mocks/r2';
 

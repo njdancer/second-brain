@@ -4,7 +4,6 @@
 
 import { globTool } from '../../../src/tools/glob';
 import type { StorageObject } from '../../../src/storage';
-import type { StorageService } from '../../../src/storage';
 
 // Type for glob tool result
 interface GlobFileResult {
@@ -215,7 +214,7 @@ describe('Glob Tool', () => {
 
     it('should return error for null pattern', async () => {
       const result = await globTool(
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
+         
         { pattern: null as any },
         storage as any,
       );

@@ -19,7 +19,7 @@ interface LogOutput {
 
 // Helper to get first call argument from mock
 function getFirstCallArg(spy: jest.SpyInstance): string {
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+   
   return spy.mock.calls[0]?.[0] as string;
 }
 
@@ -183,7 +183,7 @@ describe('Logger', () => {
 
       const logOutput = JSON.parse(getFirstCallArg(consoleLogSpy)) as LogOutput;
       expect(logOutput).toMatchObject({
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+         
         timestamp: expect.any(String),
         level: 'INFO',
         message: 'test message',

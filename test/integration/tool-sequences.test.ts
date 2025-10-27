@@ -3,7 +3,6 @@
  * Tests the full lifecycle of operations: create → read → edit → delete
  */
 
-import type { R2Bucket } from '@cloudflare/workers-types';
 import { StorageService } from '../../src/storage';
 import { readTool } from '../../src/tools/read';
 import { writeTool } from '../../src/tools/write';

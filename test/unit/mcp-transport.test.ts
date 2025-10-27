@@ -4,7 +4,7 @@
  * Session management is now handled by Durable Objects (see mcp-session-do.ts)
  */
 
-import type { R2Bucket, KVNamespace, AnalyticsEngineDataset } from '@cloudflare/workers-types';
+import type { AnalyticsEngineDataset } from '@cloudflare/workers-types';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { createMCPServerInstance, isInitializeRequest } from '../../src/mcp-transport';
 import { MockR2Bucket } from '../mocks/r2';
@@ -42,15 +42,7 @@ describe('MCP Transport', () => {
     it('should register all 5 tools', async () => {
       const server = createMCPServerInstance(storage, rateLimiter, analytics, 'test-user', logger);
 
-      // Create a mock transport
-      const transport = {
-        sessionId: 'test-session',
-        start: jest.fn(),
-        close: jest.fn(),
-      };
-
-      // Connect server to transport (won't actually start in test)
-      // We'll just check that the server was created successfully
+      // The server should have tools registered
       expect(server).toBeDefined();
     });
 

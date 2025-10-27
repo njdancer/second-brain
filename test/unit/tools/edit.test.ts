@@ -3,7 +3,6 @@
  */
 
 import { editTool } from '../../../src/tools/edit';
-import type { StorageService } from '../../../src/storage';
 
 // Mock storage service
 class MockStorageService {

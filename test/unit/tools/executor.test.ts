@@ -3,7 +3,6 @@
  * Tests for the tool execution router
  */
 
-import type { KVNamespace, R2Bucket } from '@cloudflare/workers-types';
 import type { ToolContext } from '../../../src/tools/executor';
 import { executeTool } from '../../../src/tools/executor';
 import { MockR2Bucket } from '../../mocks/r2';

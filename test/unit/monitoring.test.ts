@@ -2,7 +2,6 @@
  * Unit tests for monitoring system
  */
 
-import type { AnalyticsEngineDataset } from '@cloudflare/workers-types';
 import { MonitoringService } from '../../src/monitoring';
 
 // Mock Analytics Engine

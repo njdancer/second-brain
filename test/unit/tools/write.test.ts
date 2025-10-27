@@ -3,7 +3,7 @@
  */
 
 import { writeTool } from '../../../src/tools/write';
-import type { QuotaStatus, StorageService } from '../../../src/storage';
+import type { QuotaStatus } from '../../../src/storage';
 
 // Mock storage service
 class MockStorageService {
@@ -194,7 +194,7 @@ describe('Write Tool', () => {
 
     it('should reject null path', async () => {
       const result = await writeTool(
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
+         
         { path: null as any, content: 'test' },
         storage as any,
         'user123',
@@ -282,7 +282,7 @@ describe('Write Tool', () => {
 
     it('should validate content parameter', async () => {
       const result = await writeTool(
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
+         
         { path: 'test.md', content: null as any },
         storage as any,
         'user123',
