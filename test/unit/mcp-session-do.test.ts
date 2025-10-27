@@ -13,8 +13,7 @@
 import type {
   R2Bucket,
   KVNamespace,
-  _AnalyticsEngineDataset,
-  _DurableObjectState,
+  DurableObjectNamespace,
 } from '@cloudflare/workers-types';
 import type { Env } from '../../src/index';
 import { MCPSessionDurableObject } from '../../src/mcp-session-do';
@@ -48,9 +47,11 @@ describe('MCPSessionDurableObject', () => {
       SECOND_BRAIN_BUCKET: new MockR2Bucket() as unknown as R2Bucket,
       RATE_LIMIT_KV: new MockKVNamespace() as unknown as KVNamespace,
       OAUTH_KV: new MockKVNamespace() as unknown as KVNamespace,
+      FEATURE_FLAGS_KV: new MockKVNamespace() as unknown as KVNamespace,
       ANALYTICS: {
         writeDataPoint: jest.fn(),
       } as any,
+      MCP_SESSIONS: {} as DurableObjectNamespace,
       GITHUB_CLIENT_ID: 'test-client-id',
       GITHUB_CLIENT_SECRET: 'test-client-secret',
       GITHUB_ALLOWED_USER_ID: 'test-user-id',
