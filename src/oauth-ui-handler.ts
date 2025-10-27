@@ -231,7 +231,7 @@ export async function githubOAuthHandler(
       // Check R2 bucket (list operation is lightweight)
       await env.SECOND_BRAIN_BUCKET.list({ limit: 1 });
       bindings.r2 = true;
-    } catch (error) {
+    } catch {
       warnings.push('R2 bucket not accessible');
     }
 
@@ -239,21 +239,21 @@ export async function githubOAuthHandler(
       // Check KV namespaces (get operation is lightweight)
       await env.OAUTH_KV.get('__health_check__');
       bindings.oauth_kv = true;
-    } catch (error) {
+    } catch {
       warnings.push('OAUTH_KV not accessible');
     }
 
     try {
       await env.RATE_LIMIT_KV.get('__health_check__');
       bindings.rate_limit_kv = true;
-    } catch (error) {
+    } catch {
       warnings.push('RATE_LIMIT_KV not accessible');
     }
 
     try {
       await env.FEATURE_FLAGS_KV.get('__health_check__');
       bindings.feature_flags_kv = true;
-    } catch (error) {
+    } catch {
       warnings.push('FEATURE_FLAGS_KV not accessible');
     }
 
@@ -264,7 +264,7 @@ export async function githubOAuthHandler(
       } else {
         warnings.push('ANALYTICS binding not configured');
       }
-    } catch (error) {
+    } catch {
       warnings.push('ANALYTICS not accessible');
     }
 
@@ -275,7 +275,7 @@ export async function githubOAuthHandler(
       } else {
         warnings.push('MCP_SESSIONS binding not configured');
       }
-    } catch (error) {
+    } catch {
       warnings.push('MCP_SESSIONS not accessible');
     }
 
