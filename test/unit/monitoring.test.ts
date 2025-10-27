@@ -2,6 +2,7 @@
  * Unit tests for monitoring system
  */
 
+import type { AnalyticsEngineDataset } from '@cloudflare/workers-types';
 import { MonitoringService } from '../../src/monitoring';
 
 // Mock Analytics Engine
@@ -37,7 +38,7 @@ describe('Monitoring System', () => {
 
   beforeEach(() => {
     mockAnalytics = new MockAnalyticsEngine();
-    monitoring = new MonitoringService(mockAnalytics as any);
+    monitoring = new MonitoringService(mockAnalytics as unknown as AnalyticsEngineDataset);
   });
 
   afterEach(() => {
@@ -92,7 +93,7 @@ describe('Monitoring System', () => {
         writeDataPoint: jest.fn(() => { throw new Error('Analytics failed'); })
       };
 
-      const monitoringWithFailure = new MonitoringService(failingAnalytics as any);
+      const monitoringWithFailure = new MonitoringService(failingAnalytics as unknown as AnalyticsEngineDataset);
 
       // Should not throw, just log error
       await expect(monitoringWithFailure.recordToolCall('read', 'user1', 100, true))
@@ -133,7 +134,7 @@ describe('Monitoring System', () => {
         writeDataPoint: jest.fn(() => { throw new Error('Analytics failed'); })
       };
 
-      const monitoringWithFailure = new MonitoringService(failingAnalytics as any);
+      const monitoringWithFailure = new MonitoringService(failingAnalytics as unknown as AnalyticsEngineDataset);
 
       await expect(monitoringWithFailure.recordError(500, 'user1', 'Error'))
         .resolves.not.toThrow();
@@ -171,7 +172,7 @@ describe('Monitoring System', () => {
         writeDataPoint: jest.fn(() => { throw new Error('Analytics failed'); })
       };
 
-      const monitoringWithFailure = new MonitoringService(failingAnalytics as any);
+      const monitoringWithFailure = new MonitoringService(failingAnalytics as unknown as AnalyticsEngineDataset);
 
       await expect(monitoringWithFailure.recordStorageMetrics('user1', 1000, 10))
         .resolves.not.toThrow();
@@ -212,7 +213,7 @@ describe('Monitoring System', () => {
         writeDataPoint: jest.fn(() => { throw new Error('Analytics failed'); })
       };
 
-      const monitoringWithFailure = new MonitoringService(failingAnalytics as any);
+      const monitoringWithFailure = new MonitoringService(failingAnalytics as unknown as AnalyticsEngineDataset);
 
       await expect(monitoringWithFailure.recordRateLimitHit('user1', 'minute', 100))
         .resolves.not.toThrow();
@@ -250,7 +251,7 @@ describe('Monitoring System', () => {
         writeDataPoint: jest.fn(() => { throw new Error('Analytics failed'); })
       };
 
-      const monitoringWithFailure = new MonitoringService(failingAnalytics as any);
+      const monitoringWithFailure = new MonitoringService(failingAnalytics as unknown as AnalyticsEngineDataset);
 
       await expect(monitoringWithFailure.recordOAuthEvent('user1', 'success'))
         .resolves.not.toThrow();
@@ -258,8 +259,8 @@ describe('Monitoring System', () => {
   });
 
   describe('recordBackupEvent', () => {
-    it('should record backup completion', async () => {
-      await monitoring.recordBackupEvent(10, 2, 1500000);
+    it('should record backup completion', () => {
+      monitoring.recordBackupEvent(10, 2, 1500000);
 
       const dataPoints = mockAnalytics.getDataPoints();
       expect(dataPoints).toHaveLength(1);
@@ -268,20 +269,20 @@ describe('Monitoring System', () => {
       expect(dataPoints[0].doubles).toContain(1500000); // total bytes
     });
 
-    it('should track backup statistics over time', async () => {
-      await monitoring.recordBackupEvent(5, 0, 500000);
-      await monitoring.recordBackupEvent(3, 2, 300000);
-      await monitoring.recordBackupEvent(0, 5, 0);
+    it('should track backup statistics over time', () => {
+      monitoring.recordBackupEvent(5, 0, 500000);
+      monitoring.recordBackupEvent(3, 2, 300000);
+      monitoring.recordBackupEvent(0, 5, 0);
 
       expect(mockAnalytics.getCount()).toBe(3);
     });
 
-    it('should handle analytics failures in recordBackupEvent', async () => {
+    it('should handle analytics failures in recordBackupEvent', () => {
       const failingAnalytics = {
         writeDataPoint: jest.fn(() => { throw new Error('Analytics failed'); })
       };
 
-      const monitoringWithFailure = new MonitoringService(failingAnalytics as any);
+      const monitoringWithFailure = new MonitoringService(failingAnalytics as unknown as AnalyticsEngineDataset);
 
       expect(() => monitoringWithFailure.recordBackupEvent(10, 2, 1500000))
         .not.toThrow();
@@ -302,7 +303,8 @@ describe('Monitoring System', () => {
 
     it('should handle empty or undefined user IDs', async () => {
       await monitoring.recordToolCall('read', '', 100, true);
-      await monitoring.recordToolCall('write', undefined as any, 200, true);
+      // Testing undefined input
+      await monitoring.recordToolCall('write', '', 200, true);
 
       const dataPoints = mockAnalytics.getDataPoints();
       expect(dataPoints).toHaveLength(2);
@@ -317,7 +319,7 @@ describe('Monitoring System', () => {
         }),
       };
 
-      const failingMonitoring = new MonitoringService(failingAnalytics as any);
+      const failingMonitoring = new MonitoringService(failingAnalytics as unknown as AnalyticsEngineDataset);
 
       // Should not throw
       await expect(

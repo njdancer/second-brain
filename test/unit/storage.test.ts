@@ -3,7 +3,7 @@
  */
 
 import type { R2Bucket } from '@cloudflare/workers-types';
-import { StorageService, StorageObject, QuotaStatus } from '../../src/storage';
+import { StorageService } from '../../src/storage';
 import { MockR2Bucket } from '../mocks/r2';
 
 describe('StorageService', () => {

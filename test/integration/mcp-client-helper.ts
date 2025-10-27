@@ -21,6 +21,28 @@ export interface OAuthFlowResult {
   sessionId?: string;
 }
 
+interface ClientRegistrationResponse {
+  client_id: string;
+  [key: string]: unknown;
+}
+
+interface TokenResponse {
+  access_token: string;
+  token_type?: string;
+  [key: string]: unknown;
+}
+
+interface MCPResponse {
+  jsonrpc: string;
+  id?: number | string;
+  result?: unknown;
+  error?: {
+    code: number;
+    message: string;
+    [key: string]: unknown;
+  };
+}
+
 /**
  * Helper class to manage MCP client with OAuth authentication
  */
@@ -57,7 +79,7 @@ export class MCPClientHelper {
       throw new Error(`Client registration failed: ${response.status} ${errorText}`);
     }
 
-    const data = (await response.json()) as any;
+    const data = (await response.json()) as ClientRegistrationResponse;
     return data.client_id;
   }
 
@@ -164,7 +186,7 @@ export class MCPClientHelper {
       throw new Error(`Token exchange failed: ${tokenResponse.status} ${errorText}`);
     }
 
-    const tokenData = (await tokenResponse.json()) as any;
+    const tokenData = (await tokenResponse.json()) as TokenResponse;
 
     if (!tokenData.access_token) {
       throw new Error('No access_token in token response');
@@ -180,7 +202,7 @@ export class MCPClientHelper {
   /**
    * Send MCP initialize request and get session ID
    */
-  async initialize(): Promise<{ capabilities: any; sessionId: string }> {
+  async initialize(): Promise<{ capabilities: unknown; sessionId: string }> {
     if (!this.accessToken) {
       throw new Error('No access token. Call performOAuthFlow() first.');
     }
@@ -216,10 +238,10 @@ export class MCPClientHelper {
 
     this.sessionId = sessionId;
 
-    const data = (await response.json()) as any;
+    const data = (await response.json()) as MCPResponse;
 
     return {
-      capabilities: data.result?.capabilities,
+      capabilities: data.result,
       sessionId,
     };
   }
@@ -227,7 +249,7 @@ export class MCPClientHelper {
   /**
    * Send MCP request with session ID
    */
-  async sendRequest(method: string, params: any = {}): Promise<any> {
+  async sendRequest(method: string, params: Record<string, unknown> = {}): Promise<unknown> {
     if (!this.accessToken) {
       throw new Error('No access token. Call performOAuthFlow() first.');
     }
@@ -257,7 +279,7 @@ export class MCPClientHelper {
       throw new Error(`Request failed: ${response.status} ${errorText}`);
     }
 
-    const data = (await response.json()) as any;
+    const data = (await response.json()) as MCPResponse;
 
     if (data.error) {
       throw new Error(`MCP error: ${data.error.message || data.error.code}`);
@@ -269,15 +291,15 @@ export class MCPClientHelper {
   /**
    * List available tools
    */
-  async listTools(): Promise<any[]> {
-    const result = await this.sendRequest('tools/list');
+  async listTools(): Promise<unknown[]> {
+    const result = await this.sendRequest('tools/list') as { tools?: unknown[] };
     return result.tools || [];
   }
 
   /**
    * Call a tool
    */
-  async callTool(name: string, args: Record<string, any>): Promise<any> {
+  async callTool(name: string, args: Record<string, unknown>): Promise<unknown> {
     const result = await this.sendRequest('tools/call', {
       name,
       arguments: args,
@@ -288,15 +310,15 @@ export class MCPClientHelper {
   /**
    * List available prompts
    */
-  async listPrompts(): Promise<any[]> {
-    const result = await this.sendRequest('prompts/list');
+  async listPrompts(): Promise<unknown[]> {
+    const result = await this.sendRequest('prompts/list') as { prompts?: unknown[] };
     return result.prompts || [];
   }
 
   /**
    * Get a prompt
    */
-  async getPrompt(name: string, args: Record<string, string> = {}): Promise<any> {
+  async getPrompt(name: string, args: Record<string, string> = {}): Promise<unknown> {
     const result = await this.sendRequest('prompts/get', {
       name,
       arguments: args,

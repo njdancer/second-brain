@@ -21,7 +21,7 @@ interface GrepMatchResult {
 class MockStorageService {
   private files: Map<string, string> = new Map();
 
-  async listObjects(prefix?: string): Promise<StorageObject[]> {
+  listObjects(prefix?: string): Promise<StorageObject[]> {
     const objects: StorageObject[] = [];
     for (const [key, content] of this.files.entries()) {
       if (!prefix || key.startsWith(prefix)) {
@@ -32,11 +32,11 @@ class MockStorageService {
         });
       }
     }
-    return objects;
+    return Promise.resolve(objects);
   }
 
-  async getObject(path: string): Promise<string | null> {
-    return this.files.get(path) || null;
+  getObject(path: string): Promise<string | null> {
+    return Promise.resolve(this.files.get(path) || null);
   }
 
   setFile(path: string, content: string): void {

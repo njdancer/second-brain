@@ -4,6 +4,7 @@
  * Session management is now handled by Durable Objects (see mcp-session-do.ts)
  */
 
+import type { R2Bucket, KVNamespace, AnalyticsEngineDataset } from '@cloudflare/workers-types';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import {
   createMCPServerInstance,
@@ -25,12 +26,12 @@ describe('MCP Transport', () => {
 
   beforeEach(() => {
     mockBucket = new MockR2Bucket();
-    storage = new StorageService(mockBucket as any);
+    storage = new StorageService(mockBucket as unknown as R2Bucket);
     rateLimitKV = new MockKVNamespace();
-    rateLimiter = new RateLimiter(rateLimitKV as any);
+    rateLimiter = new RateLimiter(rateLimitKV as unknown as KVNamespace);
     analytics = {
       writeDataPoint: jest.fn(),
-    } as any;
+    } as unknown as AnalyticsEngineDataset;
     logger = new Logger({ userId: 'test-user', requestId: 'test-request' });
   });
 

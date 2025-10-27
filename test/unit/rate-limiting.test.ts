@@ -2,7 +2,7 @@
  * Unit tests for rate limiting
  */
 
-import { RateLimiter, RateLimitResult, RateLimitStatus } from '../../src/rate-limiting';
+import { RateLimiter } from '../../src/rate-limiting';
 import { MockKVNamespace } from '../mocks/kv';
 
 describe('RateLimiter', () => {

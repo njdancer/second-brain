@@ -3,25 +3,27 @@
  */
 
 import { editTool } from '../../../src/tools/edit';
-import { StorageService } from '../../../src/storage';
+import type { StorageService } from '../../../src/storage';
 
 // Mock storage service
 class MockStorageService {
   private files: Map<string, string> = new Map();
 
-  async getObject(path: string): Promise<string | null> {
+  getObject(path: string): Promise<string | null> {
     if (this.files.has(path)) {
-      return this.files.get(path)!;
+      return Promise.resolve(this.files.get(path)!);
     }
-    return null;
+    return Promise.resolve(null);
   }
 
-  async putObject(path: string, content: string): Promise<void> {
+  putObject(path: string, content: string): Promise<void> {
     this.files.set(path, content);
+    return Promise.resolve();
   }
 
-  async deleteObject(path: string): Promise<void> {
+  deleteObject(path: string): Promise<void> {
     this.files.delete(path);
+    return Promise.resolve();
   }
 
   setFile(path: string, content: string): void {

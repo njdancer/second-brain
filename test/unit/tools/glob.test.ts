@@ -17,11 +17,11 @@ interface GlobFileResult {
 class MockStorageService {
   private files: StorageObject[] = [];
 
-  async listObjects(prefix?: string): Promise<StorageObject[]> {
+  listObjects(prefix?: string): Promise<StorageObject[]> {
     if (prefix) {
-      return this.files.filter((f) => f.key.startsWith(prefix));
+      return Promise.resolve(this.files.filter((f) => f.key.startsWith(prefix)));
     }
-    return this.files;
+    return Promise.resolve(this.files);
   }
 
   setFiles(files: StorageObject[]): void {
