@@ -111,6 +111,52 @@ pnpm run test:mcp:oauth
 - All tests must pass before deploying
 - Run E2E test script (`pnpm run test:mcp:oauth`) after changes to OAuth/MCP code
 
+#### Testing Type Safety Philosophy
+
+**Tests should be pragmatic, not pedantic about types.**
+
+**Core Principle:** Tests validate runtime behavior, not compile-time types. Type safety in tests serves maintainability, not correctness.
+
+**Guidelines:**
+1. **Use `@ts-expect-error` for intentional type flexibility** - Make it clear WHY type safety is relaxed
+   ```typescript
+   // Good
+   // @ts-expect-error - Mock S3 client uses any for command flexibility
+   async send(command: any): Promise<any> { ... }
+
+   // Bad - defeats the purpose
+   /* eslint-disable @typescript-eslint/no-explicit-any */
+   ```
+
+2. **Never disable 5+ type rules file-wide** - This indicates fighting TypeScript, not working with it. Use targeted comments instead.
+
+3. **Mocks should be simple** - Partial implementations are OK with explicit documentation
+   ```typescript
+   // Good - documents what's actually used
+   type TestR2Object = Pick<R2Object, 'key' | 'size' | 'httpEtag'>;
+
+   // Bad - over-specified with unused properties
+   // Implementing full R2Object interface with 20+ properties
+   ```
+
+4. **Type assertions in tests should be minimal** - Test behavior, not types
+   ```typescript
+   // Good - pragmatic
+   const body = await response.json();
+   // @ts-expect-error - testing error response shape
+   expect(body.error.message).toContain('Session not initialized');
+
+   // Bad - brittle coupling to implementation
+   const body = await response.json() as { error: { code: number; message: string } };
+   ```
+
+5. **Dead code should be deleted** - Use git history, not comments or archive directories
+
+**ESLint Configuration:**
+- Test files have relaxed rules (warnings instead of errors) for pragmatic mock usage
+- Production code (`src/`) maintains strict type safety
+- See `eslint.config.mjs` for test-specific overrides
+
 ### Development Workflow
 1. **Check PLAN.md** - Review current phase and next task
 2. Write tests first (TDD)
