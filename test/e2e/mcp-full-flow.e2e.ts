@@ -145,7 +145,7 @@ describe('MCP Full Flow E2E (Real MCP Client)', () => {
           environment: string;
         };
       } = await response.json();
-       
+
       expect(data).toEqual(
         expect.objectContaining({
           status: 'ok',
@@ -159,7 +159,6 @@ describe('MCP Full Flow E2E (Real MCP Client)', () => {
           }),
         }),
       );
-       
     });
   });
 

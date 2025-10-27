@@ -7,8 +7,6 @@
  * If these fail, deployment should be rolled back automatically.
  */
 
- 
-
 // Jest globals (describe, it, expect) available via test environment
 
 // Response type interfaces

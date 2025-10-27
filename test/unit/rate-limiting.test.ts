@@ -192,10 +192,7 @@ describe('RateLimiter', () => {
     });
 
     it('should handle invalid window gracefully', async () => {
-      await expect(
-         
-        rateLimiter.checkRateLimit(userId, 'invalid' as any),
-      ).rejects.toThrow();
+      await expect(rateLimiter.checkRateLimit(userId, 'invalid' as any)).rejects.toThrow();
     });
 
     it('should handle empty user ID', async () => {

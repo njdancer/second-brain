@@ -52,11 +52,7 @@ describe('Write Tool', () => {
   describe('create new file', () => {
     it('should create new file', async () => {
       const content = 'Test file content';
-      const result = await writeTool(
-        { path: 'test.md', content },
-        storage as any,
-        'user123',
-      );
+      const result = await writeTool({ path: 'test.md', content }, storage as any, 'user123');
 
       expect(result.isError).toBe(false);
       expect(result.content).toContain('Successfully wrote');
@@ -77,22 +73,14 @@ describe('Write Tool', () => {
 
     it('should handle unicode content', async () => {
       const content = '日本語 🎉 Émojis';
-      const result = await writeTool(
-        { path: 'unicode.md', content },
-        storage as any,
-        'user123',
-      );
+      const result = await writeTool({ path: 'unicode.md', content }, storage as any, 'user123');
 
       expect(result.isError).toBe(false);
       expect(storage.getFile('unicode.md')).toBe(content);
     });
 
     it('should create empty file', async () => {
-      const result = await writeTool(
-        { path: 'empty.md', content: '' },
-        storage as any,
-        'user123',
-      );
+      const result = await writeTool({ path: 'empty.md', content: '' }, storage as any, 'user123');
 
       expect(result.isError).toBe(false);
       expect(storage.getFile('empty.md')).toBe('');
@@ -101,11 +89,7 @@ describe('Write Tool', () => {
 
   describe('overwrite existing file', () => {
     it('should overwrite existing file', async () => {
-      await writeTool(
-        { path: 'test.md', content: 'Original content' },
-        storage as any,
-        'user123',
-      );
+      await writeTool({ path: 'test.md', content: 'Original content' }, storage as any, 'user123');
 
       const result = await writeTool(
         { path: 'test.md', content: 'New content' },
@@ -118,11 +102,7 @@ describe('Write Tool', () => {
     });
 
     it('should handle overwriting with larger content', async () => {
-      await writeTool(
-        { path: 'test.md', content: 'Small' },
-        storage as any,
-        'user123',
-      );
+      await writeTool({ path: 'test.md', content: 'Small' }, storage as any, 'user123');
 
       const newContent = 'A'.repeat(1000);
       const result = await writeTool(
@@ -152,11 +132,7 @@ describe('Write Tool', () => {
 
     it('should accept file at 1MB limit', async () => {
       const content = 'A'.repeat(1024 * 1024); // Exactly 1MB
-      const result = await writeTool(
-        { path: 'maxsize.md', content },
-        storage as any,
-        'user123',
-      );
+      const result = await writeTool({ path: 'maxsize.md', content }, storage as any, 'user123');
 
       expect(result.isError).toBe(false);
     });
@@ -166,11 +142,7 @@ describe('Write Tool', () => {
       const encoder = new TextEncoder();
       const bytes = encoder.encode(content);
 
-      const result = await writeTool(
-        { path: 'unicode.md', content },
-        storage as any,
-        'user123',
-      );
+      const result = await writeTool({ path: 'unicode.md', content }, storage as any, 'user123');
 
       if (bytes.length > 1024 * 1024) {
         expect(result.isError).toBe(true);
@@ -182,11 +154,7 @@ describe('Write Tool', () => {
 
   describe('path validation', () => {
     it('should reject empty path', async () => {
-      const result = await writeTool(
-        { path: '', content: 'test' },
-        storage as any,
-        'user123',
-      );
+      const result = await writeTool({ path: '', content: 'test' }, storage as any, 'user123');
 
       expect(result.isError).toBe(true);
       expect(result.content).toContain('path');
@@ -194,7 +162,6 @@ describe('Write Tool', () => {
 
     it('should reject null path', async () => {
       const result = await writeTool(
-         
         { path: null as any, content: 'test' },
         storage as any,
         'user123',
@@ -282,7 +249,6 @@ describe('Write Tool', () => {
 
     it('should validate content parameter', async () => {
       const result = await writeTool(
-         
         { path: 'test.md', content: null as any },
         storage as any,
         'user123',
@@ -295,21 +261,9 @@ describe('Write Tool', () => {
   describe('concurrent writes', () => {
     it('should handle concurrent writes to different files', async () => {
       const writes = [
-        writeTool(
-          { path: 'file1.md', content: 'Content 1' },
-          storage as any,
-          'user123',
-        ),
-        writeTool(
-          { path: 'file2.md', content: 'Content 2' },
-          storage as any,
-          'user123',
-        ),
-        writeTool(
-          { path: 'file3.md', content: 'Content 3' },
-          storage as any,
-          'user123',
-        ),
+        writeTool({ path: 'file1.md', content: 'Content 1' }, storage as any, 'user123'),
+        writeTool({ path: 'file2.md', content: 'Content 2' }, storage as any, 'user123'),
+        writeTool({ path: 'file3.md', content: 'Content 3' }, storage as any, 'user123'),
       ];
 
       const results = await Promise.all(writes);

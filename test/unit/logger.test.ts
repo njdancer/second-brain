@@ -19,7 +19,6 @@ interface LogOutput {
 
 // Helper to get first call argument from mock
 function getFirstCallArg(spy: jest.SpyInstance): string {
-   
   return spy.mock.calls[0]?.[0] as string;
 }
 
@@ -183,7 +182,6 @@ describe('Logger', () => {
 
       const logOutput = JSON.parse(getFirstCallArg(consoleLogSpy)) as LogOutput;
       expect(logOutput).toMatchObject({
-         
         timestamp: expect.any(String),
         level: 'INFO',
         message: 'test message',

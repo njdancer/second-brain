@@ -58,10 +58,7 @@ describe('Glob Tool', () => {
     });
 
     it('should match files in specific directory with projects/**', async () => {
-      const result = await globTool(
-        { pattern: 'projects/**' },
-        storage as any,
-      );
+      const result = await globTool({ pattern: 'projects/**' }, storage as any);
 
       expect(result.isError).toBe(false);
       const files = JSON.parse(result.content) as GlobFileResult[];
@@ -79,10 +76,7 @@ describe('Glob Tool', () => {
     });
 
     it('should match by directory pattern with **/health/**', async () => {
-      const result = await globTool(
-        { pattern: '**/health/**' },
-        storage as any,
-      );
+      const result = await globTool({ pattern: '**/health/**' }, storage as any);
 
       expect(result.isError).toBe(false);
       const files = JSON.parse(result.content) as GlobFileResult[];
@@ -91,10 +85,7 @@ describe('Glob Tool', () => {
     });
 
     it('should match specific directory with areas/health/*', async () => {
-      const result = await globTool(
-        { pattern: 'areas/health/*' },
-        storage as any,
-      );
+      const result = await globTool({ pattern: 'areas/health/*' }, storage as any);
 
       expect(result.isError).toBe(false);
       const files = JSON.parse(result.content) as GlobFileResult[];
@@ -133,10 +124,7 @@ describe('Glob Tool', () => {
     });
 
     it('should sort by modified date (newest first)', async () => {
-      const result = await globTool(
-        { pattern: 'projects/**/*.md' },
-        storage as any,
-      );
+      const result = await globTool({ pattern: 'projects/**/*.md' }, storage as any);
 
       expect(result.isError).toBe(false);
       const files = JSON.parse(result.content) as GlobFileResult[];
@@ -151,10 +139,7 @@ describe('Glob Tool', () => {
 
   describe('result limiting', () => {
     it('should limit results to max_results', async () => {
-      const result = await globTool(
-        { pattern: '**/*.md', max_results: 3 },
-        storage as any,
-      );
+      const result = await globTool({ pattern: '**/*.md', max_results: 3 }, storage as any);
 
       expect(result.isError).toBe(false);
       const files = JSON.parse(result.content) as GlobFileResult[];
@@ -182,10 +167,7 @@ describe('Glob Tool', () => {
 
     it('should enforce max 1000 results', async () => {
       // Try to request more than max
-      const result = await globTool(
-        { pattern: '**/*', max_results: 2000 },
-        storage as any,
-      );
+      const result = await globTool({ pattern: '**/*', max_results: 2000 }, storage as any);
 
       expect(result.isError).toBe(false);
       const files = JSON.parse(result.content) as GlobFileResult[];
@@ -193,10 +175,7 @@ describe('Glob Tool', () => {
     });
 
     it('should allow custom max_results under 1000', async () => {
-      const result = await globTool(
-        { pattern: '**/*', max_results: 5 },
-        storage as any,
-      );
+      const result = await globTool({ pattern: '**/*', max_results: 5 }, storage as any);
 
       expect(result.isError).toBe(false);
       const files = JSON.parse(result.content) as GlobFileResult[];
@@ -213,11 +192,7 @@ describe('Glob Tool', () => {
     });
 
     it('should return error for null pattern', async () => {
-      const result = await globTool(
-         
-        { pattern: null as any },
-        storage as any,
-      );
+      const result = await globTool({ pattern: null as any }, storage as any);
 
       expect(result.isError).toBe(true);
     });
@@ -237,10 +212,7 @@ describe('Glob Tool', () => {
 
     it('should reject invalid glob patterns', async () => {
       // Invalid patterns with unsupported characters
-      const result = await globTool(
-        { pattern: '[[[invalid' },
-        storage as any,
-      );
+      const result = await globTool({ pattern: '[[[invalid' }, storage as any);
 
       // Should either return error or empty results
       expect(result.isError || (JSON.parse(result.content) as GlobFileResult[]).length === 0).toBe(
@@ -278,10 +250,7 @@ describe('Glob Tool', () => {
         },
       ]);
 
-      const result = await globTool(
-        { pattern: '**/deep.md' },
-        storage as any,
-      );
+      const result = await globTool({ pattern: '**/deep.md' }, storage as any);
 
       expect(result.isError).toBe(false);
       const files = JSON.parse(result.content) as GlobFileResult[];

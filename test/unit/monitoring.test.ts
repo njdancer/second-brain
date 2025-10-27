@@ -94,9 +94,7 @@ describe('Monitoring System', () => {
         }),
       };
 
-      const monitoringWithFailure = new MonitoringService(
-        failingAnalytics as any,
-      );
+      const monitoringWithFailure = new MonitoringService(failingAnalytics as any);
 
       // Should not throw, just log error
       await expect(
@@ -140,9 +138,7 @@ describe('Monitoring System', () => {
         }),
       };
 
-      const monitoringWithFailure = new MonitoringService(
-        failingAnalytics as any,
-      );
+      const monitoringWithFailure = new MonitoringService(failingAnalytics as any);
 
       await expect(monitoringWithFailure.recordError(500, 'user1', 'Error')).resolves.not.toThrow();
     });
@@ -181,9 +177,7 @@ describe('Monitoring System', () => {
         }),
       };
 
-      const monitoringWithFailure = new MonitoringService(
-        failingAnalytics as any,
-      );
+      const monitoringWithFailure = new MonitoringService(failingAnalytics as any);
 
       await expect(
         monitoringWithFailure.recordStorageMetrics('user1', 1000, 10),
@@ -227,9 +221,7 @@ describe('Monitoring System', () => {
         }),
       };
 
-      const monitoringWithFailure = new MonitoringService(
-        failingAnalytics as any,
-      );
+      const monitoringWithFailure = new MonitoringService(failingAnalytics as any);
 
       await expect(
         monitoringWithFailure.recordRateLimitHit('user1', 'minute', 100),
@@ -270,9 +262,7 @@ describe('Monitoring System', () => {
         }),
       };
 
-      const monitoringWithFailure = new MonitoringService(
-        failingAnalytics as any,
-      );
+      const monitoringWithFailure = new MonitoringService(failingAnalytics as any);
 
       await expect(
         monitoringWithFailure.recordOAuthEvent('user1', 'success'),
@@ -306,9 +296,7 @@ describe('Monitoring System', () => {
         }),
       };
 
-      const monitoringWithFailure = new MonitoringService(
-        failingAnalytics as any,
-      );
+      const monitoringWithFailure = new MonitoringService(failingAnalytics as any);
 
       expect(() => monitoringWithFailure.recordBackupEvent(10, 2, 1500000)).not.toThrow();
     });
@@ -342,9 +330,7 @@ describe('Monitoring System', () => {
         }),
       };
 
-      const failingMonitoring = new MonitoringService(
-        failingAnalytics as any,
-      );
+      const failingMonitoring = new MonitoringService(failingAnalytics as any);
 
       // Should not throw
       await expect(
