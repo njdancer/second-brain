@@ -1,10 +1,11 @@
 /**
  * Mock S3 Client for testing AWS S3 operations
  * Implements only the methods we actually use in backup.ts
+ *
+ * Note: We don't use Pick<S3Client, 'send'> here because S3Client isn't a simple interface.
+ * The send() method uses command pattern with dynamic types, so we handle it with 'any'
+ * and type-safe private methods instead.
  */
-
-// Note: We don't use Pick<S3Client, 'send'> here because S3Client isn't a simple interface
-// The send() method accepts various command types, so we type it properly below
 
 interface MockS3Object {
   body: string;
