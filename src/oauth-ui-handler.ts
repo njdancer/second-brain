@@ -114,7 +114,7 @@ async function handleCallback(request: Request, env: OAuthEnv, logger: Logger): 
     }
 
     // Decode the original MCP OAuth request from state
-    const oauthReqInfo = JSON.parse(atob(state)) as { scope?: string; [key: string]: unknown };
+    const oauthReqInfo = JSON.parse(atob(state)) as AuthRequest;
     logger.debug('Retrieved MCP auth request from state');
 
     // Get GitHub OAuth provider (injected for tests, or create from env)
@@ -152,7 +152,7 @@ async function handleCallback(request: Request, env: OAuthEnv, logger: Logger): 
     const { redirectTo } = await env.OAUTH_PROVIDER.completeAuthorization({
       request: oauthReqInfo,
       userId: githubUser.id.toString(),
-      scope: oauthReqInfo.scope,
+      scope: Array.isArray(oauthReqInfo.scope) ? oauthReqInfo.scope : [],
       metadata: {
         githubLogin: githubUser.login,
         githubName: githubUser.name || githubUser.login,
@@ -232,7 +232,7 @@ export async function githubOAuthHandler(
  * Export the handler for OAuthProvider defaultHandler configuration
  */
 export const GitHubHandler = {
-  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  async fetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
     return githubOAuthHandler(request, env as OAuthEnv, ctx);
   }
 };

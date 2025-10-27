@@ -15,6 +15,7 @@ import { MockR2Bucket } from '../mocks/r2';
 describe('Integration: Tool Sequences', () => {
   let mockBucket: MockR2Bucket;
   let storage: StorageService;
+  const testUserId = 'test-user-123';
 
   beforeEach(() => {
     mockBucket = new MockR2Bucket();
@@ -30,7 +31,8 @@ describe('Integration: Tool Sequences', () => {
       // 1. Create file with write tool
       const writeResult = await writeTool(
         { path: 'projects/test.md', content: '# Test Project\n\nInitial content' },
-        storage
+        storage,
+        testUserId
       );
       expect(writeResult.isError).toBe(false);
 
@@ -82,7 +84,8 @@ describe('Integration: Tool Sequences', () => {
       // 1. Create file
       await writeTool(
         { path: 'projects/draft.md', content: '# Draft Document' },
-        storage
+        storage,
+        testUserId
       );
 
       // 2. Move to areas
@@ -117,15 +120,18 @@ describe('Integration: Tool Sequences', () => {
       // Setup: Create multiple files
       await writeTool(
         { path: 'projects/project1.md', content: '# Project 1\n\nTODO: Complete task' },
-        storage
+        storage,
+        testUserId
       );
       await writeTool(
         { path: 'projects/project2.md', content: '# Project 2\n\nTODO: Review code' },
-        storage
+        storage,
+        testUserId
       );
       await writeTool(
         { path: 'areas/area1.md', content: '# Area 1\n\nTODO: Follow up' },
-        storage
+        storage,
+        testUserId
       );
 
       // 1. Find all markdown files in projects
@@ -187,7 +193,8 @@ describe('Integration: Tool Sequences', () => {
       // Create file
       await writeTool(
         { path: 'test.md', content: 'Some content' },
-        storage
+        storage,
+        testUserId
       );
 
       // Try to replace string that doesn't exist
@@ -207,11 +214,13 @@ describe('Integration: Tool Sequences', () => {
       // Create two files
       await writeTool(
         { path: 'file1.md', content: 'File 1' },
-        storage
+        storage,
+        testUserId
       );
       await writeTool(
         { path: 'file2.md', content: 'File 2' },
-        storage
+        storage,
+        testUserId
       );
 
       // Try to move file1 to file2 (which already exists)
@@ -230,9 +239,9 @@ describe('Integration: Tool Sequences', () => {
   describe('Concurrent operations', () => {
     it('should handle multiple writes to different files concurrently', async () => {
       const writes = [
-        writeTool({ path: 'file1.md', content: 'Content 1' }, storage),
-        writeTool({ path: 'file2.md', content: 'Content 2' }, storage),
-        writeTool({ path: 'file3.md', content: 'Content 3' }, storage),
+        writeTool({ path: 'file1.md', content: 'Content 1' }, storage, testUserId),
+        writeTool({ path: 'file2.md', content: 'Content 2' }, storage, testUserId),
+        writeTool({ path: 'file3.md', content: 'Content 3' }, storage, testUserId),
       ];
 
       const results = await Promise.all(writes);
@@ -260,7 +269,8 @@ describe('Integration: Tool Sequences', () => {
           path: 'projects/active-project.md',
           content: '# Active Project\n\nStatus: In Progress\nNext: Review with team',
         },
-        storage
+        storage,
+        testUserId
       );
 
       // 1. Find all project files

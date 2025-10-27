@@ -11,10 +11,8 @@ interface GrepMatchResult {
   path: string;
   lineNumber: number;
   line: string;
-  context?: {
-    before?: string[];
-    after?: string[];
-  };
+  match: string;
+  context?: string[];
 }
 
 // Mock storage service
@@ -143,7 +141,9 @@ describe('Grep Tool', () => {
       const matches = JSON.parse(result.content) as GrepMatchResult[];
       expect(matches.length).toBe(1);
       expect(matches[0].context).toBeDefined();
-      expect(matches[0].context.length).toBe(3); // 1 before + match + 1 after
+      if (matches[0].context) {
+        expect(matches[0].context.length).toBe(3); // 1 before + match + 1 after
+      }
     });
 
     it('should handle context at file boundaries', async () => {
@@ -156,7 +156,9 @@ describe('Grep Tool', () => {
 
       expect(result.isError).toBe(false);
       const matches = JSON.parse(result.content) as GrepMatchResult[];
-      expect(matches[0].context.length).toBeLessThanOrEqual(2); // Only 2 lines in file
+      if (matches[0].context) {
+        expect(matches[0].context.length).toBeLessThanOrEqual(2); // Only 2 lines in file
+      }
     });
 
     it('should work with zero context lines', async () => {

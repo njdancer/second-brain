@@ -66,8 +66,9 @@ describe('StorageService', () => {
       });
 
       const obj = await mockBucket.get('test/file.txt');
-      expect(obj!.customMetadata.contentType).toBe('text/plain');
-      expect(obj!.customMetadata.userId).toBe('user123');
+      expect(obj).not.toBeNull();
+      expect(obj?.customMetadata?.contentType).toBe('text/plain');
+      expect(obj?.customMetadata?.userId).toBe('user123');
     });
 
     it('should reject invalid paths with ..', async () => {

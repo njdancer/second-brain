@@ -21,9 +21,11 @@ interface MCPProps {
 
 /**
  * ExecutionContext extended with OAuth props
+ * props is required per the ExecutionContext contract in Workers,
+ * but we need to validate it exists since it's set by OAuthProvider
  */
 interface MCPExecutionContext extends ExecutionContext {
-  props?: MCPProps;
+  props: MCPProps | undefined;
 }
 
 /**
@@ -101,7 +103,7 @@ export async function mcpApiHandler(
     userLogger.info('MCP request authenticated', {
       httpMethod: request.method,
       method: body?.method,
-      requestId: body?.id,
+      requestId: body?.id ?? undefined,
       isInitialize,
     });
 
@@ -266,7 +268,7 @@ export async function mcpApiHandler(
  * Export the handler for OAuthProvider apiHandler configuration
  */
 export const MCPHandler = {
-  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    return mcpApiHandler(request, env, ctx as MCPExecutionContext);
+  async fetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
+    return mcpApiHandler(request, env as Env, ctx as MCPExecutionContext);
   }
 };

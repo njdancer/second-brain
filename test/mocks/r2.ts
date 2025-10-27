@@ -30,20 +30,37 @@ export class MockR2Bucket {
       return Promise.resolve(null);
     }
 
+    // Create ReadableStream from string value
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode(obj.value));
+        controller.close();
+      },
+    });
+
     return Promise.resolve({
       key: obj.key,
-      body: obj.value,
-      bodyUsed: false,
+      version: 'mock-version',
       size: obj.size,
+      etag: obj.httpEtag.replace(/"/g, ''),
       httpEtag: obj.httpEtag,
+      checksums: {},
       uploaded: obj.uploaded,
       httpMetadata: {},
       customMetadata: obj.metadata || {},
       range: undefined,
-      checksums: {},
+      storageClass: 'STANDARD',
+      writeHttpMetadata: () => {},
+      get body() {
+        return stream;
+      },
+      get bodyUsed() {
+        return false;
+      },
       text: () => Promise.resolve(obj.value),
       json: () => Promise.resolve(JSON.parse(obj.value) as unknown),
       arrayBuffer: () => Promise.resolve(new TextEncoder().encode(obj.value).buffer),
+      bytes: () => Promise.resolve(new TextEncoder().encode(obj.value)),
       blob: () => Promise.resolve(new Blob([obj.value])),
     } as R2ObjectBody);
   }
@@ -75,13 +92,17 @@ export class MockR2Bucket {
 
     return Promise.resolve({
       key: obj.key,
+      version: 'mock-version',
       size: obj.size,
+      etag: obj.httpEtag.replace(/"/g, ''),
       httpEtag: obj.httpEtag,
+      checksums: {},
       uploaded: obj.uploaded,
       httpMetadata: {},
       customMetadata: obj.metadata || {},
       range: undefined,
-      checksums: {},
+      storageClass: 'STANDARD',
+      writeHttpMetadata: () => {},
     } as R2Object);
   }
 

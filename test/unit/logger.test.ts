@@ -172,7 +172,10 @@ describe('Logger', () => {
 
       const logOutput = JSON.parse(getFirstCallArg(consoleLogSpy)) as LogOutput;
       expect(logOutput.timestamp).toBeDefined();
-      expect(() => new Date(logOutput.timestamp)).not.toThrow();
+      expect(logOutput.timestamp).toBeDefined();
+      if (logOutput.timestamp) {
+        expect(() => new Date(logOutput.timestamp as string)).not.toThrow();
+      }
       expect(logOutput.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
     });
 

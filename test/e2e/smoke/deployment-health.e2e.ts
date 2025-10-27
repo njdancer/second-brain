@@ -7,9 +7,44 @@
  * If these fail, deployment should be rolled back automatically.
  */
 
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+
 import { describe, it, expect } from '@jest/globals';
 
 const SERVER_URL = process.env.MCP_SERVER_URL || 'https://second-brain-mcp.nick-01a.workers.dev';
+
+// Response type interfaces
+interface _JsonRpcResponse {
+  jsonrpc: string;
+  id: number;
+  result?: {
+    protocolVersion: string;
+    serverInfo: {
+      name: string;
+      version?: string;
+    };
+    capabilities?: Record<string, unknown>;
+    instructions?: string;
+    [key: string]: unknown;
+  };
+  error?: {
+    code: number;
+    message: string;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
+interface _OAuthCallbackResponse {
+  success: boolean;
+  access_token: string;
+  token_type: string;
+  scope: string;
+  userId: string;
+  login: string;
+}
 
 describe('E2E: Post-Deployment Smoke Tests', () => {
   it('server responds to HTTP requests', async () => {

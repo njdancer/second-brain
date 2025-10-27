@@ -2,7 +2,13 @@
  * MCP Session Durable Object tests
  */
 
-import type { R2Bucket, KVNamespace } from '@cloudflare/workers-types';
+import type {
+  R2Bucket,
+  KVNamespace,
+  AnalyticsEngineDataset,
+  DurableObjectState,
+} from '@cloudflare/workers-types';
+import type { Env } from '../../src/index';
 import { MCPSessionDurableObject } from '../../src/mcp-session-do';
 import { MockR2Bucket } from '../mocks/r2';
 import { MockKVNamespace } from '../mocks/kv';
@@ -122,7 +128,7 @@ describe('MCPSessionDurableObject', () => {
       const response = await durableObject.fetch(request);
       expect(response.status).toBe(400);
 
-      const responseBody = await response.json();
+      const responseBody = await response.json() as { error: { code: number; message: string } };
       expect(responseBody.error.code).toBe(-32600);
       expect(responseBody.error.message).toContain('Session not initialized');
     });
@@ -147,7 +153,7 @@ describe('MCPSessionDurableObject', () => {
 
       // Should return error because session not initialized
       expect(response.status).toBe(400);
-      const body = await response.json();
+      const body = await response.json() as { error: { message: string } };
       expect(body.error.message).toContain('Session not initialized');
     });
   });
@@ -238,7 +244,7 @@ describe('MCPSessionDurableObject', () => {
       const response = await durableObject.fetch(request);
       expect(response.status).toBe(500);
 
-      const body = await response.json();
+      const body = await response.json() as { error: { code: number; message: string } };
       expect(body.error.code).toBe(-32603);
       expect(body.error.message).toBe('Internal error');
     });
@@ -345,7 +351,7 @@ describe('MCPSessionDurableObject', () => {
 
       // Should return error because session not initialized
       expect(response.status).toBe(400);
-      const responseBody = await response.json();
+      const responseBody = await response.json() as { error: { message: string } };
       expect(responseBody.error.message).toContain('Session not initialized');
     });
   });

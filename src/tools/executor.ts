@@ -38,22 +38,45 @@ export async function executeTool(
 
     switch (toolName) {
       case 'read':
+        // Validate ReadParams structure
+        if (!args.path || typeof args.path !== 'string') {
+          throw new Error('Invalid read parameters: path is required');
+        }
         result = await readTool(args as ReadParams, storage);
         break;
 
       case 'write':
+        // Validate WriteParams structure
+        if (!args.path || typeof args.path !== 'string') {
+          throw new Error('Invalid write parameters: path is required');
+        }
+        if (!args.content || typeof args.content !== 'string') {
+          throw new Error('Invalid write parameters: content is required');
+        }
         result = await writeTool(args as WriteParams, storage, userId);
         break;
 
       case 'edit':
+        // Validate EditParams structure
+        if (!args.path || typeof args.path !== 'string') {
+          throw new Error('Invalid edit parameters: path is required');
+        }
         result = await editTool(args as EditParams, storage);
         break;
 
       case 'glob':
+        // Validate GlobParams structure
+        if (!args.pattern || typeof args.pattern !== 'string') {
+          throw new Error('Invalid glob parameters: pattern is required');
+        }
         result = await globTool(args as GlobParams, storage);
         break;
 
       case 'grep':
+        // Validate GrepParams structure
+        if (!args.pattern || typeof args.pattern !== 'string') {
+          throw new Error('Invalid grep parameters: pattern is required');
+        }
         result = await grepTool(args as GrepParams, storage);
         break;
 

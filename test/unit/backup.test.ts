@@ -2,9 +2,42 @@
  * Unit tests for backup system
  */
 
-import { BackupService, BackupResult } from '../../src/backup';
+import type { R2Bucket } from '@cloudflare/workers-types';
+import { BackupService } from '../../src/backup';
 import { StorageService } from '../../src/storage';
 import { MockR2Bucket } from '../mocks/r2';
+
+// S3 client interface for AWS SDK v3
+interface S3Client {
+  send(command: unknown): Promise<unknown>;
+}
+
+interface S3Command {
+  input: {
+    Key?: string;
+    Body?: string;
+    Metadata?: Record<string, string>;
+    Prefix?: string;
+    Delete?: { Objects: Array<{ Key: string }> };
+  };
+}
+
+interface S3PutObjectResponse {
+  ETag: string;
+}
+
+interface S3HeadObjectResponse {
+  ETag: string;
+  Metadata?: Record<string, string>;
+}
+
+interface S3ListObjectsResponse {
+  Contents?: Array<{ Key: string; ETag: string }>;
+}
+
+interface S3DeleteObjectsResponse {
+  Deleted?: Array<{ Key: string }>;
+}
 
 // Increase timeout for backup operations (AWS SDK can be slow)
 jest.setTimeout(15000);
