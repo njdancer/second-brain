@@ -76,7 +76,7 @@ export class MockR2Bucket {
   put(
     key: string,
     value: string | ReadableStream | ArrayBuffer,
-    options?: { customMetadata?: Record<string, string> }
+    options?: { customMetadata?: Record<string, string> },
   ): Promise<R2Object> {
     if (this.shouldFail && this.failureCount < this.maxFailures) {
       this.failureCount++;

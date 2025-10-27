@@ -48,9 +48,7 @@ describe('Logger', () => {
       const logger = new Logger();
       logger.info('test');
 
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        expect.stringContaining('"message":"test"')
-      );
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('"message":"test"'));
     });
 
     it('should create logger with initial context', () => {
@@ -268,7 +266,9 @@ describe('Logger', () => {
 describe('generateRequestId', () => {
   it('should generate a valid UUID', () => {
     const requestId = generateRequestId();
-    expect(requestId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+    expect(requestId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    );
   });
 
   it('should generate unique IDs', () => {

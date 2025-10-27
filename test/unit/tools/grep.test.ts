@@ -50,7 +50,10 @@ describe('Grep Tool', () => {
 
     // Setup test files
     storage.setFile('README.md', 'Welcome to my second brain\nThis is a test\nBASB methodology');
-    storage.setFile('projects/app/notes.md', 'Feature requirements\nTODO: implement login\nUser authentication');
+    storage.setFile(
+      'projects/app/notes.md',
+      'Feature requirements\nTODO: implement login\nUser authentication',
+    );
     storage.setFile('projects/app/design.md', 'Design mockups\nUI components\nColor scheme: blue');
     storage.setFile('areas/health/fitness.md', 'Workout plan\nExercise routine\nHealth tracking');
     storage.setFile('resources/tech/react.md', 'React hooks\nComponent patterns\nState management');
@@ -86,7 +89,10 @@ describe('Grep Tool', () => {
     });
 
     it('should return empty array when no matches', async () => {
-      const result = await grepTool({ pattern: 'nonexistent pattern xyz123' }, storage as unknown as StorageService);
+      const result = await grepTool(
+        { pattern: 'nonexistent pattern xyz123' },
+        storage as unknown as StorageService,
+      );
 
       expect(result.isError).toBe(false);
       const matches = JSON.parse(result.content) as GrepMatchResult[];
@@ -98,7 +104,7 @@ describe('Grep Tool', () => {
     it('should search only in specified path', async () => {
       const result = await grepTool(
         { pattern: 'design', path: 'projects/app/**' },
-        storage as unknown as StorageService
+        storage as unknown as StorageService,
       );
 
       expect(result.isError).toBe(false);
@@ -109,7 +115,7 @@ describe('Grep Tool', () => {
     it('should support glob patterns in path', async () => {
       const result = await grepTool(
         { pattern: 'health', path: 'areas/**' },
-        storage as unknown as StorageService
+        storage as unknown as StorageService,
       );
 
       expect(result.isError).toBe(false);
@@ -120,7 +126,7 @@ describe('Grep Tool', () => {
     it('should handle specific file path', async () => {
       const result = await grepTool(
         { pattern: 'TODO', path: 'projects/app/notes.md' },
-        storage as unknown as StorageService
+        storage as unknown as StorageService,
       );
 
       expect(result.isError).toBe(false);
@@ -134,7 +140,7 @@ describe('Grep Tool', () => {
     it('should include context lines around match', async () => {
       const result = await grepTool(
         { pattern: 'TODO', context_lines: 1 },
-        storage as unknown as StorageService
+        storage as unknown as StorageService,
       );
 
       expect(result.isError).toBe(false);
@@ -151,7 +157,7 @@ describe('Grep Tool', () => {
 
       const result = await grepTool(
         { pattern: 'First', context_lines: 5 },
-        storage as unknown as StorageService
+        storage as unknown as StorageService,
       );
 
       expect(result.isError).toBe(false);
@@ -164,7 +170,7 @@ describe('Grep Tool', () => {
     it('should work with zero context lines', async () => {
       const result = await grepTool(
         { pattern: 'TODO', context_lines: 0 },
-        storage as unknown as StorageService
+        storage as unknown as StorageService,
       );
 
       expect(result.isError).toBe(false);
@@ -175,7 +181,10 @@ describe('Grep Tool', () => {
 
   describe('regex patterns', () => {
     it('should support regex patterns', async () => {
-      const result = await grepTool({ pattern: 'TODO:.*login' }, storage as unknown as StorageService);
+      const result = await grepTool(
+        { pattern: 'TODO:.*login' },
+        storage as unknown as StorageService,
+      );
 
       expect(result.isError).toBe(false);
       const matches = JSON.parse(result.content) as GrepMatchResult[];
@@ -183,7 +192,10 @@ describe('Grep Tool', () => {
     });
 
     it('should support word boundaries', async () => {
-      const result = await grepTool({ pattern: '\\btest\\b' }, storage as unknown as StorageService);
+      const result = await grepTool(
+        { pattern: '\\btest\\b' },
+        storage as unknown as StorageService,
+      );
 
       expect(result.isError).toBe(false);
       const matches = JSON.parse(result.content) as GrepMatchResult[];
@@ -201,7 +213,10 @@ describe('Grep Tool', () => {
     });
 
     it('should return error for invalid regex', async () => {
-      const result = await grepTool({ pattern: '[[[invalid' }, storage as unknown as StorageService);
+      const result = await grepTool(
+        { pattern: '[[[invalid' },
+        storage as unknown as StorageService,
+      );
 
       expect(result.isError).toBe(true);
       expect(result.content).toContain('Invalid');
@@ -216,7 +231,7 @@ describe('Grep Tool', () => {
 
       const result = await grepTool(
         { pattern: 'match', max_matches: 10 },
-        storage as unknown as StorageService
+        storage as unknown as StorageService,
       );
 
       expect(result.isError).toBe(false);
@@ -238,7 +253,7 @@ describe('Grep Tool', () => {
     it('should enforce max 1000 matches', async () => {
       const result = await grepTool(
         { pattern: 'test', max_matches: 5000 },
-        storage as unknown as StorageService
+        storage as unknown as StorageService,
       );
 
       expect(result.isError).toBe(false);
@@ -258,7 +273,7 @@ describe('Grep Tool', () => {
       const result = await grepTool(
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
         { pattern: null as any },
-        storage as unknown as StorageService
+        storage as unknown as StorageService,
       );
 
       expect(result.isError).toBe(true);

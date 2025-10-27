@@ -29,19 +29,23 @@ describe('MCP Full Flow E2E (Real MCP Client)', () => {
     console.log('Starting Worker with wrangler dev...');
 
     // Start Worker in background with TEST_MODE enabled (via wrangler.test.toml)
-    workerProcess = spawn('pnpm', [
-      'wrangler',
-      'dev',
-      '--config',
-      'wrangler.test.toml',
-      '--port',
-      port.toString(),
-      '--log-level',
-      'info',
-    ], {
-      cwd: process.cwd(),
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
+    workerProcess = spawn(
+      'pnpm',
+      [
+        'wrangler',
+        'dev',
+        '--config',
+        'wrangler.test.toml',
+        '--port',
+        port.toString(),
+        '--log-level',
+        'info',
+      ],
+      {
+        cwd: process.cwd(),
+        stdio: ['ignore', 'pipe', 'pipe'],
+      },
+    );
 
     baseUrl = `http://127.0.0.1:${port}`;
 
@@ -101,7 +105,7 @@ describe('MCP Full Flow E2E (Real MCP Client)', () => {
     console.log(`✅ Worker started successfully at ${baseUrl}`);
 
     // Give it a moment to fully initialize
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise((resolve) => setTimeout(resolve, 2000));
   }, 60000);
 
   afterAll(async () => {
@@ -142,17 +146,19 @@ describe('MCP Full Flow E2E (Real MCP Client)', () => {
         };
       } = await response.json();
       /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-      expect(data).toEqual(expect.objectContaining({
-        status: 'ok',
-        timestamp: expect.any(String),
-        service: 'second-brain-mcp',
-        version: expect.any(String),
-        build: expect.objectContaining({
-          commit: expect.any(String),
-          time: expect.any(String),
-          environment: expect.any(String),
+      expect(data).toEqual(
+        expect.objectContaining({
+          status: 'ok',
+          timestamp: expect.any(String),
+          service: 'second-brain-mcp',
+          version: expect.any(String),
+          build: expect.objectContaining({
+            commit: expect.any(String),
+            time: expect.any(String),
+            environment: expect.any(String),
+          }),
         }),
-      }));
+      );
       /* eslint-enable @typescript-eslint/no-unsafe-assignment */
     });
   });
@@ -173,7 +179,8 @@ describe('MCP Full Flow E2E (Real MCP Client)', () => {
       });
 
       expect(response.status).toBe(201); // Created
-      const data: { client_id: string; client_secret?: string; redirect_uris?: string[] } = await response.json();
+      const data: { client_id: string; client_secret?: string; redirect_uris?: string[] } =
+        await response.json();
       expect(data).toHaveProperty('client_id');
       expect(typeof data.client_id).toBe('string');
 
@@ -195,10 +202,7 @@ describe('MCP Full Flow E2E (Real MCP Client)', () => {
 
       // Generate PKCE parameters
       codeVerifier = crypto.randomBytes(32).toString('base64url');
-      codeChallenge = crypto
-        .createHash('sha256')
-        .update(codeVerifier)
-        .digest('base64url');
+      codeChallenge = crypto.createHash('sha256').update(codeVerifier).digest('base64url');
 
       const state = crypto.randomBytes(32).toString('base64url');
       const authorizeUrl = new URL(`${baseUrl}/authorize`);
@@ -235,10 +239,7 @@ describe('MCP Full Flow E2E (Real MCP Client)', () => {
 
       // Generate PKCE
       const verifier = crypto.randomBytes(32).toString('base64url');
-      const challenge = crypto
-        .createHash('sha256')
-        .update(verifier)
-        .digest('base64url');
+      const challenge = crypto.createHash('sha256').update(verifier).digest('base64url');
 
       const state = crypto.randomBytes(32).toString('base64url');
 
@@ -305,7 +306,8 @@ describe('MCP Full Flow E2E (Real MCP Client)', () => {
       });
 
       expect(tokenResponse.status).toBe(200);
-      const tokenData: { access_token: string; token_type: string; expires_in?: number } = await tokenResponse.json();
+      const tokenData: { access_token: string; token_type: string; expires_in?: number } =
+        await tokenResponse.json();
       expect(tokenData).toHaveProperty('access_token');
       expect(tokenData.token_type.toLowerCase()).toBe('bearer');
 
@@ -354,10 +356,7 @@ describe('MCP Full Flow E2E (Real MCP Client)', () => {
 
       // Generate PKCE
       const verifier = crypto.randomBytes(32).toString('base64url');
-      const challenge = crypto
-        .createHash('sha256')
-        .update(verifier)
-        .digest('base64url');
+      const challenge = crypto.createHash('sha256').update(verifier).digest('base64url');
 
       const state = crypto.randomBytes(32).toString('base64url');
 
@@ -414,23 +413,23 @@ describe('MCP Full Flow E2E (Real MCP Client)', () => {
 
     test('should initialize MCP session with real SDK client', async () => {
       // Create MCP client with real SDK
-      const transport = new StreamableHTTPClientTransport(
-        new URL(`${baseUrl}/mcp`),
-        {
-          requestInit: {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
+      const transport = new StreamableHTTPClientTransport(new URL(`${baseUrl}/mcp`), {
+        requestInit: {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
           },
-        }
-      );
-
-      mcpClient = new Client({
-        name: 'test-client',
-        version: '1.0.0',
-      }, {
-        capabilities: {},
+        },
       });
+
+      mcpClient = new Client(
+        {
+          name: 'test-client',
+          version: '1.0.0',
+        },
+        {
+          capabilities: {},
+        },
+      );
 
       await mcpClient.connect(transport);
       _sharedMcpClient = mcpClient; // Store in shared variable
@@ -450,7 +449,7 @@ describe('MCP Full Flow E2E (Real MCP Client)', () => {
 
       expect(tools.tools).toHaveLength(5);
 
-      const toolNames = tools.tools.map(t => t.name);
+      const toolNames = tools.tools.map((t) => t.name);
       expect(toolNames).toContain('read');
       expect(toolNames).toContain('write');
       expect(toolNames).toContain('edit');
@@ -465,7 +464,7 @@ describe('MCP Full Flow E2E (Real MCP Client)', () => {
 
       expect(prompts.prompts).toHaveLength(3);
 
-      const promptNames = prompts.prompts.map(p => p.name);
+      const promptNames = prompts.prompts.map((p) => p.name);
       expect(promptNames).toContain('capture-note');
       expect(promptNames).toContain('weekly-review');
       expect(promptNames).toContain('research-summary');

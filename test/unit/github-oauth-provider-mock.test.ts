@@ -55,9 +55,9 @@ describe('MockGitHubOAuthProvider', () => {
     });
 
     test('should reject invalid authorization code', async () => {
-      await expect(
-        provider.validateAuthorizationCode('invalid_code')
-      ).rejects.toThrow('Invalid authorization code');
+      await expect(provider.validateAuthorizationCode('invalid_code')).rejects.toThrow(
+        'Invalid authorization code',
+      );
     });
 
     test('should allow code reuse (for E2E testing)', async () => {
@@ -91,9 +91,7 @@ describe('MockGitHubOAuthProvider', () => {
     });
 
     test('should reject invalid access token', async () => {
-      await expect(
-        provider.getUserInfo('invalid_token')
-      ).rejects.toThrow('Invalid access token');
+      await expect(provider.getUserInfo('invalid_token')).rejects.toThrow('Invalid access token');
     });
   });
 

@@ -50,10 +50,7 @@ function globToRegex(pattern: string): RegExp {
 /**
  * Search file contents using regex
  */
-export async function grepTool(
-  params: GrepParams,
-  storage: StorageService
-): Promise<GrepResult> {
+export async function grepTool(params: GrepParams, storage: StorageService): Promise<GrepResult> {
   try {
     // Validate pattern
     if (!params.pattern || params.pattern.trim() === '') {

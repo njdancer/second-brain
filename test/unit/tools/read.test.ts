@@ -40,7 +40,10 @@ describe('Read Tool', () => {
     });
 
     it('should return error for non-existent file', async () => {
-      const result = await readTool({ path: 'does-not-exist.md' }, storage as unknown as StorageService);
+      const result = await readTool(
+        { path: 'does-not-exist.md' },
+        storage as unknown as StorageService,
+      );
 
       expect(result.isError).toBe(true);
       expect(result.content).toContain('File not found');
@@ -73,7 +76,7 @@ describe('Read Tool', () => {
 
       const result = await readTool(
         { path: 'test.md', range: [2, 4] },
-        storage as unknown as StorageService
+        storage as unknown as StorageService,
       );
 
       expect(result.content).toBe('Line 2\nLine 3\nLine 4');
@@ -86,7 +89,7 @@ describe('Read Tool', () => {
 
       const result = await readTool(
         { path: 'test.md', range: [1, 1] },
-        storage as unknown as StorageService
+        storage as unknown as StorageService,
       );
 
       expect(result.content).toBe('Line 1');
@@ -99,7 +102,7 @@ describe('Read Tool', () => {
 
       const result = await readTool(
         { path: 'test.md', range: [3, 3] },
-        storage as unknown as StorageService
+        storage as unknown as StorageService,
       );
 
       expect(result.content).toBe('Line 3');
@@ -112,7 +115,7 @@ describe('Read Tool', () => {
 
       const result = await readTool(
         { path: 'test.md', range: [1, 10] },
-        storage as unknown as StorageService
+        storage as unknown as StorageService,
       );
 
       // Should read up to end of file
@@ -126,7 +129,7 @@ describe('Read Tool', () => {
 
       const result = await readTool(
         { path: 'test.md', range: [3, 1] },
-        storage as unknown as StorageService
+        storage as unknown as StorageService,
       );
 
       expect(result.isError).toBe(true);
@@ -139,7 +142,7 @@ describe('Read Tool', () => {
 
       const result = await readTool(
         { path: 'test.md', range: [0, 2] },
-        storage as unknown as StorageService
+        storage as unknown as StorageService,
       );
 
       expect(result.isError).toBe(true);
@@ -154,7 +157,7 @@ describe('Read Tool', () => {
 
       const result = await readTool(
         { path: 'large.md', max_bytes: 100 },
-        storage as unknown as StorageService
+        storage as unknown as StorageService,
       );
 
       expect(result.content.length).toBeLessThanOrEqual(100);
@@ -167,7 +170,7 @@ describe('Read Tool', () => {
 
       const result = await readTool(
         { path: 'small.md', max_bytes: 1000 },
-        storage as unknown as StorageService
+        storage as unknown as StorageService,
       );
 
       expect(result.content).toBe(content);
@@ -180,7 +183,7 @@ describe('Read Tool', () => {
 
       const result = await readTool(
         { path: 'huge.md', max_bytes: 1024 },
-        storage as unknown as StorageService
+        storage as unknown as StorageService,
       );
 
       // Should either truncate or return error
@@ -193,7 +196,7 @@ describe('Read Tool', () => {
 
       const result = await readTool(
         { path: 'unicode.md', max_bytes: 50 },
-        storage as unknown as StorageService
+        storage as unknown as StorageService,
       );
 
       // Should not cut multi-byte characters in half
@@ -226,7 +229,7 @@ describe('Read Tool', () => {
       const result = await readTool(
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
         { path: null as any },
-        storage as unknown as StorageService
+        storage as unknown as StorageService,
       );
 
       expect(result.isError).toBe(true);
@@ -235,12 +238,13 @@ describe('Read Tool', () => {
 
   describe('combined parameters', () => {
     it('should handle range and byte limit together', async () => {
-      const content = 'Line 1 with lots of text\nLine 2 with lots of text\nLine 3 with lots of text\nLine 4 with lots of text';
+      const content =
+        'Line 1 with lots of text\nLine 2 with lots of text\nLine 3 with lots of text\nLine 4 with lots of text';
       storage.setFile('test.md', content);
 
       const result = await readTool(
         { path: 'test.md', range: [1, 3], max_bytes: 50 },
-        storage as unknown as StorageService
+        storage as unknown as StorageService,
       );
 
       // Should apply range first, then byte limit

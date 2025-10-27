@@ -4,8 +4,7 @@
  */
 
 import type { StorageService } from './storage';
-import type {
-  S3Client} from '@aws-sdk/client-s3';
+import type { S3Client } from '@aws-sdk/client-s3';
 import {
   PutObjectCommand,
   HeadObjectCommand,
@@ -39,7 +38,7 @@ export class BackupService {
   constructor(
     private storage: StorageService,
     private s3Client: S3Client,
-    private s3Bucket: string
+    private s3Bucket: string,
   ) {}
 
   /**
@@ -84,7 +83,7 @@ export class BackupService {
                 Metadata: {
                   r2Etag: r2Object.etag || '',
                 },
-              })
+              }),
             );
 
             filesBackedUp++;
@@ -93,8 +92,7 @@ export class BackupService {
             filesSkipped++;
           }
         } catch (error) {
-          const errorMsg =
-            error instanceof Error ? error.message : 'Unknown error';
+          const errorMsg = error instanceof Error ? error.message : 'Unknown error';
           errors.push(`Failed to backup ${r2Object.key}: ${errorMsg}`);
         }
       }
@@ -120,16 +118,13 @@ export class BackupService {
    * Check if file should be backed up (new or modified)
    * Compares R2 ETags stored in S3 metadata
    */
-  private async shouldBackupFile(
-    s3Path: string,
-    r2Etag?: string
-  ): Promise<boolean> {
+  private async shouldBackupFile(s3Path: string, r2Etag?: string): Promise<boolean> {
     try {
       const headResult = await this.s3Client.send(
         new HeadObjectCommand({
           Bucket: this.s3Bucket,
           Key: s3Path,
-        })
+        }),
       );
 
       // File exists in S3 - compare R2 ETag from metadata
@@ -168,7 +163,7 @@ export class BackupService {
         new ListObjectsV2Command({
           Bucket: this.s3Bucket,
           Prefix: 'backups/',
-        })
+        }),
       );
 
       if (!listResult.Contents || listResult.Contents.length === 0) {
@@ -208,13 +203,12 @@ export class BackupService {
                   Delete: {
                     Objects: batch.map((key) => ({ Key: key })),
                   },
-                })
+                }),
               );
               deletedCount += batch.length;
             }
           } catch (error) {
-            const errorMsg =
-              error instanceof Error ? error.message : 'Unknown error';
+            const errorMsg = error instanceof Error ? error.message : 'Unknown error';
             errors.push(`Failed to delete backups for ${date}: ${errorMsg}`);
           }
         }
@@ -236,7 +230,7 @@ export class BackupService {
         new ListObjectsV2Command({
           Bucket: this.s3Bucket,
           Prefix: 'backups/',
-        })
+        }),
       );
 
       // Extract unique dates from file paths
@@ -253,9 +247,7 @@ export class BackupService {
       }
 
       const sortedDates = Array.from(dates).sort().reverse();
-      const lastBackupDate = sortedDates[0]
-        ? new Date(sortedDates[0])
-        : undefined;
+      const lastBackupDate = sortedDates[0] ? new Date(sortedDates[0]) : undefined;
 
       return {
         lastBackupDate,

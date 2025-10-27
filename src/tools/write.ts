@@ -23,7 +23,7 @@ const MAX_WRITE_SIZE = 1 * 1024 * 1024; // 1MB limit for writes
 export async function writeTool(
   params: WriteParams,
   storage: StorageService,
-  userId: string
+  userId: string,
 ): Promise<WriteResult> {
   try {
     // Validate path

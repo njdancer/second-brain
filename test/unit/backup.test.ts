@@ -51,10 +51,8 @@ jest.setTimeout(15000);
 
 // Mock S3 Client
 class MockS3Client {
-  private objects: Map<
-    string,
-    { body: string; etag: string; metadata?: Record<string, string> }
-  > = new Map();
+  private objects: Map<string, { body: string; etag: string; metadata?: Record<string, string> }> =
+    new Map();
 
   async send(command: any): Promise<any> {
     const commandName = command.constructor.name;
@@ -106,7 +104,9 @@ class MockS3Client {
     this.objects.clear();
   }
 
-  getObject(key: string): { body: string; etag: string; metadata?: Record<string, string> } | undefined {
+  getObject(
+    key: string,
+  ): { body: string; etag: string; metadata?: Record<string, string> } | undefined {
     return this.objects.get(key);
   }
 
@@ -245,10 +245,16 @@ describe('Backup System', () => {
       const mockStorage = {
         ...storage,
         getObject: jest.fn().mockResolvedValue(null),
-        listObjects: jest.fn().mockResolvedValue([{ key: 'test.md', size: 7, modified: new Date(), etag: 'abc123' }]),
+        listObjects: jest
+          .fn()
+          .mockResolvedValue([{ key: 'test.md', size: 7, modified: new Date(), etag: 'abc123' }]),
       };
 
-      const backupWithFailure = new (backupService.constructor as any)(mockStorage, mockS3, 'test-bucket');
+      const backupWithFailure = new (backupService.constructor as any)(
+        mockStorage,
+        mockS3,
+        'test-bucket',
+      );
       const result = await backupWithFailure.syncR2ToS3();
 
       expect(result.success).toBe(false);
@@ -263,7 +269,11 @@ describe('Backup System', () => {
         listObjects: jest.fn().mockRejectedValue(new Error('List failed')),
       };
 
-      const backupWithFailure = new (backupService.constructor as any)(mockStorage, mockS3, 'test-bucket');
+      const backupWithFailure = new (backupService.constructor as any)(
+        mockStorage,
+        mockS3,
+        'test-bucket',
+      );
       const result = await backupWithFailure.syncR2ToS3();
 
       expect(result.success).toBe(false);
@@ -326,10 +336,14 @@ describe('Backup System', () => {
     it('should handle S3 list failures during cleanup', async () => {
       // Create mock S3 that fails on list
       const failingS3 = {
-        send: jest.fn().mockRejectedValue(new Error('S3 list failed'))
+        send: jest.fn().mockRejectedValue(new Error('S3 list failed')),
       };
 
-      const backupWithFailure = new (backupService.constructor as any)(storage, failingS3, 'test-bucket');
+      const backupWithFailure = new (backupService.constructor as any)(
+        storage,
+        failingS3,
+        'test-bucket',
+      );
       const result = await backupWithFailure.cleanupOldBackups();
 
       expect(result.deletedCount).toBe(0);
@@ -357,10 +371,14 @@ describe('Backup System', () => {
     it('should handle S3 errors gracefully', async () => {
       // Create mock S3 that fails
       const failingS3 = {
-        send: jest.fn().mockRejectedValue(new Error('S3 failed'))
+        send: jest.fn().mockRejectedValue(new Error('S3 failed')),
       };
 
-      const backupWithFailure = new (backupService.constructor as any)(storage, failingS3, 'test-bucket');
+      const backupWithFailure = new (backupService.constructor as any)(
+        storage,
+        failingS3,
+        'test-bucket',
+      );
       const status = await backupWithFailure.getBackupStatus();
 
       expect(status.totalBackups).toBe(0);
@@ -395,7 +413,11 @@ describe('Backup System', () => {
         listObjects: jest.fn().mockRejectedValue(new Error('R2 failed')),
       };
 
-      const backupWithFailure = new (backupService.constructor as any)(mockStorage, mockS3, 'test-bucket');
+      const backupWithFailure = new (backupService.constructor as any)(
+        mockStorage,
+        mockS3,
+        'test-bucket',
+      );
       const result = await backupWithFailure.performBackup();
 
       expect(result.success).toBe(false);

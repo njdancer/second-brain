@@ -4,11 +4,7 @@
  */
 
 import { GitHub } from 'arctic';
-import type {
-  GitHubOAuthProvider,
-  GitHubTokens,
-  GitHubUser,
-} from './github-oauth-provider';
+import type { GitHubOAuthProvider, GitHubTokens, GitHubUser } from './github-oauth-provider';
 
 /**
  * Production GitHub OAuth provider using Arctic library

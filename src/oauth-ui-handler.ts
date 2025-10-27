@@ -44,7 +44,7 @@ async function createGitHubProvider(env: OAuthEnv, request: Request): Promise<Gi
   return new ArcticGitHubOAuthProvider(
     env.GITHUB_CLIENT_ID,
     env.GITHUB_CLIENT_SECRET,
-    `${url.origin}/callback`
+    `${url.origin}/callback`,
   );
 }
 
@@ -73,7 +73,7 @@ async function handleAuthorize(request: Request, env: OAuthEnv, logger: Logger):
     }
 
     // Get GitHub OAuth provider (injected for tests, or create from env)
-    const github = env.GITHUB_OAUTH || await createGitHubProvider(env, request);
+    const github = env.GITHUB_OAUTH || (await createGitHubProvider(env, request));
 
     // Generate state with MCP OAuth request encoded in it
     const state = btoa(JSON.stringify(oauthReqInfo));
@@ -118,7 +118,7 @@ async function handleCallback(request: Request, env: OAuthEnv, logger: Logger): 
     logger.debug('Retrieved MCP auth request from state');
 
     // Get GitHub OAuth provider (injected for tests, or create from env)
-    const github = env.GITHUB_OAUTH || await createGitHubProvider(env, request);
+    const github = env.GITHUB_OAUTH || (await createGitHubProvider(env, request));
 
     // Validate callback and exchange code for tokens
     const tokens = await github.validateAuthorizationCode(code);
@@ -129,7 +129,7 @@ async function handleCallback(request: Request, env: OAuthEnv, logger: Logger): 
     const githubUser = await github.getUserInfo(tokens.accessToken);
     const userLogger = logger.child({
       userId: githubUser.id.toString(),
-      githubLogin: githubUser.login
+      githubLogin: githubUser.login,
     });
 
     userLogger.info('GitHub user authenticated');
@@ -181,7 +181,10 @@ async function handleCallback(request: Request, env: OAuthEnv, logger: Logger): 
     const monitoring = new MonitoringService(env.ANALYTICS);
     await monitoring.recordOAuthEvent(undefined, 'failure');
 
-    return new Response(`Failed to complete OAuth flow: ${error instanceof Error ? error.message : 'Unknown error'}`, { status: 500 });
+    return new Response(
+      `Failed to complete OAuth flow: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      { status: 500 },
+    );
   }
 }
 
@@ -192,7 +195,7 @@ async function handleCallback(request: Request, env: OAuthEnv, logger: Logger): 
 export async function githubOAuthHandler(
   request: Request,
   env: OAuthEnv,
-  _ctx: ExecutionContext
+  _ctx: ExecutionContext,
 ): Promise<Response> {
   const url = new URL(request.url);
   const requestId = generateRequestId();
@@ -208,20 +211,29 @@ export async function githubOAuthHandler(
   }
 
   if (url.pathname === '/health') {
-    return new Response(JSON.stringify({
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-      service: 'second-brain-mcp',
-      version: getVersionString(),
-      build: {
-        commit: VERSION_INFO.commit !== '__COMMIT_SHA__' ? VERSION_INFO.commit : 'dev',
-        time: VERSION_INFO.buildTime !== '__BUILD_TIME__' ? VERSION_INFO.buildTime : new Date().toISOString(),
-        environment: VERSION_INFO.environment !== '__ENVIRONMENT__' ? VERSION_INFO.environment : 'development'
-      }
-    }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    return new Response(
+      JSON.stringify({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        service: 'second-brain-mcp',
+        version: getVersionString(),
+        build: {
+          commit: VERSION_INFO.commit !== '__COMMIT_SHA__' ? VERSION_INFO.commit : 'dev',
+          time:
+            VERSION_INFO.buildTime !== '__BUILD_TIME__'
+              ? VERSION_INFO.buildTime
+              : new Date().toISOString(),
+          environment:
+            VERSION_INFO.environment !== '__ENVIRONMENT__'
+              ? VERSION_INFO.environment
+              : 'development',
+        },
+      }),
+      {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      },
+    );
   }
 
   logger.warn('Unknown OAuth route', { pathname: url.pathname });
@@ -235,5 +247,5 @@ export const GitHubHandler = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async fetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
     return githubOAuthHandler(request, env as OAuthEnv, ctx);
-  }
+  },
 };

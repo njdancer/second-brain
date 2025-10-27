@@ -194,7 +194,7 @@ describe('RateLimiter', () => {
     it('should handle invalid window gracefully', async () => {
       await expect(
         // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
-        rateLimiter.checkRateLimit(userId, 'invalid' as any)
+        rateLimiter.checkRateLimit(userId, 'invalid' as any),
       ).rejects.toThrow();
     });
 

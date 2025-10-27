@@ -28,9 +28,10 @@ export class MockKVNamespace {
   put(
     key: string,
     value: string,
-    options?: { expiration?: number; expirationTtl?: number }
+    options?: { expiration?: number; expirationTtl?: number },
   ): Promise<void> {
-    const expiration = options?.expiration ||
+    const expiration =
+      options?.expiration ||
       (options?.expirationTtl ? Math.floor(Date.now() / 1000) + options.expirationTtl : undefined);
 
     this.store.set(key, { value, expiration });
@@ -44,9 +45,7 @@ export class MockKVNamespace {
 
   list(options?: { prefix?: string }): Promise<{ keys: Array<{ name: string }> }> {
     const keys = Array.from(this.store.keys());
-    const filtered = options?.prefix
-      ? keys.filter((key) => key.startsWith(options.prefix!))
-      : keys;
+    const filtered = options?.prefix ? keys.filter((key) => key.startsWith(options.prefix!)) : keys;
 
     return Promise.resolve({
       keys: filtered.map((name) => ({ name })),

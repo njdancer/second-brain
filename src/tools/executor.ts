@@ -25,7 +25,7 @@ export interface ToolContext {
 export async function executeTool(
   toolName: string,
   args: Record<string, unknown>,
-  context: ToolContext
+  context: ToolContext,
 ): Promise<string> {
   const { storage, userId, logger } = context;
   const toolLogger = logger.child({ tool: toolName });

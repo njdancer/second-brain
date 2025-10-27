@@ -43,7 +43,7 @@ interface MCPRequestBody {
 export async function mcpApiHandler(
   request: Request,
   env: Env,
-  ctx: MCPExecutionContext
+  ctx: MCPExecutionContext,
 ): Promise<Response> {
   const requestId = generateRequestId();
   const logger = new Logger({ requestId });
@@ -78,7 +78,7 @@ export async function mcpApiHandler(
         {
           status: 403,
           headers: { 'Content-Type': 'application/json' },
-        }
+        },
       );
     }
 
@@ -102,7 +102,12 @@ export async function mcpApiHandler(
     userLogger.info('MCP request authenticated', {
       httpMethod: request.method,
       method: body?.method,
-      requestId: typeof body?.id === 'number' ? body.id.toString() : typeof body?.id === 'string' ? body.id : undefined,
+      requestId:
+        typeof body?.id === 'number'
+          ? body.id.toString()
+          : typeof body?.id === 'string'
+            ? body.id
+            : undefined,
       isInitialize,
     });
 
@@ -142,15 +147,16 @@ export async function mcpApiHandler(
             'Content-Type': 'application/json',
             'Retry-After': rateLimitResult.retryAfter?.toString() || '60',
           },
-        }
+        },
       );
     }
 
     // Extract or generate session ID
     // Check multiple possible locations where client might send it
-    let sessionId = request.headers.get('mcp-session-id') ||
-                    request.headers.get('x-mcp-session-id') ||
-                    request.headers.get('session-id');
+    let sessionId =
+      request.headers.get('mcp-session-id') ||
+      request.headers.get('x-mcp-session-id') ||
+      request.headers.get('session-id');
 
     userLogger.info('Session ID extraction', {
       foundInHeaders: !!sessionId,
@@ -194,7 +200,7 @@ export async function mcpApiHandler(
         {
           status: 400,
           headers: { 'Content-Type': 'application/json' },
-        }
+        },
       );
     }
 
@@ -258,7 +264,7 @@ export async function mcpApiHandler(
       {
         status: 500,
         headers: { 'Content-Type': 'application/json' },
-      }
+      },
     );
   }
 }
@@ -270,5 +276,5 @@ export const MCPHandler = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async fetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
     return mcpApiHandler(request, env as Env, ctx as MCPExecutionContext);
-  }
+  },
 };

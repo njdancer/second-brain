@@ -87,7 +87,9 @@ export class MCPSessionDurableObject extends DurableObject {
 
     if (timeSinceLastActivity > this.SESSION_TIMEOUT_MS) {
       // Session has timed out - clean up
-      console.log(`Session ${this.sessionId} timed out after ${timeSinceLastActivity}ms of inactivity`);
+      console.log(
+        `Session ${this.sessionId} timed out after ${timeSinceLastActivity}ms of inactivity`,
+      );
       await this.cleanup();
       // Don't reschedule after cleanup
       return;
@@ -119,7 +121,7 @@ export class MCPSessionDurableObject extends DurableObject {
             error: { code: -32003, message: 'Missing session props' },
             id: null,
           }),
-          { status: 403, headers: { 'Content-Type': 'application/json' } }
+          { status: 403, headers: { 'Content-Type': 'application/json' } },
         );
       }
 
@@ -196,7 +198,7 @@ export class MCPSessionDurableObject extends DurableObject {
           rateLimiter,
           env.ANALYTICS,
           props.userId,
-          userLogger
+          userLogger,
         );
 
         // Connect server to transport
@@ -217,7 +219,7 @@ export class MCPSessionDurableObject extends DurableObject {
             },
             id: body?.id || null,
           }),
-          { status: 400, headers: { 'Content-Type': 'application/json' } }
+          { status: 400, headers: { 'Content-Type': 'application/json' } },
         );
       }
 
@@ -279,7 +281,11 @@ export class MCPSessionDurableObject extends DurableObject {
       // Handle request through transport
       // Pass pre-parsed body as third parameter (per MCP SDK documentation)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
-      const handlePromise = this.transport.handleRequest(nodeRequest as any, nodeResponse as any, body);
+      const handlePromise = this.transport.handleRequest(
+        nodeRequest as any,
+        nodeResponse as any,
+        body,
+      );
 
       // Wait for BOTH handleRequest to complete AND end() to be called
       await Promise.all([handlePromise, endPromise]);
@@ -303,7 +309,7 @@ export class MCPSessionDurableObject extends DurableObject {
           error: { code: -32603, message: 'Internal error' },
           id: null,
         }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
+        { status: 500, headers: { 'Content-Type': 'application/json' } },
       );
     }
   }

@@ -55,7 +55,7 @@ describe('Write Tool', () => {
       const result = await writeTool(
         { path: 'test.md', content },
         storage as unknown as StorageService,
-        'user123'
+        'user123',
       );
 
       expect(result.isError).toBe(false);
@@ -68,7 +68,7 @@ describe('Write Tool', () => {
       const result = await writeTool(
         { path: 'projects/myproject/notes.md', content },
         storage as unknown as StorageService,
-        'user123'
+        'user123',
       );
 
       expect(result.isError).toBe(false);
@@ -80,7 +80,7 @@ describe('Write Tool', () => {
       const result = await writeTool(
         { path: 'unicode.md', content },
         storage as unknown as StorageService,
-        'user123'
+        'user123',
       );
 
       expect(result.isError).toBe(false);
@@ -91,7 +91,7 @@ describe('Write Tool', () => {
       const result = await writeTool(
         { path: 'empty.md', content: '' },
         storage as unknown as StorageService,
-        'user123'
+        'user123',
       );
 
       expect(result.isError).toBe(false);
@@ -104,13 +104,13 @@ describe('Write Tool', () => {
       await writeTool(
         { path: 'test.md', content: 'Original content' },
         storage as unknown as StorageService,
-        'user123'
+        'user123',
       );
 
       const result = await writeTool(
         { path: 'test.md', content: 'New content' },
         storage as unknown as StorageService,
-        'user123'
+        'user123',
       );
 
       expect(result.isError).toBe(false);
@@ -121,14 +121,14 @@ describe('Write Tool', () => {
       await writeTool(
         { path: 'test.md', content: 'Small' },
         storage as unknown as StorageService,
-        'user123'
+        'user123',
       );
 
       const newContent = 'A'.repeat(1000);
       const result = await writeTool(
         { path: 'test.md', content: newContent },
         storage as unknown as StorageService,
-        'user123'
+        'user123',
       );
 
       expect(result.isError).toBe(false);
@@ -142,7 +142,7 @@ describe('Write Tool', () => {
       const result = await writeTool(
         { path: 'large.md', content: largeContent },
         storage as unknown as StorageService,
-        'user123'
+        'user123',
       );
 
       expect(result.isError).toBe(true);
@@ -155,7 +155,7 @@ describe('Write Tool', () => {
       const result = await writeTool(
         { path: 'maxsize.md', content },
         storage as unknown as StorageService,
-        'user123'
+        'user123',
       );
 
       expect(result.isError).toBe(false);
@@ -169,7 +169,7 @@ describe('Write Tool', () => {
       const result = await writeTool(
         { path: 'unicode.md', content },
         storage as unknown as StorageService,
-        'user123'
+        'user123',
       );
 
       if (bytes.length > 1024 * 1024) {
@@ -185,7 +185,7 @@ describe('Write Tool', () => {
       const result = await writeTool(
         { path: '', content: 'test' },
         storage as unknown as StorageService,
-        'user123'
+        'user123',
       );
 
       expect(result.isError).toBe(true);
@@ -197,7 +197,7 @@ describe('Write Tool', () => {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
         { path: null as any, content: 'test' },
         storage as unknown as StorageService,
-        'user123'
+        'user123',
       );
 
       expect(result.isError).toBe(true);
@@ -207,7 +207,7 @@ describe('Write Tool', () => {
       const result = await writeTool(
         { path: '../../../etc/passwd', content: 'test' },
         storage as unknown as StorageService,
-        'user123'
+        'user123',
       );
 
       expect(result.isError).toBe(true);
@@ -218,7 +218,7 @@ describe('Write Tool', () => {
       const result = await writeTool(
         { path: 'projects/app/design/notes.md', content: 'test' },
         storage as unknown as StorageService,
-        'user123'
+        'user123',
       );
 
       expect(result.isError).toBe(false);
@@ -232,7 +232,7 @@ describe('Write Tool', () => {
       const result = await writeTool(
         { path: 'test.md', content: 'test' },
         storage as unknown as StorageService,
-        'user123'
+        'user123',
       );
 
       expect(result.isError).toBe(true);
@@ -245,7 +245,7 @@ describe('Write Tool', () => {
       const result = await writeTool(
         { path: 'test.md', content: 'test' },
         storage as unknown as StorageService,
-        'user123'
+        'user123',
       );
 
       expect(result.isError).toBe(false);
@@ -273,7 +273,7 @@ describe('Write Tool', () => {
       const result = await writeTool(
         { path: 'test.md', content: 'test' },
         errorStorage as unknown as StorageService,
-        'user123'
+        'user123',
       );
 
       expect(result.isError).toBe(true);
@@ -285,7 +285,7 @@ describe('Write Tool', () => {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
         { path: 'test.md', content: null as any },
         storage as unknown as StorageService,
-        'user123'
+        'user123',
       );
 
       expect(result.isError).toBe(true);
@@ -295,9 +295,21 @@ describe('Write Tool', () => {
   describe('concurrent writes', () => {
     it('should handle concurrent writes to different files', async () => {
       const writes = [
-        writeTool({ path: 'file1.md', content: 'Content 1' }, storage as unknown as StorageService, 'user123'),
-        writeTool({ path: 'file2.md', content: 'Content 2' }, storage as unknown as StorageService, 'user123'),
-        writeTool({ path: 'file3.md', content: 'Content 3' }, storage as unknown as StorageService, 'user123'),
+        writeTool(
+          { path: 'file1.md', content: 'Content 1' },
+          storage as unknown as StorageService,
+          'user123',
+        ),
+        writeTool(
+          { path: 'file2.md', content: 'Content 2' },
+          storage as unknown as StorageService,
+          'user123',
+        ),
+        writeTool(
+          { path: 'file3.md', content: 'Content 3' },
+          storage as unknown as StorageService,
+          'user123',
+        ),
       ];
 
       const results = await Promise.all(writes);

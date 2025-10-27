@@ -45,15 +45,15 @@ describe('Tool Executor', () => {
     });
 
     it('should throw error for non-existent file', async () => {
-      await expect(
-        executeTool('read', { path: 'nonexistent.md' }, context)
-      ).rejects.toThrow('File not found');
+      await expect(executeTool('read', { path: 'nonexistent.md' }, context)).rejects.toThrow(
+        'File not found',
+      );
     });
 
     it('should throw error for invalid path', async () => {
-      await expect(
-        executeTool('read', { path: '' }, context)
-      ).rejects.toThrow('Invalid read parameters: path is required');
+      await expect(executeTool('read', { path: '' }, context)).rejects.toThrow(
+        'Invalid read parameters: path is required',
+      );
     });
   });
 
@@ -62,7 +62,7 @@ describe('Tool Executor', () => {
       const result = await executeTool(
         'write',
         { path: 'new.md', content: 'New content' },
-        context
+        context,
       );
 
       expect(result).toContain('Successfully wrote');
@@ -71,16 +71,14 @@ describe('Tool Executor', () => {
     });
 
     it('should throw error for missing content', async () => {
-      await expect(
-        executeTool('write', { path: 'test.md' }, context)
-      ).rejects.toThrow();
+      await expect(executeTool('write', { path: 'test.md' }, context)).rejects.toThrow();
     });
 
     it('should throw error for content too large', async () => {
       const largeContent = 'x'.repeat(2 * 1024 * 1024); // 2MB
 
       await expect(
-        executeTool('write', { path: 'large.md', content: largeContent }, context)
+        executeTool('write', { path: 'large.md', content: largeContent }, context),
       ).rejects.toThrow('exceeds');
     });
   });
@@ -92,7 +90,7 @@ describe('Tool Executor', () => {
       const result = await executeTool(
         'edit',
         { path: 'test.md', old_str: 'Old', new_str: 'New' },
-        context
+        context,
       );
 
       expect(result).toContain('Successfully edited');
@@ -104,18 +102,14 @@ describe('Tool Executor', () => {
       await mockBucket.put('test.md', 'test test');
 
       await expect(
-        executeTool('edit', { path: 'test.md', old_str: 'test', new_str: 'new' }, context)
+        executeTool('edit', { path: 'test.md', old_str: 'test', new_str: 'new' }, context),
       ).rejects.toThrow('not unique');
     });
 
     it('should delete file when delete=true', async () => {
       await mockBucket.put('test.md', 'content');
 
-      const result = await executeTool(
-        'edit',
-        { path: 'test.md', delete: true },
-        context
-      );
+      const result = await executeTool('edit', { path: 'test.md', delete: true }, context);
 
       expect(result).toContain('Successfully deleted');
       const stored = await mockBucket.get('test.md');
@@ -137,9 +131,9 @@ describe('Tool Executor', () => {
     });
 
     it('should throw error for invalid pattern', async () => {
-      await expect(
-        executeTool('glob', { pattern: '' }, context)
-      ).rejects.toThrow('Invalid glob parameters: pattern is required');
+      await expect(executeTool('glob', { pattern: '' }, context)).rejects.toThrow(
+        'Invalid glob parameters: pattern is required',
+      );
     });
 
     it('should return empty results when no matches', async () => {
@@ -160,9 +154,7 @@ describe('Tool Executor', () => {
     });
 
     it('should throw error for invalid regex', async () => {
-      await expect(
-        executeTool('grep', { pattern: '[invalid' }, context)
-      ).rejects.toThrow();
+      await expect(executeTool('grep', { pattern: '[invalid' }, context)).rejects.toThrow();
     });
 
     it('should return no matches when pattern not found', async () => {
@@ -176,27 +168,23 @@ describe('Tool Executor', () => {
 
   describe('unknown tool', () => {
     it('should throw error for unknown tool', async () => {
-      await expect(
-        executeTool('unknown-tool', {}, context)
-      ).rejects.toThrow('Unknown tool: unknown-tool');
+      await expect(executeTool('unknown-tool', {}, context)).rejects.toThrow(
+        'Unknown tool: unknown-tool',
+      );
     });
   });
 
   describe('error handling', () => {
     it('should propagate errors from tools', async () => {
       // Try to read from a file that doesn't exist
-      await expect(
-        executeTool('read', { path: 'nonexistent.md' }, context)
-      ).rejects.toThrow();
+      await expect(executeTool('read', { path: 'nonexistent.md' }, context)).rejects.toThrow();
     });
 
     it('should handle storage errors gracefully', async () => {
       // Mock a storage error
       mockBucket.setFailure(true, 1);
 
-      await expect(
-        executeTool('read', { path: 'test.md' }, context)
-      ).rejects.toThrow();
+      await expect(executeTool('read', { path: 'test.md' }, context)).rejects.toThrow();
     });
   });
 });

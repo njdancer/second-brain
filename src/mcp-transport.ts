@@ -27,7 +27,7 @@ export function createMCPServerInstance(
   rateLimiter: RateLimiter,
   analytics: AnalyticsEngineDataset,
   userId: string,
-  logger: Logger
+  logger: Logger,
 ): Server {
   const monitoring = new MonitoringService(analytics);
   const server = new Server(
@@ -61,7 +61,7 @@ All notes are markdown files organized by path:
 - archives/{year}/ - Completed/inactive items
 
 Let the structure emerge naturally through use. Create folders as needed by creating files within them.`,
-    }
+    },
   );
 
   // Register tool handlers
@@ -113,7 +113,8 @@ Let the structure emerge naturally through use. Create folders as needed by crea
         },
         {
           name: 'edit',
-          description: 'Edit existing file using string replacement, with optional move/rename/delete',
+          description:
+            'Edit existing file using string replacement, with optional move/rename/delete',
           inputSchema: {
             type: 'object',
             properties: {
@@ -404,9 +405,6 @@ Please:
  */
 export function isInitializeRequest(body: unknown): boolean {
   return (
-    typeof body === 'object' &&
-    body !== null &&
-    'method' in body &&
-    body.method === 'initialize'
+    typeof body === 'object' && body !== null && 'method' in body && body.method === 'initialize'
   );
 }

@@ -42,7 +42,7 @@ describe('E2E: OAuth Callback Contract', () => {
     // This serves as living documentation and contract definition
     const expectedSuccessResponse: Record<string, unknown> = {
       success: true,
-      access_token: expect.any(String) as unknown,  // ← MUST be present!
+      access_token: expect.any(String) as unknown, // ← MUST be present!
       token_type: expect.stringMatching(/bearer/i) as unknown,
       scope: expect.stringMatching(/read:user/) as unknown,
       userId: expect.any(String) as unknown,
@@ -53,8 +53,8 @@ describe('E2E: OAuth Callback Contract', () => {
     if (data.success && !data.access_token) {
       throw new Error(
         'CRITICAL BUG: OAuth callback returned success:true but no access_token! ' +
-        'MCP clients need the token to authenticate subsequent requests. ' +
-        'This bug was deployed to production and broke all client connections.'
+          'MCP clients need the token to authenticate subsequent requests. ' +
+          'This bug was deployed to production and broke all client connections.',
       );
     }
 
@@ -71,7 +71,7 @@ describe('E2E: OAuth Callback Contract', () => {
     const mcpClientExpectations = {
       successResponse: {
         success: true,
-        access_token: 'gho_xxxxx',  // GitHub token format
+        access_token: 'gho_xxxxx', // GitHub token format
         token_type: 'bearer',
         scope: 'read:user',
         userId: '12345',
@@ -79,8 +79,8 @@ describe('E2E: OAuth Callback Contract', () => {
       },
       errorResponse: {
         error: 'description of error',
-        error_description: 'more details' // optional
-      }
+        error_description: 'more details', // optional
+      },
     };
 
     // Document that response must be JSON

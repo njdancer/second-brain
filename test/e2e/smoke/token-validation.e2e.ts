@@ -31,7 +31,7 @@ describe('E2E: GitHub Token Validation', () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${TEST_TOKEN}`,
+        Authorization: `Bearer ${TEST_TOKEN}`,
       },
       body: JSON.stringify({
         jsonrpc: '2.0',
@@ -45,16 +45,17 @@ describe('E2E: GitHub Token Validation', () => {
       }),
     });
 
-    const data: { error?: { message?: string }; result?: { capabilities?: unknown } } = await response.json();
+    const data: { error?: { message?: string }; result?: { capabilities?: unknown } } =
+      await response.json();
 
     // Should NOT return "Invalid or expired token"
     if (data.error && data.error.message === 'Invalid or expired token') {
       throw new Error(
         'CRITICAL BUG: Server rejected valid GitHub token! ' +
-        'This means validateToken() is not calling GitHub API to verify tokens. ' +
-        'The bug was: getUserFromToken() returned null instead of calling ' +
-        'fetch("https://api.github.com/user", { headers: { Authorization: Bearer ${token} } }). ' +
-        'Unit tests passed because they used mocks.'
+          'This means validateToken() is not calling GitHub API to verify tokens. ' +
+          'The bug was: getUserFromToken() returned null instead of calling ' +
+          'fetch("https://api.github.com/user", { headers: { Authorization: Bearer ${token} } }). ' +
+          'Unit tests passed because they used mocks.',
       );
     }
 

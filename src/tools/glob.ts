@@ -45,10 +45,7 @@ function globToRegex(pattern: string): RegExp {
 /**
  * Find files matching glob pattern
  */
-export async function globTool(
-  params: GlobParams,
-  storage: StorageService
-): Promise<GlobResult> {
+export async function globTool(params: GlobParams, storage: StorageService): Promise<GlobResult> {
   try {
     // Validate pattern
     if (!params.pattern || params.pattern.trim() === '') {

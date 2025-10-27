@@ -77,13 +77,13 @@ describe('StorageService', () => {
 
     it('should reject paths with null bytes', async () => {
       await expect(storage.putObject('test\x00file.txt', 'content')).rejects.toThrow(
-        'Invalid path'
+        'Invalid path',
       );
     });
 
     it('should reject paths with control characters', async () => {
       await expect(storage.putObject('test\x01file.txt', 'content')).rejects.toThrow(
-        'Invalid path'
+        'Invalid path',
       );
     });
 
@@ -91,7 +91,7 @@ describe('StorageService', () => {
       const largeContent = 'x'.repeat(11 * 1024 * 1024); // 11 MB
 
       await expect(storage.putObject('large.txt', largeContent)).rejects.toThrow(
-        'File size exceeds limit'
+        'File size exceeds limit',
       );
     });
 

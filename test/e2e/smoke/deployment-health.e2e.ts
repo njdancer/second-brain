@@ -81,7 +81,9 @@ describe('E2E: Post-Deployment Smoke Tests', () => {
       }),
     });
 
-    const data: { result: { protocolVersion: string; serverInfo: { name: string }; instructions: string } } = await response.json();
+    const data: {
+      result: { protocolVersion: string; serverInfo: { name: string }; instructions: string };
+    } = await response.json();
 
     expect(data.result).toBeDefined();
     expect(data.result.protocolVersion).toBe('2024-11-05');
@@ -122,7 +124,8 @@ describe('E2E: Post-Deployment Smoke Tests', () => {
       }),
     });
 
-    const data: { jsonrpc: string; id: number; result?: unknown; error?: unknown } = await response.json();
+    const data: { jsonrpc: string; id: number; result?: unknown; error?: unknown } =
+      await response.json();
 
     // Valid JSON-RPC response structure
     expect(data.jsonrpc).toBe('2.0');
@@ -176,7 +179,8 @@ describe('E2E: Critical Path Smoke Tests', () => {
     // (Would need real token, but document the requirement)
     const tokenValidationRequirement = {
       requirement: 'Server MUST validate tokens via GitHub API',
-      implementation: 'fetch("https://api.github.com/user", { headers: { Authorization: Bearer ${token} } })',
+      implementation:
+        'fetch("https://api.github.com/user", { headers: { Authorization: Bearer ${token} } })',
       bugWas: 'return null; // ← BUG 2: Never called GitHub!',
       impact: 'All token validation failed',
     };

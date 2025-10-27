@@ -88,10 +88,7 @@ export class MCPClientHelper {
    */
   private generatePKCE(): { codeVerifier: string; codeChallenge: string } {
     const codeVerifier = crypto.randomBytes(32).toString('base64url');
-    const codeChallenge = crypto
-      .createHash('sha256')
-      .update(codeVerifier)
-      .digest('base64url');
+    const codeChallenge = crypto.createHash('sha256').update(codeVerifier).digest('base64url');
 
     return { codeVerifier, codeChallenge };
   }
@@ -292,7 +289,7 @@ export class MCPClientHelper {
    * List available tools
    */
   async listTools(): Promise<unknown[]> {
-    const result = await this.sendRequest('tools/list') as { tools?: unknown[] };
+    const result = (await this.sendRequest('tools/list')) as { tools?: unknown[] };
     return result.tools || [];
   }
 
@@ -311,7 +308,7 @@ export class MCPClientHelper {
    * List available prompts
    */
   async listPrompts(): Promise<unknown[]> {
-    const result = await this.sendRequest('prompts/list') as { prompts?: unknown[] };
+    const result = (await this.sendRequest('prompts/list')) as { prompts?: unknown[] };
     return result.prompts || [];
   }
 

@@ -71,9 +71,7 @@ export class StorageService {
 
     const size = new TextEncoder().encode(content).length;
     if (size > MAX_FILE_SIZE) {
-      throw new Error(
-        `File size exceeds limit of ${MAX_FILE_SIZE / 1024 / 1024}MB`
-      );
+      throw new Error(`File size exceeds limit of ${MAX_FILE_SIZE / 1024 / 1024}MB`);
     }
 
     const customMetadata: Record<string, string> = {};
