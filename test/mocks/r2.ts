@@ -1,20 +1,9 @@
 /**
  * Mock R2 bucket for testing
  *
- * Note: Only implements R2 properties actually used by tests and application code.
- * Properties used: key, size, httpEtag, uploaded, customMetadata, text(), json(), arrayBuffer(), blob()
+ * Implements the R2Bucket interface methods we actually use: get, put, delete, list.
+ * TypeScript ensures we match Cloudflare's R2 API signatures.
  */
-
-// Simplified R2 types for testing - only properties actually used
-// These document what the mock implements, even if not directly referenced
-type _TestR2Object = Pick<R2Object, 'key' | 'size' | 'httpEtag' | 'uploaded' | 'customMetadata'>;
-
-type _TestR2ObjectBody = _TestR2Object & {
-  text: () => Promise<string>;
-  json: () => Promise<unknown>;
-  arrayBuffer: () => Promise<ArrayBuffer>;
-  blob: () => Promise<Blob>;
-};
 
 export interface MockR2Object {
   key: string;
@@ -25,7 +14,11 @@ export interface MockR2Object {
   httpEtag: string;
 }
 
-export class MockR2Bucket {
+/**
+ * Mock R2 Bucket implementing Pick<R2Bucket, 'get' | 'put' | 'delete' | 'list'>
+ * TypeScript will catch it if Cloudflare changes the R2 API
+ */
+export class MockR2Bucket implements Pick<R2Bucket, 'get' | 'put' | 'delete' | 'list'> {
   private objects: Map<string, MockR2Object> = new Map();
   private shouldFail: boolean = false;
   private failureCount: number = 0;
