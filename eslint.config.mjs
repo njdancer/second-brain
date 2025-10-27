@@ -43,4 +43,20 @@ export default tseslint.config(
       // are already "error" by default in recommendedTypeChecked
     },
   },
+  {
+    // Test-specific overrides - pragmatic type safety for tests
+    files: ['test/**/*.ts'],
+    rules: {
+      // Warn but allow 'any' in tests for mock flexibility
+      '@typescript-eslint/no-explicit-any': 'warn',
+      // Warn but allow unsafe operations for mocks
+      '@typescript-eslint/no-unsafe-assignment': 'warn',
+      '@typescript-eslint/no-unsafe-member-access': 'warn',
+      '@typescript-eslint/no-unsafe-argument': 'warn',
+      '@typescript-eslint/no-unsafe-call': 'warn',
+      '@typescript-eslint/no-unsafe-return': 'warn',
+      // Allow sync functions that return promises (common in test mocks)
+      '@typescript-eslint/require-await': 'off',
+    },
+  },
 );

@@ -6,9 +6,10 @@
  */
 
 // Simplified R2 types for testing - only properties actually used
-type TestR2Object = Pick<R2Object, 'key' | 'size' | 'httpEtag' | 'uploaded' | 'customMetadata'>;
+// These document what the mock implements, even if not directly referenced
+type _TestR2Object = Pick<R2Object, 'key' | 'size' | 'httpEtag' | 'uploaded' | 'customMetadata'>;
 
-type TestR2ObjectBody = TestR2Object & {
+type _TestR2ObjectBody = _TestR2Object & {
   text: () => Promise<string>;
   json: () => Promise<unknown>;
   arrayBuffer: () => Promise<ArrayBuffer>;
