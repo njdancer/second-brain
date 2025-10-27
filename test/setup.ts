@@ -24,8 +24,5 @@ global.console = {
 };
 
 // Make original console available for tests that explicitly need it
-declare global {
-  // eslint-disable-next-line no-var
-  var __originalConsole: typeof originalConsole;
-}
-global.__originalConsole = originalConsole;
+(global as typeof globalThis & { __originalConsole: typeof originalConsole }).__originalConsole =
+  originalConsole;

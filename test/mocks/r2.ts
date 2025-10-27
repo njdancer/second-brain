@@ -2,6 +2,14 @@
  * Mock R2 bucket for testing
  */
 
+// Mock implementation of R2Checksums
+const createMockChecksums = (): R2Checksums => ({
+  toJSON: () => ({}),
+});
+
+// Mock implementation of R2HTTPMetadata
+const createMockHttpMetadata = (): R2HTTPMetadata => ({});
+
 export interface MockR2Object {
   key: string;
   value: string;
@@ -44,9 +52,9 @@ export class MockR2Bucket {
       size: obj.size,
       etag: obj.httpEtag.replace(/"/g, ''),
       httpEtag: obj.httpEtag,
-      checksums: {},
+      checksums: createMockChecksums(),
       uploaded: obj.uploaded,
-      httpMetadata: {},
+      httpMetadata: createMockHttpMetadata(),
       customMetadata: obj.metadata || {},
       range: undefined,
       storageClass: 'STANDARD',
@@ -96,9 +104,9 @@ export class MockR2Bucket {
       size: obj.size,
       etag: obj.httpEtag.replace(/"/g, ''),
       httpEtag: obj.httpEtag,
-      checksums: {},
+      checksums: createMockChecksums(),
       uploaded: obj.uploaded,
-      httpMetadata: {},
+      httpMetadata: createMockHttpMetadata(),
       customMetadata: obj.metadata || {},
       range: undefined,
       storageClass: 'STANDARD',
@@ -138,13 +146,17 @@ export class MockR2Bucket {
 
     const objects = filtered.map((obj) => ({
       key: obj.key,
+      version: 'mock-version',
       size: obj.size,
+      etag: obj.httpEtag.replace(/"/g, ''),
       httpEtag: obj.httpEtag,
+      checksums: createMockChecksums(),
       uploaded: obj.uploaded,
-      httpMetadata: {},
+      httpMetadata: createMockHttpMetadata(),
       customMetadata: obj.metadata || {},
       range: undefined,
-      checksums: {},
+      storageClass: 'STANDARD',
+      writeHttpMetadata: () => {},
     })) as R2Object[];
 
     return Promise.resolve({
