@@ -64,6 +64,38 @@ Mocks should mirror API contracts without implementing internal logic. Keep them
 
 **Service mocks** (OAuth, GitHub): Controlled flows with configurable responses for testing authorization, error handling, and edge cases.
 
+#### Type Safety in Tests
+
+**Core Principle**: Tests validate runtime behavior, not compile-time types. Type safety in tests serves maintainability, not correctness.
+
+**Guidelines**:
+
+1. **Use targeted `@ts-expect-error` over file-wide disables**
+   - Make it clear WHY type safety is relaxed at specific points
+   - Never disable 5+ type rules file-wide (indicates fighting TypeScript)
+   - ESLint config relaxes test rules to warnings (not errors)
+
+2. **Keep mocks simple with Partial types**
+   - Document what properties are actually used
+   - Don't over-specify with unused properties
+   - Example: `type TestR2Object = Pick<R2Object, 'key' | 'size' | 'httpEtag'>`
+
+3. **Minimize type assertions in tests**
+   - Test behavior, not types
+   - Prefer pragmatic `@ts-expect-error` comments over verbose inline types
+   - Avoid brittle coupling to implementation details
+
+4. **Delete dead code immediately**
+   - Use git history as archive, not comments or `archive/` directories
+   - Don't keep commented-out tests "just in case"
+
+**ESLint Configuration**: Test files (`test/**/*.ts`) have relaxed rules via `eslint.config.mjs`:
+- `no-explicit-any`: error → warn
+- `no-unsafe-*`: error → warn
+- `require-await`: error → off (common in mocks)
+
+Production code (`src/`) maintains strict type safety.
+
 ---
 
 ## Coverage Standards
