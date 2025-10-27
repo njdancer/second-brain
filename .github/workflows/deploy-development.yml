@@ -137,11 +137,30 @@ jobs:
     needs: [type-check, unit-tests, e2e-tests, lint]
     environment:
       name: development
-      url: https://second-brain-dev.your-subdomain.workers.dev
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Extract configuration
+        id: config
+        run: |
+          # Read Node.js version from .mise.toml
+          NODE_VERSION=$(grep -E '^node = "([0-9]+)"' .mise.toml | sed -E 's/node = "([0-9]+)"/\1/')
+          echo "node_version=$NODE_VERSION" >> $GITHUB_OUTPUT
+
+          # Read development worker name from wrangler.toml
+          WORKER_NAME=$(grep -E '^\[env\.development\]' -A 10 wrangler.toml | grep -E '^name = "([^"]+)"' | sed -E 's/name = "([^"]+)"/\1/')
+          echo "worker_name=$WORKER_NAME" >> $GITHUB_OUTPUT
+
+          # Build deployment URL
+          DEPLOYMENT_URL="https://${WORKER_NAME}.${{ vars.CLOUDFLARE_SUBDOMAIN }}.workers.dev"
+          echo "deployment_url=$DEPLOYMENT_URL" >> $GITHUB_OUTPUT
+
+          echo "✅ Configuration extracted:"
+          echo "  Node.js version: $NODE_VERSION"
+          echo "  Worker name: $WORKER_NAME"
+          echo "  Deployment URL: $DEPLOYMENT_URL"
 
       - name: Check for hotfix mode (main branch only)
         if: github.ref == 'refs/heads/main'
@@ -182,7 +201,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: ${{ steps.config.outputs.node_version }}
 
       - name: Enable Corepack
         run: corepack enable
@@ -210,12 +229,66 @@ jobs:
           echo "  Build Time: $BUILD_TIME"
           echo "  Environment: development"
 
+      - name: Create GitHub deployment
+        id: deployment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const deployment = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.sha,
+              environment: 'development',
+              description: 'Development deployment from ${{ github.ref_name }}',
+              auto_merge: false,
+              required_contexts: [],
+            });
+
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: deployment.data.id,
+              state: 'in_progress',
+              description: 'Deploying to Cloudflare Workers',
+              environment_url: '${{ steps.config.outputs.deployment_url }}',
+            });
+
+            return deployment.data.id;
+
       - name: Deploy to Cloudflare Workers (Development)
         id: deploy
         run: pnpm run deploy:dev
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Update deployment status (success)
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: ${{ steps.deployment.outputs.result }},
+              state: 'success',
+              description: 'Deployment successful',
+              environment_url: '${{ steps.config.outputs.deployment_url }}',
+            });
+
+      - name: Update deployment status (failure)
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: ${{ steps.deployment.outputs.result }},
+              state: 'failure',
+              description: 'Deployment failed',
+              environment_url: '${{ steps.config.outputs.deployment_url }}',
+            });
 
       - name: Create deployment summary
         if: always()
@@ -227,7 +300,7 @@ jobs:
             echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
             echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
             echo "**Deployed at:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
-            echo "**URL:** https://second-brain-dev.your-subdomain.workers.dev" >> $GITHUB_STEP_SUMMARY
+            echo "**URL:** ${{ steps.config.outputs.deployment_url }}" >> $GITHUB_STEP_SUMMARY
           else
             echo "### ❌ Deployment Failed (Development)" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
