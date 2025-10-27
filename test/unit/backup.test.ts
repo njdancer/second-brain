@@ -2,14 +2,6 @@
  * Unit tests for backup system
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/require-await */
-
 import { BackupService } from '../../src/backup';
 import { StorageService } from '../../src/storage';
 import { MockR2Bucket } from '../mocks/r2';
@@ -22,6 +14,7 @@ class MockS3Client {
   private objects: Map<string, { body: string; etag: string; metadata?: Record<string, string> }> =
     new Map();
 
+  // @ts-expect-error - Mock S3 client uses any for command flexibility
   async send(command: any): Promise<any> {
     const commandName = command.constructor.name;
 
@@ -38,6 +31,7 @@ class MockS3Client {
       const key = command.input.Key;
       const obj = this.objects.get(key);
       if (!obj) {
+        // @ts-expect-error - Adding custom property to Error for S3 NotFound simulation
         const error: any = new Error('NotFound');
         error.name = 'NotFound';
         throw error;
@@ -57,6 +51,7 @@ class MockS3Client {
     }
 
     if (commandName === 'DeleteObjectsCommand') {
+      // @ts-expect-error - Mock S3 command structure not fully typed
       const keys = command.input.Delete.Objects.map((o: any) => o.Key);
       for (const key of keys) {
         this.objects.delete(key);
@@ -91,8 +86,10 @@ describe('Backup System', () => {
 
   beforeEach(() => {
     mockBucket = new MockR2Bucket();
+    // @ts-expect-error - Using mock R2 bucket in tests
     storage = new StorageService(mockBucket as any);
     mockS3 = new MockS3Client();
+    // @ts-expect-error - Using mock S3 client in tests
     backupService = new BackupService(storage, mockS3 as any, 'test-bucket');
   });
 

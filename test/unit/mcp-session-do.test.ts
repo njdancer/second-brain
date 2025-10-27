@@ -2,14 +2,6 @@
  * MCP Session Durable Object tests
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
-
 import type { R2Bucket, KVNamespace, DurableObjectNamespace } from '@cloudflare/workers-types';
 import type { Env } from '../../src/index';
 import { MCPSessionDurableObject } from '../../src/mcp-session-do';
@@ -17,12 +9,14 @@ import { MockR2Bucket } from '../mocks/r2';
 import { MockKVNamespace } from '../mocks/kv';
 
 describe('MCPSessionDurableObject', () => {
+  // @ts-expect-error - Mock Durable Object state with simplified structure
   let mockState: any;
   let mockEnv: Env;
   let durableObject: MCPSessionDurableObject;
 
   beforeEach(() => {
     // Mock DurableObjectState
+    // @ts-expect-error - Mock DO state doesn't implement full interface
     mockState = {
       id: { toString: () => 'test-do-id' },
       storage: {
@@ -44,6 +38,7 @@ describe('MCPSessionDurableObject', () => {
       RATE_LIMIT_KV: new MockKVNamespace() as unknown as KVNamespace,
       OAUTH_KV: new MockKVNamespace() as unknown as KVNamespace,
       FEATURE_FLAGS_KV: new MockKVNamespace() as unknown as KVNamespace,
+      // @ts-expect-error - Mock Analytics Engine with minimal implementation
       ANALYTICS: {
         writeDataPoint: jest.fn(),
       } as any,
