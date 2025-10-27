@@ -238,7 +238,7 @@ export class MCPClientHelper {
     const data = (await response.json()) as MCPResponse;
 
     return {
-      capabilities: data.result,
+      capabilities: (data.result as { capabilities?: unknown })?.capabilities,
       sessionId,
     };
   }

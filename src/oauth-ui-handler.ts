@@ -152,7 +152,11 @@ async function handleCallback(request: Request, env: OAuthEnv, logger: Logger): 
     const { redirectTo } = await env.OAUTH_PROVIDER.completeAuthorization({
       request: oauthReqInfo,
       userId: githubUser.id.toString(),
-      scope: Array.isArray(oauthReqInfo.scope) ? oauthReqInfo.scope : [],
+      scope: Array.isArray(oauthReqInfo.scope)
+        ? oauthReqInfo.scope
+        : typeof oauthReqInfo.scope === 'string'
+          ? [oauthReqInfo.scope]
+          : [],
       metadata: {
         githubLogin: githubUser.login,
         githubName: githubUser.name || githubUser.login,
