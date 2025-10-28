@@ -419,7 +419,7 @@ Please:
         description: `Document in ${obj.key.split('/').slice(0, -1).join('/')}`,
         mimeType: obj.key.endsWith('.md') ? 'text/markdown' : 'text/plain',
         annotations: {
-          audience: ['user', 'assistant'] as ('user' | 'assistant')[],
+          audience: ['user'] as ('user' | 'assistant')[],
           priority: 0.5,
           lastModified: obj.modified.toISOString(),
         },
@@ -468,7 +468,7 @@ Please:
             text: content,
             annotations: fileObj
               ? {
-                  audience: ['user', 'assistant'] as ('user' | 'assistant')[],
+                  audience: ['user'] as ('user' | 'assistant')[],
                   priority: 0.5,
                   lastModified: fileObj.modified.toISOString(),
                 }
@@ -493,7 +493,7 @@ Please:
             'Access any document in your second brain by path (e.g., projects/app/notes.md)',
           mimeType: 'text/markdown',
           annotations: {
-            audience: ['user', 'assistant'] as ('user' | 'assistant')[],
+            audience: ['user'] as ('user' | 'assistant')[],
             priority: 0.7,
           },
         },

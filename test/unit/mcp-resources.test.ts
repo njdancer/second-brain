@@ -71,7 +71,7 @@ describe('MCP Resource Handlers', () => {
         description: expect.any(String),
         mimeType: 'text/markdown',
         annotations: {
-          audience: ['user', 'assistant'],
+          audience: ['user'],
           priority: 0.5,
           lastModified: expect.any(String),
         },
@@ -140,7 +140,7 @@ describe('MCP Resource Handlers', () => {
         mimeType: 'text/markdown',
         text: content,
         annotations: {
-          audience: ['user', 'assistant'],
+          audience: ['user'],
           priority: 0.5,
           lastModified: expect.any(String),
         },
@@ -205,7 +205,7 @@ describe('MCP Resource Handlers', () => {
         description: expect.stringContaining('Access any document'),
         mimeType: 'text/markdown',
         annotations: {
-          audience: ['user', 'assistant'],
+          audience: ['user'],
           priority: 0.7,
         },
       });
