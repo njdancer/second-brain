@@ -3,9 +3,9 @@
  *
  * Loads flag sets from KV and resolves flag values with proper default handling.
  * Flag resolution priority (highest to lowest):
- * 1. KV flag set values (runtime configuration)
- * 2. wrangler.toml environment values (build-time defaults) - TODO: implement
- * 3. Schema defaults (hardcoded fail-safe values)
+ * 1. KV flag set values (runtime configuration) - Loaded from FEATURE_FLAGS_KV
+ * 2. wrangler.toml environment values (build-time defaults) - FEATURE_FLAG_* env vars
+ * 3. Schema defaults (hardcoded fail-safe values) - Defined in schemas.ts
  *
  * @see specs/feature-flags.md for complete documentation
  */
@@ -16,10 +16,19 @@ import type { Logger } from '../logger';
 
 /**
  * Create flag set key for KV storage
- * Format: flagset:env:{set_id}
+ * Format: flagset:{set_id}
+ *
+ * Policy: Flag set IDs should follow flagset:{namespace}:{identifier} pattern
+ * Exception: flagset:default is the standard default flag set
+ *
+ * Examples:
+ * - flagset:default (our default)
+ * - flagset:env:production (environment-based)
+ * - flagset:user:123 (user-specific)
+ * - flagset:client:claude (client-specific)
  */
 const getFlagSetKey = (setId: string): string => {
-  return `flagset:env:${setId}`;
+  return `flagset:${setId}`;
 };
 
 /**
@@ -77,17 +86,64 @@ const loadFlagSetFromKV = async (
 };
 
 /**
- * Merge flag values with priority: KV > schema defaults
+ * Load flag defaults from wrangler.toml environment variables
+ *
+ * Reads environment variables with pattern FEATURE_FLAG_{FLAG_NAME}
+ * Example: FEATURE_FLAG_EXAMPLE_FEATURE="true" in wrangler.toml [vars]
+ *
+ * @param env - Environment bindings
+ * @param logger - Logger instance
+ * @returns Partial flag values from wrangler.toml
+ */
+const loadWranglerDefaults = (env: Env, logger: Logger): Partial<FlagValues> => {
+  const defaults: Record<string, unknown> = {};
+  const envRecord = env as unknown as Record<string, unknown>;
+
+  for (const [key, schema] of Object.entries(FlagSchemas)) {
+    const envKey = `FEATURE_FLAG_${key}`;
+    if (envKey in envRecord) {
+      const rawValue = envRecord[envKey];
+      const result = schema.safeParse(rawValue);
+      if (result.success) {
+        defaults[key] = result.data;
+        logger.debug('Loaded flag from wrangler.toml', {
+          flag: key,
+          value: result.data,
+        });
+      } else {
+        logger.warn('Invalid flag value in wrangler.toml', {
+          flag: key,
+          envKey,
+          error: result.error.message,
+        });
+      }
+    }
+  }
+
+  return defaults as Partial<FlagValues>;
+};
+
+/**
+ * Merge flag values with priority: KV > wrangler.toml > schema defaults
  * @param kvFlags - Flags loaded from KV (may be partial)
+ * @param wranglerFlags - Flags from wrangler.toml env vars (may be partial)
  * @param schemaDefaults - Default values from schemas
  * @returns Complete flag set with all flags defined
  */
 const mergeFlagValues = (
   kvFlags: Partial<FlagValues> | null,
+  wranglerFlags: Partial<FlagValues>,
   schemaDefaults: FlagValues,
 ): FlagValues => {
   // Start with schema defaults (lowest priority)
   const merged = { ...schemaDefaults };
+
+  // Override with wrangler.toml values (middle priority)
+  for (const [key, value] of Object.entries(wranglerFlags)) {
+    if (key in merged) {
+      merged[key as keyof FlagValues] = value;
+    }
+  }
 
   // Override with KV values (highest priority)
   if (kvFlags) {
@@ -115,14 +171,17 @@ export const loadFlags = async (
 ): Promise<FlagValues> => {
   logger.debug('Loading flags', { flagSetId });
 
-  // Get schema defaults (fail-safe fallback)
+  // Get schema defaults (fail-safe fallback, lowest priority)
   const schemaDefaults = getSchemaDefaults();
 
-  // Load flag set from KV
+  // Load wrangler.toml defaults (middle priority)
+  const wranglerFlags = loadWranglerDefaults(env, logger);
+
+  // Load flag set from KV (highest priority)
   const kvFlags = await loadFlagSetFromKV(env, flagSetId, logger);
 
-  // Merge with priority: KV > schema defaults
-  const flags = mergeFlagValues(kvFlags, schemaDefaults);
+  // Merge with priority: KV > wrangler.toml > schema defaults
+  const flags = mergeFlagValues(kvFlags, wranglerFlags, schemaDefaults);
 
   logger.debug('Flags loaded', { flagSetId, flags });
 

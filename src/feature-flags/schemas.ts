@@ -34,14 +34,17 @@ export const FlagSchemas = {
 /**
  * Inferred type of all flag values
  * This type is automatically derived from the schemas above
+ * Flags may be undefined if no default is specified in the schema
  */
 export type FlagValues = {
-  [K in keyof typeof FlagSchemas]: z.infer<(typeof FlagSchemas)[K]>;
+  [K in keyof typeof FlagSchemas]: z.infer<(typeof FlagSchemas)[K]> | undefined;
 };
 
 /**
  * Default flag values extracted from schemas
  * These serve as the lowest-priority fallback when KV and wrangler.toml are unavailable
+ *
+ * If a schema doesn't have a .default() clause, the flag will be undefined
  */
 export const getSchemaDefaults = (): FlagValues => {
   const defaults: Record<string, unknown> = {};
@@ -51,11 +54,9 @@ export const getSchemaDefaults = (): FlagValues => {
     const result = schema.safeParse(undefined);
     if (result.success) {
       defaults[key] = result.data;
-    } else {
-      // If no default is specified, use false for booleans as fail-safe
-      // For complex types, this will be handled by the schema default
-      defaults[key] = false;
     }
+    // If parse fails (no default specified), don't set any value
+    // This leaves the flag as undefined
   }
 
   return defaults as FlagValues;

@@ -79,20 +79,20 @@ describe('Feature Flag Loader', () => {
   describe('loadFlags', () => {
     it('should load flags from KV when available', async () => {
       // Set up KV with flag values
-      const flagSetKey = 'flagset:env:production';
+      const flagSetKey = 'flagset:default';
       const flagSetValue = JSON.stringify({
         EXAMPLE_FEATURE: true,
       });
       mockKV.setStore(flagSetKey, flagSetValue);
 
-      const flags = await loadFlags(env, 'production', logger);
+      const flags = await loadFlags(env, 'default', logger);
 
       expect(flags).toHaveProperty('EXAMPLE_FEATURE');
       expect(flags.EXAMPLE_FEATURE).toBe(true);
     });
 
     it('should return schema defaults when KV is empty', async () => {
-      const flags = await loadFlags(env, 'production', logger);
+      const flags = await loadFlags(env, 'default', logger);
 
       expect(flags).toHaveProperty('EXAMPLE_FEATURE');
       expect(flags.EXAMPLE_FEATURE).toBe(false); // Schema default
@@ -100,10 +100,10 @@ describe('Feature Flag Loader', () => {
 
     it('should handle invalid JSON gracefully', async () => {
       // Set invalid JSON in KV
-      const flagSetKey = 'flagset:env:production';
+      const flagSetKey = 'flagset:default';
       mockKV.setStore(flagSetKey, 'invalid json{');
 
-      const flags = await loadFlags(env, 'production', logger);
+      const flags = await loadFlags(env, 'default', logger);
 
       // Should fall back to schema defaults
       expect(flags.EXAMPLE_FEATURE).toBe(false);
@@ -111,13 +111,13 @@ describe('Feature Flag Loader', () => {
 
     it('should validate flag values against schemas', async () => {
       // Set invalid flag value in KV
-      const flagSetKey = 'flagset:env:production';
+      const flagSetKey = 'flagset:default';
       const flagSetValue = JSON.stringify({
         EXAMPLE_FEATURE: 'invalid', // Should be boolean
       });
       mockKV.setStore(flagSetKey, flagSetValue);
 
-      const flags = await loadFlags(env, 'production', logger);
+      const flags = await loadFlags(env, 'default', logger);
 
       // Should fall back to schema default for invalid flag
       expect(flags.EXAMPLE_FEATURE).toBe(false);
@@ -125,13 +125,13 @@ describe('Feature Flag Loader', () => {
 
     it('should merge KV flags with schema defaults', async () => {
       // Set partial flag set in KV (missing some flags)
-      const flagSetKey = 'flagset:env:production';
+      const flagSetKey = 'flagset:default';
       const flagSetValue = JSON.stringify({
         // EXAMPLE_FEATURE not set
       });
       mockKV.setStore(flagSetKey, flagSetValue);
 
-      const flags = await loadFlags(env, 'production', logger);
+      const flags = await loadFlags(env, 'default', logger);
 
       // Should use schema default for missing flag
       expect(flags.EXAMPLE_FEATURE).toBe(false);
@@ -155,14 +155,14 @@ describe('Feature Flag Loader', () => {
 
     it('should ignore unknown flags in KV', async () => {
       // Set flag set with unknown flag
-      const flagSetKey = 'flagset:env:production';
+      const flagSetKey = 'flagset:default';
       const flagSetValue = JSON.stringify({
         EXAMPLE_FEATURE: true,
         UNKNOWN_FLAG: 'should-be-ignored',
       });
       mockKV.setStore(flagSetKey, flagSetValue);
 
-      const flags = await loadFlags(env, 'production', logger);
+      const flags = await loadFlags(env, 'default', logger);
 
       // Known flag should be loaded
       expect(flags.EXAMPLE_FEATURE).toBe(true);
@@ -174,13 +174,13 @@ describe('Feature Flag Loader', () => {
 
   describe('FlagContext', () => {
     it('should create a flag context', () => {
-      const context = new FlagContext(env, 'production', logger);
+      const context = new FlagContext(env, 'default', logger);
 
       expect(context).toBeInstanceOf(FlagContext);
     });
 
     it('should load flags on first access', async () => {
-      const context = new FlagContext(env, 'production', logger);
+      const context = new FlagContext(env, 'default', logger);
 
       const flags = await context.getFlags();
 
@@ -189,13 +189,13 @@ describe('Feature Flag Loader', () => {
 
     it('should cache flags across multiple accesses', async () => {
       // Set up KV with flag values
-      const flagSetKey = 'flagset:env:production';
+      const flagSetKey = 'flagset:default';
       const flagSetValue = JSON.stringify({
         EXAMPLE_FEATURE: true,
       });
       mockKV.setStore(flagSetKey, flagSetValue);
 
-      const context = new FlagContext(env, 'production', logger);
+      const context = new FlagContext(env, 'default', logger);
 
       // First access
       const flags1 = await context.getFlags();
@@ -219,7 +219,7 @@ describe('Feature Flag Loader', () => {
     });
 
     it('should get individual flag values', async () => {
-      const context = new FlagContext(env, 'production', logger);
+      const context = new FlagContext(env, 'default', logger);
 
       const value = await context.getFlag('EXAMPLE_FEATURE');
 
@@ -230,27 +230,27 @@ describe('Feature Flag Loader', () => {
     it('should support multiple flag contexts independently', async () => {
       // Set up different flag sets in KV
       mockKV.setStore(
-        'flagset:env:production',
+        'flagset:default',
         JSON.stringify({
           EXAMPLE_FEATURE: false,
         }),
       );
 
       mockKV.setStore(
-        'flagset:env:development',
+        'flagset:custom:test',
         JSON.stringify({
           EXAMPLE_FEATURE: true,
         }),
       );
 
-      const prodContext = new FlagContext(env, 'production', logger);
-      const devContext = new FlagContext(env, 'development', logger);
+      const defaultContext = new FlagContext(env, 'default', logger);
+      const testContext = new FlagContext(env, 'custom:test', logger);
 
-      const prodFlags = await prodContext.getFlags();
-      const devFlags = await devContext.getFlags();
+      const defaultFlags = await defaultContext.getFlags();
+      const testFlags = await testContext.getFlags();
 
-      expect(prodFlags.EXAMPLE_FEATURE).toBe(false);
-      expect(devFlags.EXAMPLE_FEATURE).toBe(true);
+      expect(defaultFlags.EXAMPLE_FEATURE).toBe(false);
+      expect(testFlags.EXAMPLE_FEATURE).toBe(true);
     });
   });
 });

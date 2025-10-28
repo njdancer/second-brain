@@ -3,10 +3,8 @@
  */
 
 import {
-  assignByEnvironment,
   determineFlagSet,
   DEFAULT_FLAG_SET_ID,
-  ASSIGNMENT_FUNCTIONS,
   type FlagSetAssignmentFn,
 } from '../../../src/feature-flags/assignment';
 import type { Env } from '../../../src/index';
@@ -32,50 +30,37 @@ const createMockEnv = (): Env => {
 };
 
 describe('Flag Set Assignment Functions', () => {
-  describe('assignByEnvironment', () => {
-    it('should return production by default', () => {
+  describe('determineFlagSet', () => {
+    it('should return DEFAULT_FLAG_SET_ID with no assignment functions', () => {
       const request = new Request('https://example.com');
       const env = createMockEnv();
 
-      const result = assignByEnvironment(request, env);
+      const result = determineFlagSet(request, env);
 
-      expect(result).toBe('production');
+      expect(result).toBe(DEFAULT_FLAG_SET_ID);
     });
 
-    it('should be callable with any valid request', () => {
-      const request = new Request('https://example.com/test');
+    it('should return DEFAULT_FLAG_SET_ID if all functions return null', () => {
+      const request = new Request('https://example.com');
       const env = createMockEnv();
 
-      expect(() => assignByEnvironment(request, env)).not.toThrow();
-    });
-  });
+      const fn1: FlagSetAssignmentFn = () => null;
+      const fn2: FlagSetAssignmentFn = () => null;
 
-  describe('determineFlagSet', () => {
+      const result = determineFlagSet(request, env, [fn1, fn2]);
+
+      expect(result).toBe(DEFAULT_FLAG_SET_ID);
+    });
+
     it('should return flag set from first matching assignment function', () => {
       const request = new Request('https://example.com');
       const env = createMockEnv();
 
-      const result = determineFlagSet(request, env);
+      const fn1: FlagSetAssignmentFn = () => 'client:test';
 
-      expect(result).toBe('production');
-    });
+      const result = determineFlagSet(request, env, [fn1]);
 
-    it('should return DEFAULT_FLAG_SET_ID if no functions match', () => {
-      const request = new Request('https://example.com');
-      const env = createMockEnv();
-
-      // Temporarily replace assignment functions with one that returns null
-      const originalFunctions = [...ASSIGNMENT_FUNCTIONS];
-      ASSIGNMENT_FUNCTIONS.length = 0;
-      ASSIGNMENT_FUNCTIONS.push(() => null);
-
-      const result = determineFlagSet(request, env);
-
-      // Restore original functions
-      ASSIGNMENT_FUNCTIONS.length = 0;
-      ASSIGNMENT_FUNCTIONS.push(...originalFunctions);
-
-      expect(result).toBe(DEFAULT_FLAG_SET_ID);
+      expect(result).toBe('client:test');
     });
 
     it('should try functions in order until one returns non-null', () => {
@@ -91,7 +76,7 @@ describe('Flag Set Assignment Functions', () => {
 
       const fn2: FlagSetAssignmentFn = () => {
         calls.push(2);
-        return 'test-set';
+        return 'env:production';
       };
 
       const fn3: FlagSetAssignmentFn = () => {
@@ -99,29 +84,51 @@ describe('Flag Set Assignment Functions', () => {
         return 'should-not-reach';
       };
 
-      // Temporarily replace assignment functions
-      const originalFunctions = [...ASSIGNMENT_FUNCTIONS];
-      ASSIGNMENT_FUNCTIONS.length = 0;
-      ASSIGNMENT_FUNCTIONS.push(fn1, fn2, fn3);
+      const result = determineFlagSet(request, env, [fn1, fn2, fn3]);
 
-      const result = determineFlagSet(request, env);
-
-      // Restore original functions
-      ASSIGNMENT_FUNCTIONS.length = 0;
-      ASSIGNMENT_FUNCTIONS.push(...originalFunctions);
-
-      expect(result).toBe('test-set');
+      expect(result).toBe('env:production');
       expect(calls).toEqual([1, 2]); // fn3 should not be called
     });
-  });
 
-  describe('ASSIGNMENT_FUNCTIONS', () => {
-    it('should have at least one assignment function', () => {
-      expect(ASSIGNMENT_FUNCTIONS.length).toBeGreaterThan(0);
+    it('should support custom assignment logic based on request', () => {
+      const env = createMockEnv();
+
+      const assignByUserAgent: FlagSetAssignmentFn = (req) => {
+        const userAgent = req.headers.get('user-agent');
+        if (userAgent?.includes('TestClient')) return 'client:test';
+        return null;
+      };
+
+      const testRequest = new Request('https://example.com', {
+        headers: { 'user-agent': 'TestClient/1.0' },
+      });
+      const normalRequest = new Request('https://example.com', {
+        headers: { 'user-agent': 'Mozilla/5.0' },
+      });
+
+      expect(determineFlagSet(testRequest, env, [assignByUserAgent])).toBe('client:test');
+      expect(determineFlagSet(normalRequest, env, [assignByUserAgent])).toBe(DEFAULT_FLAG_SET_ID);
     });
 
-    it('should include assignByEnvironment', () => {
-      expect(ASSIGNMENT_FUNCTIONS).toContain(assignByEnvironment);
+    it('should support multiple assignment strategies', () => {
+      const request = new Request('https://example.com/api');
+      const env = createMockEnv();
+
+      const assignByPath: FlagSetAssignmentFn = (req) => {
+        const url = new URL(req.url);
+        if (url.pathname.startsWith('/api')) return 'custom:api';
+        return null;
+      };
+
+      const assignByDomain: FlagSetAssignmentFn = (req) => {
+        const url = new URL(req.url);
+        if (url.hostname.includes('staging')) return 'env:staging';
+        return null;
+      };
+
+      const result = determineFlagSet(request, env, [assignByPath, assignByDomain]);
+
+      expect(result).toBe('custom:api'); // First function matches
     });
   });
 
@@ -131,8 +138,20 @@ describe('Flag Set Assignment Functions', () => {
       expect(typeof DEFAULT_FLAG_SET_ID).toBe('string');
     });
 
-    it('should be production', () => {
-      expect(DEFAULT_FLAG_SET_ID).toBe('production');
+    it('should be "default"', () => {
+      expect(DEFAULT_FLAG_SET_ID).toBe('default');
+    });
+  });
+
+  describe('FlagSetAssignmentFn type', () => {
+    it('should accept valid assignment functions', () => {
+      const validFn: FlagSetAssignmentFn = (_req, _env) => 'test';
+      expect(typeof validFn).toBe('function');
+    });
+
+    it('should allow null return value', () => {
+      const nullFn: FlagSetAssignmentFn = () => null;
+      expect(nullFn(new Request('https://example.com'), createMockEnv())).toBeNull();
     });
   });
 });

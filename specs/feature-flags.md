@@ -33,14 +33,26 @@ Flags are organized into **flag sets** stored as JSON objects in Cloudflare KV. 
 
 **Storage requirements:**
 - Flag sets MUST be stored in KV namespace `FEATURE_FLAGS_KV`
-- Each flag set MUST be stored with key: `flagset:{set_id}` (e.g., `flagset:env:production`, `flagset:env:development`)
+- Each flag set MUST be stored with key: `flagset:{set_id}`
 - Flag set values MUST be valid JSON
 - Missing flag sets MUST NOT crash the application (use default fallback)
 
-**Common flag sets:**
-- `production` - Production defaults (typically most features disabled)
-- `development` - Development defaults (experimental features enabled)
-- Custom sets for specific use cases (e.g., `test-client` for testing environments)
+**Key naming policy:**
+- Standard format: `flagset:{namespace}:{identifier}`
+- Exception: `flagset:default` (the standard default flag set, no secondary namespace)
+- Namespaces provide organizational structure for related flag sets
+- Example namespaces: `env`, `user`, `client`, `channel`, `custom`
+
+**Example flag set keys:**
+- `flagset:default` - The standard default (used when no assignment function matches)
+- `flagset:env:production` - Environment-specific (production)
+- `flagset:env:staging` - Environment-specific (staging)
+- `flagset:user:123` - User-specific flags
+- `flagset:client:claude` - Client application-specific
+- `flagset:channel:canary` - Rollout channel (for gradual deployment)
+- `flagset:custom:experiment-a` - Custom flag set for specific scenarios
+
+**Note:** The KV namespace binding (`FEATURE_FLAGS_KV`) provides environment separation. Production and development workers use different KV namespaces via `wrangler.toml`, so the same flag set key (e.g., `flagset:default`) resolves to different values in each environment.
 
 ### Flag Set Assignment
 
@@ -55,12 +67,23 @@ Functions return:
 - **Flag set ID** (string) if the function matches this request
 - **null** to pass to the next function in the chain
 
-**[DEFERRED]** The specific implementation of assignment functions is an implementation decision. Initial implementation SHOULD support environment-based assignment (development vs production). Future extensions MAY include more sophisticated targeting based on request headers, IP addresses, or other request attributes.
+**Initial implementation:**
+The initial implementation uses a single default flag set (`flagset:default`) with no dynamic assignment functions. Environment separation is achieved through separate KV namespace bindings in `wrangler.toml`:
+- Production worker → production `FEATURE_FLAGS_KV` namespace → `flagset:default`
+- Development worker → development `FEATURE_FLAGS_KV` namespace → `flagset:default`
+
+**Future extensions:**
+Assignment functions enable more sophisticated targeting:
+- **User-specific:** Route specific users to `flagset:user:{id}` for beta testing
+- **Client-specific:** Route specific clients to `flagset:client:{name}` for compatibility
+- **Channel-based:** Route percentage of requests to `flagset:channel:canary` for gradual rollout
+- **Header-based:** Route based on custom headers (e.g., `X-Feature-Flag-Set`)
 
 **Default fallback:**
-If no assignment function returns a flag set ID, use `production` as the default.
+If no assignment function returns a flag set ID, use `default` as the default (maps to `flagset:default` in KV).
 
-Default flag values SHOULD be configured in `wrangler.toml` per environment to provide build-time defaults. These environment-level defaults allow different baseline flag values for development vs production without requiring KV reads when flag sets are unavailable.
+**wrangler.toml integration:**
+Flag default values CAN be configured in `wrangler.toml` as environment variables with the pattern `FEATURE_FLAG_{FLAG_NAME}`. These provide build-time defaults that override schema defaults but are overridden by KV values. This allows different baseline flag values for development vs production without requiring KV updates.
 
 ### Flag Access
 
@@ -255,8 +278,9 @@ Flag cleanup is currently manual (honor system). Developers MUST follow the clea
 Flag sets are stored as JSON blobs in KV with the following structure:
 
 **KV key naming:**
-- Format: `flagset:{set_id}`
-- Examples: `flagset:env:production`, `flagset:env:development`, `flagset:custom:test-client`
+- Standard format: `flagset:{namespace}:{identifier}`
+- Exception: `flagset:default` (no secondary namespace)
+- Examples: `flagset:default`, `flagset:env:production`, `flagset:user:123`, `flagset:client:claude`
 
 **Flag set value (JSON):**
 ```json
@@ -287,36 +311,44 @@ This layering allows:
 - Flags in KV override both wrangler.toml and schema defaults
 - Safe fallback to schema defaults when both KV and wrangler.toml are unavailable
 
-Each flag schema SHOULD define a sensible default value that applies when:
+Each flag schema SHOULD define a sensible default value using `.default()` that applies when:
 - The flag is missing from the flag set in KV
 - The flag is not configured in wrangler.toml
 - KV is unavailable (fail-safe behavior)
+
+**Note:** If a flag schema does not define a `.default()` clause, the flag value will be `undefined` when not provided by KV or wrangler.toml. This allows flags to have genuinely optional values.
 
 ---
 
 ## Assignment Function Registration
 
-Assignment functions MUST be registered in a defined order (most specific to least specific). The system evaluates functions in order, using the first non-null result.
+Assignment functions can be optionally provided to route requests to different flag sets. Functions execute in order, using the first non-null result.
 
-**Initial registration (simple):**
+**Initial implementation (no assignment functions):**
 ```typescript
-const assignmentFunctions = [
-  assignByEnvironment,  // Returns 'development' or 'production'
-  // Future: assignByTestClient,
-  // Future: assignByHeader,
-];
+// determineFlagSet returns 'default' when no functions provided
+const flagSetId = determineFlagSet(request, env);  // Returns 'default'
+```
+
+**With custom assignment functions:**
+```typescript
+const assignByTestClient: FlagSetAssignmentFn = (req) => {
+  const userAgent = req.headers.get('user-agent');
+  if (userAgent?.includes('TestClient')) return 'client:test';
+  return null;
+};
+
+const flagSetId = determineFlagSet(request, env, [assignByTestClient]);
 ```
 
 **Function execution:**
 1. Call first function with (request, env)
 2. If function returns string (flag set ID), stop and use that flag set
 3. If function returns null, try next function
-4. If all functions return null, use default flag set (`production`)
+4. If all functions return null, use default flag set (`default`)
 
 **Extension pattern:**
-Add new assignment functions to the array as more complex targeting is needed. Functions are composable and independent.
-
-**[DEFERRED]** Dynamic function registration, plugin systems, or configuration-based assignment rules are future enhancements. Start with a simple array of functions in code.
+Pass an array of assignment functions as needed. Functions are composable and independent. No global registration required.
 
 ---
 
