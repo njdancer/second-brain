@@ -15,10 +15,7 @@ import type { Env } from '../index';
  * @param env - Environment bindings
  * @returns Flag set ID if matched, null to pass to next function
  */
-export type FlagSetAssignmentFn = (
-  request: Request,
-  env: Env,
-) => string | null;
+export type FlagSetAssignmentFn = (request: Request, env: Env) => string | null;
 
 /**
  * Assign flag set based on environment

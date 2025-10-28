@@ -2,7 +2,11 @@
  * Tests for feature flag schema registry
  */
 
-import { FlagSchemas, getSchemaDefaults, type FlagValues } from '../../../src/feature-flags/schemas';
+import {
+  FlagSchemas,
+  getSchemaDefaults,
+  type FlagValues,
+} from '../../../src/feature-flags/schemas';
 
 describe('Feature Flag Schemas', () => {
   describe('FlagSchemas', () => {

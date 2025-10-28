@@ -41,11 +41,7 @@ export { FlagContext } from './loader';
  * @param logger - Logger instance for this request
  * @returns Flag context for accessing flags
  */
-export const createFlagContext = (
-  request: Request,
-  env: Env,
-  logger: Logger,
-): FlagContext => {
+export const createFlagContext = (request: Request, env: Env, logger: Logger): FlagContext => {
   // Determine which flag set to use for this request
   const flagSetId = determineFlagSet(request, env);
 
