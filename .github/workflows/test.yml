@@ -128,13 +128,13 @@ jobs:
       - name: Report code coverage
         uses: clearlyip/code-coverage-report-action@v5
         id: coverage
-        continue-on-error: true  # Don't fail yet - check for override first
+        continue-on-error: true # Don't fail yet - check for override first
         if: always()
         with:
           filename: 'coverage/clover.xml'
           badge: true
           fail_on_negative_difference: true
-          only_list_changed_files: true  # Only show coverage for changed files in PRs
+          only_list_changed_files: true # Only show coverage for changed files in PRs
           # No overall_coverage_fail_threshold - use trend-based monitoring only
 
       - name: Check coverage override
