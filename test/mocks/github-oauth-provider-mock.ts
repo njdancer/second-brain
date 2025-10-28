@@ -48,12 +48,12 @@ export class MockGitHubOAuthProvider implements GitHubOAuthProvider {
     return url;
   }
 
-  async validateAuthorizationCode(code: string): Promise<GitHubTokens> {
+  validateAuthorizationCode(code: string): Promise<GitHubTokens> {
     // For E2E tests, accept any code that looks like a mock code
     // This works around the issue of provider instances not being shared
     // between requests in the Worker environment
     if (!code.startsWith('mock_code_')) {
-      throw new Error('Invalid authorization code');
+      return Promise.reject(new Error('Invalid authorization code'));
     }
 
     // Note: In E2E tests, we can't validate the code against authCodes
@@ -61,26 +61,34 @@ export class MockGitHubOAuthProvider implements GitHubOAuthProvider {
     // This is acceptable for testing since we're testing the MCP server,
     // not GitHub's OAuth implementation.
 
-    return {
+    // IMPORTANT: Match EXACT GitHub OAuth app response
+    // GitHub OAuth apps return:
+    // - access_token (required)
+    // - token_type (optional)
+    // - scope (optional)
+    // GitHub OAuth apps do NOT return:
+    // - refresh_token (only GitHub Apps return this)
+    // - expires_in (GitHub access tokens don't expire)
+    return Promise.resolve({
       accessToken: this.accessToken,
-      refreshToken: `mock_refresh_token_${Date.now()}`,
-      expiresIn: 3600,
-    };
+      refreshToken: undefined, // Not returned by GitHub OAuth apps
+      expiresIn: undefined, // Not returned by GitHub OAuth apps (tokens don't expire)
+    });
   }
 
-  async getUserInfo(accessToken: string): Promise<GitHubUser> {
+  getUserInfo(accessToken: string): Promise<GitHubUser> {
     // For E2E tests, accept any token that looks like a mock token
     // This works around the issue of provider instances not being shared
     if (!accessToken.startsWith('mock_github_token_')) {
-      throw new Error('Invalid access token');
+      return Promise.reject(new Error('Invalid access token'));
     }
 
-    return {
+    return Promise.resolve({
       id: this.config.userId,
       login: this.config.username,
       name: `Test User ${this.config.userId}`,
       email: `${this.config.username}@example.com`,
-    };
+    });
   }
 
   /**

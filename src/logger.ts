@@ -127,10 +127,14 @@ export class Logger {
     };
 
     // Use appropriate console method for the log level
-    const consoleMethod = level === 'ERROR' ? console.error :
-                         level === 'WARN' ? console.warn :
-                         level === 'DEBUG' ? console.debug :
-                         console.log;
+    const consoleMethod =
+      level === 'ERROR'
+        ? console.error
+        : level === 'WARN'
+          ? console.warn
+          : level === 'DEBUG'
+            ? console.debug
+            : console.log;
 
     try {
       // Try to serialize the full object
@@ -138,14 +142,16 @@ export class Logger {
       consoleMethod(jsonString);
     } catch (error) {
       // Fallback: log what we can + error info
-      console.error(JSON.stringify({
-        timestamp: new Date().toISOString(),
-        level: 'ERROR',
-        message: 'Logger serialization failed',
-        originalMessage: message,
-        originalLevel: level,
-        serializationError: error instanceof Error ? error.message : String(error),
-      }));
+      console.error(
+        JSON.stringify({
+          timestamp: new Date().toISOString(),
+          level: 'ERROR',
+          message: 'Logger serialization failed',
+          originalMessage: message,
+          originalLevel: level,
+          serializationError: error instanceof Error ? error.message : String(error),
+        }),
+      );
       // Also log the original message so it's not lost
       console.error(message, data);
     }

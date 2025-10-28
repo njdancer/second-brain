@@ -111,6 +111,80 @@ pnpm run test:mcp:oauth
 - All tests must pass before deploying
 - Run E2E test script (`pnpm run test:mcp:oauth`) after changes to OAuth/MCP code
 
+#### Testing Type Safety Philosophy
+
+**Tests should be pragmatic, not pedantic about types.**
+
+**Core Principle:** Tests validate runtime behavior, not compile-time types. Type safety in tests serves maintainability, not correctness.
+
+**Centralized Mocks** (test/mocks/):
+- External APIs (R2, KV, S3, GitHub OAuth) have centralized mocks
+- R2 mock uses `implements Pick<R2Bucket, 'get' | 'put' | 'delete' | 'list'>` for type safety
+- KV/S3 mocks document they match the API but don't use Pick<> due to complex generics
+- When external APIs change, TypeScript catches it in ONE place (for R2)
+- Tests use `as any` when passing mocks (ESLint allows this)
+
+**Test Code Should Be Verbose**:
+- **NO test factories or helpers** (except centralized mocks)
+- **NO custom DSL to keep tests DRY**
+- Tests should be boring, explicit, repetitive
+- Copy-paste setup code between tests - that's GOOD
+- A half-asleep developer should understand the test immediately
+
+**Example - Good Test:**
+```typescript
+it('should backup file to S3', async () => {
+  // Explicit setup - boring but clear
+  const mockBucket = new MockR2Bucket();
+  const storage = new StorageService(mockBucket as any);
+  const mockS3 = new MockS3Client();
+  const backupService = new BackupService(storage, mockS3 as any, 'test-bucket');
+
+  // Put file in R2
+  await mockBucket.put('test.txt', 'content', {});
+
+  // Backup to S3
+  await backupService.backupFile('test.txt');
+
+  // Explicit assertion
+  const s3Object = mockS3.getObject('test.txt');
+  expect(s3Object).toBeDefined();
+  expect(s3Object!.body).toBe('content');
+});
+```
+
+**Example - Bad Test (DON'T DO THIS):**
+```typescript
+it('should backup file to S3', async () => {
+  // BAD: Using factory abstraction
+  const { backupService, storage, mockS3 } = createBackupTestContext();
+
+  // BAD: Helper function hiding setup
+  await setupTestFile(storage, 'test.txt', 'content');
+
+  // BAD: Custom assertion DSL
+  await expect(backupService).toBackupFile('test.txt');
+  expectS3Object(mockS3, 'test.txt').toHaveBody('content');
+});
+```
+
+**Why Verbose Is Better:**
+- No hidden magic - everything is visible
+- Easy to debug - just read the test
+- Easy to modify - no shared abstractions to break
+- Easy to understand - no need to jump between files
+- Tests are documentation - show exactly what happens
+
+**Type Assertions:**
+- Use `as any` in tests - it's intentional and clear
+- ESLint rules are OFF (not warnings) for test files
+- Production code (`src/`) maintains strict type safety
+
+**ESLint Configuration:**
+- `test/**/*.ts`: All `no-explicit-any` and `no-unsafe-*` rules are **OFF**
+- `src/**/*.ts`: All rules are ERRORS (strict type safety)
+- See `eslint.config.mjs` for configuration
+
 ### Development Workflow
 1. **Check PLAN.md** - Review current phase and next task
 2. Write tests first (TDD)

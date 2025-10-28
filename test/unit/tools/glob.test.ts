@@ -3,17 +3,24 @@
  */
 
 import { globTool } from '../../../src/tools/glob';
-import { StorageService, StorageObject } from '../../../src/storage';
+import type { StorageObject } from '../../../src/storage';
+
+// Type for glob tool result
+interface GlobFileResult {
+  path: string;
+  size: number;
+  modified: string;
+}
 
 // Mock storage service
 class MockStorageService {
   private files: StorageObject[] = [];
 
-  async listObjects(prefix?: string): Promise<StorageObject[]> {
+  listObjects(prefix?: string): Promise<StorageObject[]> {
     if (prefix) {
-      return this.files.filter((f) => f.key.startsWith(prefix));
+      return Promise.resolve(this.files.filter((f) => f.key.startsWith(prefix)));
     }
-    return this.files;
+    return Promise.resolve(this.files);
   }
 
   setFiles(files: StorageObject[]): void {
@@ -45,25 +52,25 @@ describe('Glob Tool', () => {
       const result = await globTool({ pattern: '**/*.md' }, storage as any);
 
       expect(result.isError).toBe(false);
-      const files = JSON.parse(result.content);
+      const files = JSON.parse(result.content) as GlobFileResult[];
       expect(files.length).toBe(7); // All .md files
-      expect(files.every((f: any) => f.path.endsWith('.md'))).toBe(true);
+      expect(files.every((f: GlobFileResult) => f.path.endsWith('.md'))).toBe(true);
     });
 
     it('should match files in specific directory with projects/**', async () => {
       const result = await globTool({ pattern: 'projects/**' }, storage as any);
 
       expect(result.isError).toBe(false);
-      const files = JSON.parse(result.content);
+      const files = JSON.parse(result.content) as GlobFileResult[];
       expect(files.length).toBe(3);
-      expect(files.every((f: any) => f.path.startsWith('projects/'))).toBe(true);
+      expect(files.every((f: GlobFileResult) => f.path.startsWith('projects/'))).toBe(true);
     });
 
     it('should match files at root level with *.md', async () => {
       const result = await globTool({ pattern: '*.md' }, storage as any);
 
       expect(result.isError).toBe(false);
-      const files = JSON.parse(result.content);
+      const files = JSON.parse(result.content) as GlobFileResult[];
       expect(files.length).toBe(1);
       expect(files[0].path).toBe('README.md');
     });
@@ -72,25 +79,25 @@ describe('Glob Tool', () => {
       const result = await globTool({ pattern: '**/health/**' }, storage as any);
 
       expect(result.isError).toBe(false);
-      const files = JSON.parse(result.content);
+      const files = JSON.parse(result.content) as GlobFileResult[];
       expect(files.length).toBe(2);
-      expect(files.every((f: any) => f.path.includes('health/'))).toBe(true);
+      expect(files.every((f: GlobFileResult) => f.path.includes('health/'))).toBe(true);
     });
 
     it('should match specific directory with areas/health/*', async () => {
       const result = await globTool({ pattern: 'areas/health/*' }, storage as any);
 
       expect(result.isError).toBe(false);
-      const files = JSON.parse(result.content);
+      const files = JSON.parse(result.content) as GlobFileResult[];
       expect(files.length).toBe(2);
-      expect(files.every((f: any) => f.path.startsWith('areas/health/'))).toBe(true);
+      expect(files.every((f: GlobFileResult) => f.path.startsWith('areas/health/'))).toBe(true);
     });
 
     it('should match by extension with **/*.txt', async () => {
       const result = await globTool({ pattern: '**/*.txt' }, storage as any);
 
       expect(result.isError).toBe(false);
-      const files = JSON.parse(result.content);
+      const files = JSON.parse(result.content) as GlobFileResult[];
       expect(files.length).toBe(1);
       expect(files[0].path).toBe('areas/health/nutrition.txt');
     });
@@ -99,7 +106,7 @@ describe('Glob Tool', () => {
       const result = await globTool({ pattern: '**/*.pdf' }, storage as any);
 
       expect(result.isError).toBe(false);
-      const files = JSON.parse(result.content);
+      const files = JSON.parse(result.content) as GlobFileResult[];
       expect(files.length).toBe(0);
     });
   });
@@ -109,7 +116,7 @@ describe('Glob Tool', () => {
       const result = await globTool({ pattern: 'README.md' }, storage as any);
 
       expect(result.isError).toBe(false);
-      const files = JSON.parse(result.content);
+      const files = JSON.parse(result.content) as GlobFileResult[];
       expect(files.length).toBe(1);
       expect(files[0]).toHaveProperty('path', 'README.md');
       expect(files[0]).toHaveProperty('size', 100);
@@ -120,7 +127,7 @@ describe('Glob Tool', () => {
       const result = await globTool({ pattern: 'projects/**/*.md' }, storage as any);
 
       expect(result.isError).toBe(false);
-      const files = JSON.parse(result.content);
+      const files = JSON.parse(result.content) as GlobFileResult[];
       expect(files.length).toBe(3);
 
       // Should be sorted newest first
@@ -132,13 +139,10 @@ describe('Glob Tool', () => {
 
   describe('result limiting', () => {
     it('should limit results to max_results', async () => {
-      const result = await globTool(
-        { pattern: '**/*.md', max_results: 3 },
-        storage as any
-      );
+      const result = await globTool({ pattern: '**/*.md', max_results: 3 }, storage as any);
 
       expect(result.isError).toBe(false);
-      const files = JSON.parse(result.content);
+      const files = JSON.parse(result.content) as GlobFileResult[];
       expect(files.length).toBe(3);
     });
 
@@ -157,30 +161,24 @@ describe('Glob Tool', () => {
       const result = await globTool({ pattern: '**/*.md' }, storage as any);
 
       expect(result.isError).toBe(false);
-      const files = JSON.parse(result.content);
+      const files = JSON.parse(result.content) as GlobFileResult[];
       expect(files.length).toBe(100); // Default limit
     });
 
     it('should enforce max 1000 results', async () => {
       // Try to request more than max
-      const result = await globTool(
-        { pattern: '**/*', max_results: 2000 },
-        storage as any
-      );
+      const result = await globTool({ pattern: '**/*', max_results: 2000 }, storage as any);
 
       expect(result.isError).toBe(false);
-      const files = JSON.parse(result.content);
+      const files = JSON.parse(result.content) as GlobFileResult[];
       expect(files.length).toBeLessThanOrEqual(1000);
     });
 
     it('should allow custom max_results under 1000', async () => {
-      const result = await globTool(
-        { pattern: '**/*', max_results: 5 },
-        storage as any
-      );
+      const result = await globTool({ pattern: '**/*', max_results: 5 }, storage as any);
 
       expect(result.isError).toBe(false);
-      const files = JSON.parse(result.content);
+      const files = JSON.parse(result.content) as GlobFileResult[];
       expect(files.length).toBe(5);
     });
   });
@@ -201,8 +199,8 @@ describe('Glob Tool', () => {
 
     it('should handle storage errors gracefully', async () => {
       const errorStorage = {
-        async listObjects(): Promise<StorageObject[]> {
-          throw new Error('Storage failure');
+        listObjects(): Promise<StorageObject[]> {
+          return Promise.reject(new Error('Storage failure'));
         },
       };
 
@@ -217,7 +215,9 @@ describe('Glob Tool', () => {
       const result = await globTool({ pattern: '[[[invalid' }, storage as any);
 
       // Should either return error or empty results
-      expect(result.isError || JSON.parse(result.content).length === 0).toBe(true);
+      expect(result.isError || (JSON.parse(result.content) as GlobFileResult[]).length === 0).toBe(
+        true,
+      );
     });
   });
 
@@ -228,7 +228,7 @@ describe('Glob Tool', () => {
       const result = await globTool({ pattern: '**/*' }, storage as any);
 
       expect(result.isError).toBe(false);
-      const files = JSON.parse(result.content);
+      const files = JSON.parse(result.content) as GlobFileResult[];
       expect(files.length).toBe(0);
     });
 
@@ -236,7 +236,7 @@ describe('Glob Tool', () => {
       const result = await globTool({ pattern: 'README.md' }, storage as any);
 
       expect(result.isError).toBe(false);
-      const files = JSON.parse(result.content);
+      const files = JSON.parse(result.content) as GlobFileResult[];
       expect(files.length).toBe(1);
       expect(files[0].path).toBe('README.md');
     });
@@ -253,7 +253,7 @@ describe('Glob Tool', () => {
       const result = await globTool({ pattern: '**/deep.md' }, storage as any);
 
       expect(result.isError).toBe(false);
-      const files = JSON.parse(result.content);
+      const files = JSON.parse(result.content) as GlobFileResult[];
       expect(files.length).toBe(1);
       expect(files[0].path).toBe('a/b/c/d/e/f/deep.md');
     });

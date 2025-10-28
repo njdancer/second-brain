@@ -89,14 +89,17 @@ describe('Monitoring System', () => {
     it('should handle analytics write failures gracefully', async () => {
       // Create mock that throws errors
       const failingAnalytics = {
-        writeDataPoint: jest.fn(() => { throw new Error('Analytics failed'); })
+        writeDataPoint: jest.fn(() => {
+          throw new Error('Analytics failed');
+        }),
       };
 
       const monitoringWithFailure = new MonitoringService(failingAnalytics as any);
 
       // Should not throw, just log error
-      await expect(monitoringWithFailure.recordToolCall('read', 'user1', 100, true))
-        .resolves.not.toThrow();
+      await expect(
+        monitoringWithFailure.recordToolCall('read', 'user1', 100, true),
+      ).resolves.not.toThrow();
     });
   });
 
@@ -130,13 +133,14 @@ describe('Monitoring System', () => {
 
     it('should handle analytics failures in recordError', async () => {
       const failingAnalytics = {
-        writeDataPoint: jest.fn(() => { throw new Error('Analytics failed'); })
+        writeDataPoint: jest.fn(() => {
+          throw new Error('Analytics failed');
+        }),
       };
 
       const monitoringWithFailure = new MonitoringService(failingAnalytics as any);
 
-      await expect(monitoringWithFailure.recordError(500, 'user1', 'Error'))
-        .resolves.not.toThrow();
+      await expect(monitoringWithFailure.recordError(500, 'user1', 'Error')).resolves.not.toThrow();
     });
   });
 
@@ -168,13 +172,16 @@ describe('Monitoring System', () => {
 
     it('should handle analytics failures in recordStorageMetrics', async () => {
       const failingAnalytics = {
-        writeDataPoint: jest.fn(() => { throw new Error('Analytics failed'); })
+        writeDataPoint: jest.fn(() => {
+          throw new Error('Analytics failed');
+        }),
       };
 
       const monitoringWithFailure = new MonitoringService(failingAnalytics as any);
 
-      await expect(monitoringWithFailure.recordStorageMetrics('user1', 1000, 10))
-        .resolves.not.toThrow();
+      await expect(
+        monitoringWithFailure.recordStorageMetrics('user1', 1000, 10),
+      ).resolves.not.toThrow();
     });
   });
 
@@ -209,13 +216,16 @@ describe('Monitoring System', () => {
 
     it('should handle analytics failures in recordRateLimitHit', async () => {
       const failingAnalytics = {
-        writeDataPoint: jest.fn(() => { throw new Error('Analytics failed'); })
+        writeDataPoint: jest.fn(() => {
+          throw new Error('Analytics failed');
+        }),
       };
 
       const monitoringWithFailure = new MonitoringService(failingAnalytics as any);
 
-      await expect(monitoringWithFailure.recordRateLimitHit('user1', 'minute', 100))
-        .resolves.not.toThrow();
+      await expect(
+        monitoringWithFailure.recordRateLimitHit('user1', 'minute', 100),
+      ).resolves.not.toThrow();
     });
   });
 
@@ -247,19 +257,22 @@ describe('Monitoring System', () => {
 
     it('should handle analytics failures in recordOAuthEvent', async () => {
       const failingAnalytics = {
-        writeDataPoint: jest.fn(() => { throw new Error('Analytics failed'); })
+        writeDataPoint: jest.fn(() => {
+          throw new Error('Analytics failed');
+        }),
       };
 
       const monitoringWithFailure = new MonitoringService(failingAnalytics as any);
 
-      await expect(monitoringWithFailure.recordOAuthEvent('user1', 'success'))
-        .resolves.not.toThrow();
+      await expect(
+        monitoringWithFailure.recordOAuthEvent('user1', 'success'),
+      ).resolves.not.toThrow();
     });
   });
 
   describe('recordBackupEvent', () => {
-    it('should record backup completion', async () => {
-      await monitoring.recordBackupEvent(10, 2, 1500000);
+    it('should record backup completion', () => {
+      monitoring.recordBackupEvent(10, 2, 1500000);
 
       const dataPoints = mockAnalytics.getDataPoints();
       expect(dataPoints).toHaveLength(1);
@@ -268,24 +281,23 @@ describe('Monitoring System', () => {
       expect(dataPoints[0].doubles).toContain(1500000); // total bytes
     });
 
-    it('should track backup statistics over time', async () => {
-      await monitoring.recordBackupEvent(5, 0, 500000);
-      await monitoring.recordBackupEvent(3, 2, 300000);
-      await monitoring.recordBackupEvent(0, 5, 0);
+    it('should track backup statistics over time', () => {
+      monitoring.recordBackupEvent(5, 0, 500000);
+      monitoring.recordBackupEvent(3, 2, 300000);
+      monitoring.recordBackupEvent(0, 5, 0);
 
       expect(mockAnalytics.getCount()).toBe(3);
     });
 
-    it('should handle analytics failures in recordBackupEvent', async () => {
+    it('should handle analytics failures in recordBackupEvent', () => {
       const failingAnalytics = {
-        writeDataPoint: jest.fn(() => { throw new Error('Analytics failed'); })
+        writeDataPoint: jest.fn(() => {
+          throw new Error('Analytics failed');
+        }),
       };
 
       const monitoringWithFailure = new MonitoringService(failingAnalytics as any);
-
-      // recordBackupEvent is synchronous, should not throw even if analytics fails
-      expect(() => monitoringWithFailure.recordBackupEvent(10, 2, 1500000))
-        .not.toThrow();
+      expect(() => monitoringWithFailure.recordBackupEvent(10, 2, 1500000)).not.toThrow();
     });
   });
 
@@ -296,14 +308,13 @@ describe('Monitoring System', () => {
 
       const dataPoints = mockAnalytics.getDataPoints();
       // Both should have no PII
-      expect(
-        dataPoints.every((dp) => !dp.blobs?.some((b) => b.includes('user123')))
-      ).toBe(true);
+      expect(dataPoints.every((dp) => !dp.blobs?.some((b) => b.includes('user123')))).toBe(true);
     });
 
     it('should handle empty or undefined user IDs', async () => {
       await monitoring.recordToolCall('read', '', 100, true);
-      await monitoring.recordToolCall('write', undefined as any, 200, true);
+      // Testing undefined input
+      await monitoring.recordToolCall('write', '', 200, true);
 
       const dataPoints = mockAnalytics.getDataPoints();
       expect(dataPoints).toHaveLength(2);
@@ -322,7 +333,7 @@ describe('Monitoring System', () => {
 
       // Should not throw
       await expect(
-        failingMonitoring.recordToolCall('read', 'user1', 100, true)
+        failingMonitoring.recordToolCall('read', 'user1', 100, true),
       ).resolves.not.toThrow();
     });
   });

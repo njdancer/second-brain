@@ -64,6 +64,56 @@ Mocks should mirror API contracts without implementing internal logic. Keep them
 
 **Service mocks** (OAuth, GitHub): Controlled flows with configurable responses for testing authorization, error handling, and edge cases.
 
+#### Type Safety in Tests
+
+**Core Principle**: Tests validate runtime behavior, not compile-time types. Type safety in tests serves maintainability, not correctness.
+
+**Centralized Mocks** (`test/mocks/`):
+- External APIs (R2, KV, S3, GitHub OAuth) have centralized mocks
+- R2 mock: `implements Pick<R2Bucket, 'get' | 'put' | 'delete' | 'list'>` - TypeScript verifies API match
+- KV/S3 mocks: Document they match API but don't use Pick<> (complex generics make it impractical)
+- When external APIs change, fix mock once
+- Tests use `as any` when passing mocks (intentional and clear)
+
+**Test Philosophy - Verbose Over DRY**:
+
+Tests should be **boring, explicit, and repetitive**. A half-asleep developer should understand the test immediately.
+
+**DO:**
+- Copy-paste setup code between tests
+- Explicitly create mocks in each test
+- Write explicit assertions
+- Make every step visible
+
+**DON'T:**
+- Create test factories or helper functions
+- Build custom assertion DSLs
+- Hide setup in shared utilities
+- Make tests "DRY" at the expense of clarity
+
+**Why Verbose Is Better:**
+- No hidden magic - everything is visible in the test
+- Easy to debug - just read the test top to bottom
+- Easy to modify - no shared abstractions to break
+- Easy to understand - no jumping between files
+- Tests serve as documentation
+
+**Type Assertions:**
+- Use `as any` freely in tests - it's clear and intentional
+- ESLint rules for `any` and `no-unsafe-*` are **OFF** (not warnings)
+- Production code (`src/`) maintains strict type safety with all rules as errors
+
+**ESLint Configuration** (`eslint.config.mjs`):
+```javascript
+// test/**/*.ts - pragmatic for mocks
+'@typescript-eslint/no-explicit-any': 'off',
+'@typescript-eslint/no-unsafe-*': 'off',
+'@typescript-eslint/require-await': 'off',
+
+// src/**/*.ts - strict type safety
+// All rules remain 'error'
+```
+
 ---
 
 ## Coverage Standards
@@ -75,9 +125,16 @@ Automated coverage tracking via GitHub Actions monitors trends across commits, v
 **Architectural Decision**: Coverage tracking is implemented using GitHub Actions (e.g., `clearlyip/code-coverage-report-action`) rather than third-party services, keeping all CI/CD infrastructure within GitHub's ecosystem and avoiding external service dependencies.
 
 **Coverage drops fail CI by default**, requiring:
-- PR comment explaining the decrease
-- Maintainer approval via review
+- PR comment with pattern `coverage-override: <explanation>`
+- Maintainer approval via PR review
 - Plan to recover coverage (if applicable)
+
+**Override Process:**
+1. When coverage decreases, CI fails with message "Coverage decreased"
+2. Maintainer adds comment: `coverage-override: Reason for decrease`
+3. CI re-runs and detects override comment
+4. Build passes but coverage decrease remains visible in report
+5. PR requires explicit maintainer approval before merge
 
 This prevents accidental quality degradation while allowing intentional trade-offs.
 

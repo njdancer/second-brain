@@ -4,11 +4,9 @@
  * Session management is now handled by Durable Objects (see mcp-session-do.ts)
  */
 
+import type { AnalyticsEngineDataset } from '@cloudflare/workers-types';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import {
-  createMCPServerInstance,
-  isInitializeRequest,
-} from '../../src/mcp-transport';
+import { createMCPServerInstance, isInitializeRequest } from '../../src/mcp-transport';
 import { MockR2Bucket } from '../mocks/r2';
 import { MockKVNamespace } from '../mocks/kv';
 import { StorageService } from '../../src/storage';
@@ -36,46 +34,20 @@ describe('MCP Transport', () => {
 
   describe('createMCPServerInstance', () => {
     it('should create MCP server with correct metadata', () => {
-      const server = createMCPServerInstance(
-        storage,
-        rateLimiter,
-        analytics,
-        'test-user',
-        logger
-      );
+      const server = createMCPServerInstance(storage, rateLimiter, analytics, 'test-user', logger);
 
       expect(server).toBeInstanceOf(Server);
     });
 
     it('should register all 5 tools', async () => {
-      const server = createMCPServerInstance(
-        storage,
-        rateLimiter,
-        analytics,
-        'test-user',
-        logger
-      );
+      const server = createMCPServerInstance(storage, rateLimiter, analytics, 'test-user', logger);
 
-      // Create a mock transport
-      const transport = {
-        sessionId: 'test-session',
-        start: jest.fn(),
-        close: jest.fn(),
-      };
-
-      // Connect server to transport (won't actually start in test)
-      // We'll just check that the server was created successfully
+      // The server should have tools registered
       expect(server).toBeDefined();
     });
 
     it('should register all 3 prompts', () => {
-      const server = createMCPServerInstance(
-        storage,
-        rateLimiter,
-        analytics,
-        'test-user',
-        logger
-      );
+      const server = createMCPServerInstance(storage, rateLimiter, analytics, 'test-user', logger);
 
       expect(server).toBeDefined();
     });
@@ -122,13 +94,7 @@ describe('MCP Transport', () => {
 
   describe('Tool Call Handler', () => {
     it('should list tools', async () => {
-      const server = createMCPServerInstance(
-        storage,
-        rateLimiter,
-        analytics,
-        'test-user',
-        logger
-      );
+      const server = createMCPServerInstance(storage, rateLimiter, analytics, 'test-user', logger);
 
       // Access the internal request handlers
       const handlers = (server as any)._requestHandlers;
@@ -143,18 +109,16 @@ describe('MCP Transport', () => {
 
       expect(result.tools).toHaveLength(5);
       expect(result.tools.map((t: any) => t.name)).toEqual([
-        'read', 'write', 'edit', 'glob', 'grep'
+        'read',
+        'write',
+        'edit',
+        'glob',
+        'grep',
       ]);
     });
 
     it('should handle tool call with rate limit check', async () => {
-      const server = createMCPServerInstance(
-        storage,
-        rateLimiter,
-        analytics,
-        'test-user',
-        logger
-      );
+      const server = createMCPServerInstance(storage, rateLimiter, analytics, 'test-user', logger);
 
       // Create a test file
       await mockBucket.put('projects/test.md', 'Test content');
@@ -175,13 +139,7 @@ describe('MCP Transport', () => {
     });
 
     it('should handle rate limit exceeded', async () => {
-      const server = createMCPServerInstance(
-        storage,
-        rateLimiter,
-        analytics,
-        'test-user',
-        logger
-      );
+      const server = createMCPServerInstance(storage, rateLimiter, analytics, 'test-user', logger);
 
       // Set up rate limit to be exceeded
       await rateLimitKV.put('ratelimit:test-user:minute', '100');
@@ -202,13 +160,7 @@ describe('MCP Transport', () => {
     });
 
     it('should handle tool execution error', async () => {
-      const server = createMCPServerInstance(
-        storage,
-        rateLimiter,
-        analytics,
-        'test-user',
-        logger
-      );
+      const server = createMCPServerInstance(storage, rateLimiter, analytics, 'test-user', logger);
 
       const handlers = (server as any)._requestHandlers;
       const callToolHandler = handlers.get('tools/call');
@@ -237,8 +189,8 @@ describe('MCP Transport', () => {
         freshStorage,
         freshRateLimiter,
         analytics,
-        'test-user-unique',  // Use unique user ID to avoid any potential conflicts
-        logger
+        'test-user-unique', // Use unique user ID to avoid any potential conflicts
+        logger,
       );
 
       // Create a test file
@@ -268,13 +220,7 @@ describe('MCP Transport', () => {
 
   describe('Prompt Handlers', () => {
     it('should list prompts', async () => {
-      const server = createMCPServerInstance(
-        storage,
-        rateLimiter,
-        analytics,
-        'test-user',
-        logger
-      );
+      const server = createMCPServerInstance(storage, rateLimiter, analytics, 'test-user', logger);
 
       const handlers = (server as any)._requestHandlers;
       const listPromptsHandler = handlers.get('prompts/list');
@@ -288,18 +234,14 @@ describe('MCP Transport', () => {
 
       expect(result.prompts).toHaveLength(3);
       expect(result.prompts.map((p: any) => p.name)).toEqual([
-        'capture-note', 'weekly-review', 'research-summary'
+        'capture-note',
+        'weekly-review',
+        'research-summary',
       ]);
     });
 
     it('should get capture-note prompt', async () => {
-      const server = createMCPServerInstance(
-        storage,
-        rateLimiter,
-        analytics,
-        'test-user',
-        logger
-      );
+      const server = createMCPServerInstance(storage, rateLimiter, analytics, 'test-user', logger);
 
       const handlers = (server as any)._requestHandlers;
       const getPromptHandler = handlers.get('prompts/get');
@@ -324,13 +266,7 @@ describe('MCP Transport', () => {
     });
 
     it('should get weekly-review prompt', async () => {
-      const server = createMCPServerInstance(
-        storage,
-        rateLimiter,
-        analytics,
-        'test-user',
-        logger
-      );
+      const server = createMCPServerInstance(storage, rateLimiter, analytics, 'test-user', logger);
 
       const handlers = (server as any)._requestHandlers;
       const getPromptHandler = handlers.get('prompts/get');
@@ -351,13 +287,7 @@ describe('MCP Transport', () => {
     });
 
     it('should get research-summary prompt', async () => {
-      const server = createMCPServerInstance(
-        storage,
-        rateLimiter,
-        analytics,
-        'test-user',
-        logger
-      );
+      const server = createMCPServerInstance(storage, rateLimiter, analytics, 'test-user', logger);
 
       const handlers = (server as any)._requestHandlers;
       const getPromptHandler = handlers.get('prompts/get');
@@ -379,13 +309,7 @@ describe('MCP Transport', () => {
     });
 
     it('should handle unknown prompt', async () => {
-      const server = createMCPServerInstance(
-        storage,
-        rateLimiter,
-        analytics,
-        'test-user',
-        logger
-      );
+      const server = createMCPServerInstance(storage, rateLimiter, analytics, 'test-user', logger);
 
       const handlers = (server as any)._requestHandlers;
       const getPromptHandler = handlers.get('prompts/get');
@@ -403,13 +327,7 @@ describe('MCP Transport', () => {
     });
 
     it('should handle prompts with missing arguments', async () => {
-      const server = createMCPServerInstance(
-        storage,
-        rateLimiter,
-        analytics,
-        'test-user',
-        logger
-      );
+      const server = createMCPServerInstance(storage, rateLimiter, analytics, 'test-user', logger);
 
       const handlers = (server as any)._requestHandlers;
       const getPromptHandler = handlers.get('prompts/get');
@@ -426,5 +344,4 @@ describe('MCP Transport', () => {
       expect(result.messages[0].content.text).toBeDefined();
     });
   });
-
 });

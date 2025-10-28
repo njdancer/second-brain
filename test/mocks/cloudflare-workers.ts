@@ -3,19 +3,20 @@
  */
 
 export class DurableObject {
-  ctx: any;
-  env: any;
+  ctx: unknown;
+  env: unknown;
 
-  constructor(ctx: any, env: any) {
+  constructor(ctx: unknown, env: unknown) {
     this.ctx = ctx;
     this.env = env;
   }
 
-  async alarm(): Promise<void> {
+  alarm(): Promise<void> {
     // Mock implementation
+    return Promise.resolve();
   }
 
-  async fetch(request: Request): Promise<Response> {
-    return new Response('Mock response');
+  fetch(_request: Request): Promise<Response> {
+    return Promise.resolve(new Response('Mock response'));
   }
 }

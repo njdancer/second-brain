@@ -122,7 +122,7 @@ export class MockGitHubOAuthServer {
   private handleTokenExchange(req: http.IncomingMessage, res: http.ServerResponse): void {
     let body = '';
 
-    req.on('data', (chunk) => {
+    req.on('data', (chunk: Buffer) => {
       body += chunk.toString();
     });
 
@@ -151,11 +151,13 @@ export class MockGitHubOAuthServer {
 
       // Return access token
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        access_token: this.config.accessToken,
-        token_type: 'bearer',
-        scope: 'user:email',
-      }));
+      res.end(
+        JSON.stringify({
+          access_token: this.config.accessToken,
+          token_type: 'bearer',
+          scope: 'user:email',
+        }),
+      );
     });
   }
 
@@ -181,11 +183,13 @@ export class MockGitHubOAuthServer {
 
     // Return mock user data
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({
-      id: this.config.userId,
-      login: this.config.username,
-      email: `${this.config.username}@example.com`,
-    }));
+    res.end(
+      JSON.stringify({
+        id: this.config.userId,
+        login: this.config.username,
+        email: `${this.config.username}@example.com`,
+      }),
+    );
   }
 
   /**

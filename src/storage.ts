@@ -71,9 +71,7 @@ export class StorageService {
 
     const size = new TextEncoder().encode(content).length;
     if (size > MAX_FILE_SIZE) {
-      throw new Error(
-        `File size exceeds limit of ${MAX_FILE_SIZE / 1024 / 1024}MB`
-      );
+      throw new Error(`File size exceeds limit of ${MAX_FILE_SIZE / 1024 / 1024}MB`);
     }
 
     const customMetadata: Record<string, string> = {};
@@ -151,7 +149,7 @@ export class StorageService {
   /**
    * Check storage quota for a user
    */
-  async checkStorageQuota(userId: string): Promise<QuotaStatus> {
+  async checkStorageQuota(_userId: string): Promise<QuotaStatus> {
     const objects = await this.listObjects();
 
     const totalFiles = objects.length;
@@ -188,6 +186,7 @@ export class StorageService {
     }
 
     // Reject control characters (except tab and newline which shouldn't be in paths anyway)
+    // eslint-disable-next-line no-control-regex -- Intentionally checking for control characters for security
     if (/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/.test(path)) {
       throw new Error('Invalid path: control characters not allowed');
     }

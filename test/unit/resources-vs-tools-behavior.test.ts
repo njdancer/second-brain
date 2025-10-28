@@ -114,7 +114,7 @@ describe('Resources vs Tools Behavior', () => {
         title: 'test.md',
         mimeType: 'text/markdown',
         annotations: {
-          audience: ['user', 'assistant'],
+          audience: ['user'],
           priority: 0.5,
           lastModified: expect.any(String),
         },
@@ -127,9 +127,12 @@ describe('Resources vs Tools Behavior', () => {
     });
 
     it('Audience field controls CLIENT behavior, not AI access', () => {
-      // audience: ["user"] - CLIENT shows in UI for user to pick
-      // audience: ["assistant"] - CLIENT might auto-include as context
-      // audience: ["user", "assistant"] - Both behaviors
+      // audience: ["user"] - CLIENT shows in UI for user to pick (our implementation)
+      // audience: ["assistant"] - CLIENT might auto-include as context (not in Claude Desktop)
+      // audience: ["user", "assistant"] - Both behaviors (spec allows, not implemented)
+
+      // NOTE: We use audience: ["user"] because Claude Desktop requires explicit
+      // user selection and doesn't expose resources to AI based on audience.
 
       // BUT: Claude (the AI) doesn't call resources/read itself
       // The CLIENT calls it and provides the content to Claude

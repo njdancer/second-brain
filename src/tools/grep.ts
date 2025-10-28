@@ -31,13 +31,17 @@ const MAX_MATCHES_LIMIT = 1000;
  * Convert glob pattern to regex (for path filtering)
  */
 function globToRegex(pattern: string): RegExp {
+  // Using \x00 as safe placeholder - intentional control characters
   const regexPattern = pattern
     .replace(/\*\*/g, '\x00DOUBLESTAR\x00')
     .replace(/\?/g, '\x00QUESTION\x00')
     .replace(/[.+^${}()|[\]\\]/g, '\\$&')
     .replace(/\*/g, '[^/]*')
+    // eslint-disable-next-line no-control-regex
     .replace(/\x00DOUBLESTAR\x00\//g, '(?:.*/)?')
+    // eslint-disable-next-line no-control-regex
     .replace(/\x00DOUBLESTAR\x00/g, '.*')
+    // eslint-disable-next-line no-control-regex
     .replace(/\x00QUESTION\x00/g, '.');
 
   return new RegExp(`^${regexPattern}$`);
@@ -46,10 +50,7 @@ function globToRegex(pattern: string): RegExp {
 /**
  * Search file contents using regex
  */
-export async function grepTool(
-  params: GrepParams,
-  storage: StorageService
-): Promise<GrepResult> {
+export async function grepTool(params: GrepParams, storage: StorageService): Promise<GrepResult> {
   try {
     // Validate pattern
     if (!params.pattern || params.pattern.trim() === '') {
@@ -69,7 +70,7 @@ export async function grepTool(
     let searchRegex: RegExp;
     try {
       searchRegex = new RegExp(params.pattern, 'i');
-    } catch (error) {
+    } catch {
       return {
         content: `Error: Invalid regex pattern: ${params.pattern}`,
         isError: true,

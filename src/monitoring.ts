@@ -5,11 +5,7 @@
 
 // Cloudflare Analytics Engine bindings (available in Workers environment)
 export interface AnalyticsEngineDataset {
-  writeDataPoint(data: {
-    blobs?: string[];
-    doubles?: number[];
-    indexes?: string[];
-  }): void;
+  writeDataPoint(data: { blobs?: string[]; doubles?: number[]; indexes?: string[] }): void;
 }
 
 export class MonitoringService {
@@ -26,7 +22,7 @@ export class MonitoringService {
     toolName: string,
     userId: string | undefined,
     duration: number,
-    success: boolean
+    success: boolean,
   ): Promise<void> {
     try {
       const anonymizedUserId = await this.anonymizeUserId(userId);
@@ -48,11 +44,7 @@ export class MonitoringService {
    * @param userId User ID (will be anonymized)
    * @param context Error context (will be sanitized to remove PII)
    */
-  async recordError(
-    errorCode: number,
-    userId: string | undefined,
-    context: string
-  ): Promise<void> {
+  async recordError(errorCode: number, userId: string | undefined, context: string): Promise<void> {
     try {
       const anonymizedUserId = await this.anonymizeUserId(userId);
       const sanitizedContext = this.sanitizeContext(context, userId);
@@ -76,7 +68,7 @@ export class MonitoringService {
   async recordStorageMetrics(
     userId: string | undefined,
     totalBytes: number,
-    fileCount: number
+    fileCount: number,
   ): Promise<void> {
     try {
       const anonymizedUserId = await this.anonymizeUserId(userId);
@@ -100,7 +92,7 @@ export class MonitoringService {
   async recordRateLimitHit(
     userId: string | undefined,
     window: string,
-    limit: number
+    limit: number,
   ): Promise<void> {
     try {
       const anonymizedUserId = await this.anonymizeUserId(userId);
@@ -120,10 +112,7 @@ export class MonitoringService {
    * @param userId User ID (will be anonymized)
    * @param status 'success' or 'failure'
    */
-  async recordOAuthEvent(
-    userId: string | undefined,
-    status: 'success' | 'failure'
-  ): Promise<void> {
+  async recordOAuthEvent(userId: string | undefined, status: 'success' | 'failure'): Promise<void> {
     try {
       const anonymizedUserId = await this.anonymizeUserId(userId);
 
@@ -142,11 +131,7 @@ export class MonitoringService {
    * @param filesSkipped Number of files skipped
    * @param totalBytes Total bytes backed up
    */
-  recordBackupEvent(
-    filesBackedUp: number,
-    filesSkipped: number,
-    totalBytes: number
-  ): void {
+  recordBackupEvent(filesBackedUp: number, filesSkipped: number, totalBytes: number): void {
     try {
       this.analytics.writeDataPoint({
         indexes: ['backup'],

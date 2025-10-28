@@ -3,25 +3,26 @@
  */
 
 import { editTool } from '../../../src/tools/edit';
-import { StorageService } from '../../../src/storage';
 
 // Mock storage service
 class MockStorageService {
   private files: Map<string, string> = new Map();
 
-  async getObject(path: string): Promise<string | null> {
+  getObject(path: string): Promise<string | null> {
     if (this.files.has(path)) {
-      return this.files.get(path)!;
+      return Promise.resolve(this.files.get(path)!);
     }
-    return null;
+    return Promise.resolve(null);
   }
 
-  async putObject(path: string, content: string): Promise<void> {
+  putObject(path: string, content: string): Promise<void> {
     this.files.set(path, content);
+    return Promise.resolve();
   }
 
-  async deleteObject(path: string): Promise<void> {
+  deleteObject(path: string): Promise<void> {
     this.files.delete(path);
+    return Promise.resolve();
   }
 
   setFile(path: string, content: string): void {
@@ -54,7 +55,7 @@ describe('Edit Tool', () => {
           old_str: 'This is a test',
           new_str: 'This is updated',
         },
-        storage as any
+        storage as any,
       );
 
       expect(result.isError).toBe(false);
@@ -70,7 +71,7 @@ describe('Edit Tool', () => {
           old_str: 'Hello',
           new_str: 'Hi',
         },
-        storage as any
+        storage as any,
       );
 
       expect(result.isError).toBe(true);
@@ -86,7 +87,7 @@ describe('Edit Tool', () => {
           old_str: 'Not present',
           new_str: 'Updated',
         },
-        storage as any
+        storage as any,
       );
 
       expect(result.isError).toBe(true);
@@ -102,7 +103,7 @@ describe('Edit Tool', () => {
           old_str: '\nDelete this line',
           new_str: '',
         },
-        storage as any
+        storage as any,
       );
 
       expect(result.isError).toBe(false);
@@ -118,7 +119,7 @@ describe('Edit Tool', () => {
           old_str: 'Normal text',
           new_str: 'Special chars: $100 (50%) [test]',
         },
-        storage as any
+        storage as any,
       );
 
       expect(result.isError).toBe(false);
@@ -134,7 +135,7 @@ describe('Edit Tool', () => {
           old_str: 'English text',
           new_str: '日本語 🎉 Émojis',
         },
-        storage as any
+        storage as any,
       );
 
       expect(result.isError).toBe(false);
@@ -150,7 +151,7 @@ describe('Edit Tool', () => {
           old_str: 'Line 2\nLine 3',
           new_str: 'Combined line',
         },
-        storage as any
+        storage as any,
       );
 
       expect(result.isError).toBe(false);
@@ -167,7 +168,7 @@ describe('Edit Tool', () => {
           path: 'old.md',
           new_path: 'projects/new.md',
         },
-        storage as any
+        storage as any,
       );
 
       expect(result.isError).toBe(false);
@@ -183,7 +184,7 @@ describe('Edit Tool', () => {
           path: 'old-name.md',
           new_path: 'new-name.md',
         },
-        storage as any
+        storage as any,
       );
 
       expect(result.isError).toBe(false);
@@ -200,7 +201,7 @@ describe('Edit Tool', () => {
           path: 'file1.md',
           new_path: 'file2.md',
         },
-        storage as any
+        storage as any,
       );
 
       expect(result.isError).toBe(true);
@@ -215,7 +216,7 @@ describe('Edit Tool', () => {
           path: 'note.md',
           new_path: 'archives/2024/old/note.md',
         },
-        storage as any
+        storage as any,
       );
 
       expect(result.isError).toBe(false);
@@ -232,7 +233,7 @@ describe('Edit Tool', () => {
           path: 'delete-me.md',
           delete: true,
         },
-        storage as any
+        storage as any,
       );
 
       expect(result.isError).toBe(false);
@@ -245,7 +246,7 @@ describe('Edit Tool', () => {
           path: 'does-not-exist.md',
           delete: true,
         },
-        storage as any
+        storage as any,
       );
 
       expect(result.isError).toBe(true);
@@ -263,7 +264,7 @@ describe('Edit Tool', () => {
           new_path: 'ignored-path.md',
           delete: true,
         },
-        storage as any
+        storage as any,
       );
 
       expect(result.isError).toBe(false);
@@ -283,7 +284,7 @@ describe('Edit Tool', () => {
           new_str: 'Status: Completed',
           new_path: 'archives/2024/active.md',
         },
-        storage as any
+        storage as any,
       );
 
       expect(result.isError).toBe(false);
@@ -301,7 +302,7 @@ describe('Edit Tool', () => {
           new_str: 'Updated line',
           new_path: 'moved.md',
         },
-        storage as any
+        storage as any,
       );
 
       expect(result.isError).toBe(false);
@@ -317,7 +318,7 @@ describe('Edit Tool', () => {
           old_str: 'test',
           new_str: 'updated',
         },
-        storage as any
+        storage as any,
       );
 
       expect(result.isError).toBe(true);
@@ -331,7 +332,7 @@ describe('Edit Tool', () => {
           old_str: 'test',
           new_str: 'updated',
         },
-        storage as any
+        storage as any,
       );
 
       expect(result.isError).toBe(true);
@@ -345,7 +346,7 @@ describe('Edit Tool', () => {
         {
           path: 'test.md',
         },
-        storage as any
+        storage as any,
       );
 
       expect(result.isError).toBe(true);
@@ -354,8 +355,8 @@ describe('Edit Tool', () => {
 
     it('should handle storage errors gracefully', async () => {
       const errorStorage = {
-        async getObject(): Promise<string | null> {
-          throw new Error('Storage failure');
+        getObject(): Promise<string | null> {
+          return Promise.reject(new Error('Storage failure'));
         },
       };
 
@@ -365,7 +366,7 @@ describe('Edit Tool', () => {
           old_str: 'test',
           new_str: 'updated',
         },
-        errorStorage as any
+        errorStorage as any,
       );
 
       expect(result.isError).toBe(true);
@@ -380,7 +381,7 @@ describe('Edit Tool', () => {
           path: 'test.md',
           new_str: 'updated',
         },
-        storage as any
+        storage as any,
       );
 
       expect(result.isError).toBe(true);

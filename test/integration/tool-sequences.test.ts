@@ -14,6 +14,7 @@ import { MockR2Bucket } from '../mocks/r2';
 describe('Integration: Tool Sequences', () => {
   let mockBucket: MockR2Bucket;
   let storage: StorageService;
+  const testUserId = 'test-user-123';
 
   beforeEach(() => {
     mockBucket = new MockR2Bucket();
@@ -29,15 +30,13 @@ describe('Integration: Tool Sequences', () => {
       // 1. Create file with write tool
       const writeResult = await writeTool(
         { path: 'projects/test.md', content: '# Test Project\n\nInitial content' },
-        storage
+        storage,
+        testUserId,
       );
       expect(writeResult.isError).toBe(false);
 
       // 2. Read the file back
-      const readResult = await readTool(
-        { path: 'projects/test.md' },
-        storage
-      );
+      const readResult = await readTool({ path: 'projects/test.md' }, storage);
       expect(readResult.isError).toBe(false);
       expect(readResult.content).toContain('# Test Project');
       expect(readResult.content).toContain('Initial content');
@@ -49,30 +48,21 @@ describe('Integration: Tool Sequences', () => {
           old_str: 'Initial content',
           new_str: 'Updated content with more details',
         },
-        storage
+        storage,
       );
       expect(editResult.isError).toBe(false);
 
       // 4. Read again to verify edit
-      const readResult2 = await readTool(
-        { path: 'projects/test.md' },
-        storage
-      );
+      const readResult2 = await readTool({ path: 'projects/test.md' }, storage);
       expect(readResult2.content).toContain('Updated content with more details');
       expect(readResult2.content).not.toContain('Initial content');
 
       // 5. Delete the file
-      const deleteResult = await editTool(
-        { path: 'projects/test.md', delete: true },
-        storage
-      );
+      const deleteResult = await editTool({ path: 'projects/test.md', delete: true }, storage);
       expect(deleteResult.isError).toBe(false);
 
       // 6. Verify file is gone
-      const readResult3 = await readTool(
-        { path: 'projects/test.md' },
-        storage
-      );
+      const readResult3 = await readTool({ path: 'projects/test.md' }, storage);
       expect(readResult3.isError).toBe(true);
       expect(readResult3.content).toContain('File not found');
     });
@@ -81,7 +71,8 @@ describe('Integration: Tool Sequences', () => {
       // 1. Create file
       await writeTool(
         { path: 'projects/draft.md', content: '# Draft Document' },
-        storage
+        storage,
+        testUserId,
       );
 
       // 2. Move to areas
@@ -90,23 +81,17 @@ describe('Integration: Tool Sequences', () => {
           path: 'projects/draft.md',
           new_path: 'areas/ongoing.md',
         },
-        storage
+        storage,
       );
       expect(moveResult.isError).toBe(false);
 
       // 3. Read from new location
-      const readResult = await readTool(
-        { path: 'areas/ongoing.md' },
-        storage
-      );
+      const readResult = await readTool({ path: 'areas/ongoing.md' }, storage);
       expect(readResult.isError).toBe(false);
       expect(readResult.content).toContain('# Draft Document');
 
       // 4. Verify old location is gone
-      const readOld = await readTool(
-        { path: 'projects/draft.md' },
-        storage
-      );
+      const readOld = await readTool({ path: 'projects/draft.md' }, storage);
       expect(readOld.isError).toBe(true);
     });
   });
@@ -116,32 +101,29 @@ describe('Integration: Tool Sequences', () => {
       // Setup: Create multiple files
       await writeTool(
         { path: 'projects/project1.md', content: '# Project 1\n\nTODO: Complete task' },
-        storage
+        storage,
+        testUserId,
       );
       await writeTool(
         { path: 'projects/project2.md', content: '# Project 2\n\nTODO: Review code' },
-        storage
+        storage,
+        testUserId,
       );
       await writeTool(
         { path: 'areas/area1.md', content: '# Area 1\n\nTODO: Follow up' },
-        storage
+        storage,
+        testUserId,
       );
 
       // 1. Find all markdown files in projects
-      const globResult = await globTool(
-        { pattern: 'projects/*.md' },
-        storage
-      );
+      const globResult = await globTool({ pattern: 'projects/*.md' }, storage);
       expect(globResult.isError).toBe(false);
       expect(globResult.content).toContain('project1.md');
       expect(globResult.content).toContain('project2.md');
       expect(globResult.content).not.toContain('area1.md');
 
       // 2. Search for TODO items
-      const grepResult = await grepTool(
-        { pattern: 'TODO:', path: 'projects/**' },
-        storage
-      );
+      const grepResult = await grepTool({ pattern: 'TODO:', path: 'projects/**' }, storage);
       expect(grepResult.isError).toBe(false);
       expect(grepResult.content).toContain('TODO: Complete task');
       expect(grepResult.content).toContain('TODO: Review code');
@@ -153,20 +135,20 @@ describe('Integration: Tool Sequences', () => {
           old_str: 'TODO: Complete task',
           new_str: 'DONE: Task completed',
         },
-        storage
+        storage,
       );
       expect(editResult.isError).toBe(false);
 
       // 4. Verify the edit
       const verifyResult = await grepTool(
         { pattern: 'TODO:', path: 'projects/project1.md' },
-        storage
+        storage,
       );
       expect(verifyResult.content).not.toContain('TODO: Complete task');
 
       const verifyDone = await grepTool(
         { pattern: 'DONE:', path: 'projects/project1.md' },
-        storage
+        storage,
       );
       expect(verifyDone.content).toContain('DONE: Task completed');
     });
@@ -174,20 +156,14 @@ describe('Integration: Tool Sequences', () => {
 
   describe('Error handling in sequences', () => {
     it('should handle read of non-existent file', async () => {
-      const readResult = await readTool(
-        { path: 'nonexistent.md' },
-        storage
-      );
+      const readResult = await readTool({ path: 'nonexistent.md' }, storage);
       expect(readResult.isError).toBe(true);
       expect(readResult.content).toContain('File not found');
     });
 
     it('should handle edit of non-existent string', async () => {
       // Create file
-      await writeTool(
-        { path: 'test.md', content: 'Some content' },
-        storage
-      );
+      await writeTool({ path: 'test.md', content: 'Some content' }, storage, testUserId);
 
       // Try to replace string that doesn't exist
       const editResult = await editTool(
@@ -196,7 +172,7 @@ describe('Integration: Tool Sequences', () => {
           old_str: 'Non-existent string',
           new_str: 'New content',
         },
-        storage
+        storage,
       );
       expect(editResult.isError).toBe(true);
       expect(editResult.content).toContain('not found');
@@ -204,14 +180,8 @@ describe('Integration: Tool Sequences', () => {
 
     it('should handle move to existing path', async () => {
       // Create two files
-      await writeTool(
-        { path: 'file1.md', content: 'File 1' },
-        storage
-      );
-      await writeTool(
-        { path: 'file2.md', content: 'File 2' },
-        storage
-      );
+      await writeTool({ path: 'file1.md', content: 'File 1' }, storage, testUserId);
+      await writeTool({ path: 'file2.md', content: 'File 2' }, storage, testUserId);
 
       // Try to move file1 to file2 (which already exists)
       const moveResult = await editTool(
@@ -219,7 +189,7 @@ describe('Integration: Tool Sequences', () => {
           path: 'file1.md',
           new_path: 'file2.md',
         },
-        storage
+        storage,
       );
       expect(moveResult.isError).toBe(true);
       expect(moveResult.content).toContain('already exists');
@@ -229,9 +199,9 @@ describe('Integration: Tool Sequences', () => {
   describe('Concurrent operations', () => {
     it('should handle multiple writes to different files concurrently', async () => {
       const writes = [
-        writeTool({ path: 'file1.md', content: 'Content 1' }, storage),
-        writeTool({ path: 'file2.md', content: 'Content 2' }, storage),
-        writeTool({ path: 'file3.md', content: 'Content 3' }, storage),
+        writeTool({ path: 'file1.md', content: 'Content 1' }, storage, testUserId),
+        writeTool({ path: 'file2.md', content: 'Content 2' }, storage, testUserId),
+        writeTool({ path: 'file3.md', content: 'Content 3' }, storage, testUserId),
       ];
 
       const results = await Promise.all(writes);
@@ -259,7 +229,8 @@ describe('Integration: Tool Sequences', () => {
           path: 'projects/active-project.md',
           content: '# Active Project\n\nStatus: In Progress\nNext: Review with team',
         },
-        storage
+        storage,
+        testUserId,
       );
 
       // 1. Find all project files
@@ -267,10 +238,7 @@ describe('Integration: Tool Sequences', () => {
       expect(projects.isError).toBe(false);
 
       // 2. Search for status indicators
-      const statusSearch = await grepTool(
-        { pattern: 'Status:', path: 'projects/**' },
-        storage
-      );
+      const statusSearch = await grepTool({ pattern: 'Status:', path: 'projects/**' }, storage);
       expect(statusSearch.content).toContain('Status: In Progress');
 
       // 3. Update status
@@ -280,7 +248,7 @@ describe('Integration: Tool Sequences', () => {
           old_str: 'Status: In Progress',
           new_str: 'Status: Completed',
         },
-        storage
+        storage,
       );
 
       // 4. Move completed project to archives
@@ -289,7 +257,7 @@ describe('Integration: Tool Sequences', () => {
           path: 'projects/active-project.md',
           new_path: 'archives/completed-project.md',
         },
-        storage
+        storage,
       );
       expect(archiveResult.isError).toBe(false);
 

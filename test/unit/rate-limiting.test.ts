@@ -2,7 +2,7 @@
  * Unit tests for rate limiting
  */
 
-import { RateLimiter, RateLimitResult, RateLimitStatus } from '../../src/rate-limiting';
+import { RateLimiter } from '../../src/rate-limiting';
 import { MockKVNamespace } from '../mocks/kv';
 
 describe('RateLimiter', () => {
@@ -192,9 +192,7 @@ describe('RateLimiter', () => {
     });
 
     it('should handle invalid window gracefully', async () => {
-      await expect(
-        rateLimiter.checkRateLimit(userId, 'invalid' as any)
-      ).rejects.toThrow();
+      await expect(rateLimiter.checkRateLimit(userId, 'invalid' as any)).rejects.toThrow();
     });
 
     it('should handle empty user ID', async () => {

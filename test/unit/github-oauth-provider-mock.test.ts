@@ -42,22 +42,23 @@ describe('MockGitHubOAuthProvider', () => {
   });
 
   describe('validateAuthorizationCode', () => {
-    test('should exchange valid code for tokens', async () => {
+    test('should exchange valid code for tokens (GitHub OAuth app behavior)', async () => {
       const authUrl = provider.createAuthorizationURL('state', ['read:user']);
       const code = provider.extractTestCode(authUrl);
 
       const tokens = await provider.validateAuthorizationCode(code);
 
       expect(tokens).toHaveProperty('accessToken');
-      expect(tokens).toHaveProperty('refreshToken');
-      expect(tokens).toHaveProperty('expiresIn', 3600);
       expect(typeof tokens.accessToken).toBe('string');
+      // GitHub OAuth apps don't return refresh_token or expires_in
+      expect(tokens.refreshToken).toBeUndefined();
+      expect(tokens.expiresIn).toBeUndefined();
     });
 
     test('should reject invalid authorization code', async () => {
-      await expect(
-        provider.validateAuthorizationCode('invalid_code')
-      ).rejects.toThrow('Invalid authorization code');
+      await expect(provider.validateAuthorizationCode('invalid_code')).rejects.toThrow(
+        'Invalid authorization code',
+      );
     });
 
     test('should allow code reuse (for E2E testing)', async () => {
@@ -91,9 +92,7 @@ describe('MockGitHubOAuthProvider', () => {
     });
 
     test('should reject invalid access token', async () => {
-      await expect(
-        provider.getUserInfo('invalid_token')
-      ).rejects.toThrow('Invalid access token');
+      await expect(provider.getUserInfo('invalid_token')).rejects.toThrow('Invalid access token');
     });
   });
 

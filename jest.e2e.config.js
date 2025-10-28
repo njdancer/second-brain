@@ -8,9 +8,7 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  testMatch: [
-    '**/test/e2e/**/*.e2e.ts'
-  ],
+  testMatch: ['**/test/e2e/**/*.e2e.ts'],
   // E2E tests take longer (especially with Worker startup)
   testTimeout: 120000,
   // Don't run in parallel - they hit real API
