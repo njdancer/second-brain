@@ -112,6 +112,55 @@ describe('MCP Resource Handlers', () => {
 
       expect(result.resources[0].mimeType).toBe('text/plain');
     });
+
+    it('should use full path as name to distinguish files with same filename', async () => {
+      // Create multiple README.md files in different directories
+      await storage.putObject('projects/app/README.md', '# App README');
+      await storage.putObject('projects/api/README.md', '# API README');
+      await storage.putObject('areas/health/README.md', '# Health README');
+
+      const handler = (server as any)._requestHandlers.get('resources/list');
+      const result = await handler({
+        method: 'resources/list',
+        params: {},
+      });
+
+      expect(result.resources).toHaveLength(3);
+
+      // All resources should have unique names (full paths)
+      const names = result.resources.map((r: any) => r.name);
+      expect(names).toContain('projects/app/README.md');
+      expect(names).toContain('projects/api/README.md');
+      expect(names).toContain('areas/health/README.md');
+
+      // Names should NOT all be "README.md" (current broken behavior)
+      const uniqueNames = new Set(names);
+      expect(uniqueNames.size).toBe(3); // Should have 3 unique names, not 1
+
+      // Each resource's name should match its URI path
+      result.resources.forEach((resource: any) => {
+        expect(resource.uri).toBe(`file:///${resource.name}`);
+      });
+    });
+
+    it('should use full path as name field for resources', async () => {
+      await storage.putObject('projects/myapp/docs/setup.md', '# Setup');
+
+      const handler = (server as any)._requestHandlers.get('resources/list');
+      const result = await handler({
+        method: 'resources/list',
+        params: {},
+      });
+
+      const resource = result.resources[0];
+
+      // Name should be the full path, not just the filename
+      expect(resource.name).toBe('projects/myapp/docs/setup.md');
+      expect(resource.name).not.toBe('setup.md'); // Not just filename!
+
+      // Title can be whatever, but should probably also show the path for clarity
+      expect(resource.title).toContain('projects/myapp/docs/setup.md');
+    });
   });
 
   describe('resources/read', () => {
@@ -130,7 +179,7 @@ describe('MCP Resource Handlers', () => {
       expect(result.contents).toHaveLength(1);
       expect(result.contents[0]).toMatchObject({
         uri: 'file:///projects/test/doc.md',
-        name: 'doc.md',
+        name: 'projects/test/doc.md', // Full path, not just filename
         title: 'projects/test/doc.md',
         mimeType: 'text/markdown',
         text: content,
