@@ -413,8 +413,8 @@ Please:
       // Convert storage objects to MCP resources
       const resources = objects.map((obj) => ({
         uri: `file:///${obj.key}`,
-        name: obj.key.split('/').pop() || obj.key,
-        title: obj.key,
+        name: obj.key, // Full path for unique identification
+        title: obj.key, // Full path shown in UI
         description: `Document in ${obj.key.split('/').slice(0, -1).join('/')}`,
         mimeType: obj.key.endsWith('.md') ? 'text/markdown' : 'text/plain',
         annotations: {
@@ -461,8 +461,8 @@ Please:
         contents: [
           {
             uri,
-            name: path.split('/').pop() || path,
-            title: path,
+            name: path, // Full path for unique identification
+            title: path, // Full path shown in UI
             mimeType: path.endsWith('.md') ? 'text/markdown' : 'text/plain',
             text: content,
             annotations: fileObj
