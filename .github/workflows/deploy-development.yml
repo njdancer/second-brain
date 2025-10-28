@@ -161,15 +161,19 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const { data: prs } = await github.rest.pulls.list({
+            // Get all open PRs and filter client-side (API label filter has caching issues)
+            const { data: allPrs } = await github.rest.pulls.list({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              state: 'open',
-              labels: 'hotfix'
+              state: 'open'
             });
 
-            if (prs.length > 0) {
-              const pr = prs[0];
+            const hotfixPrs = allPrs.filter(pr =>
+              pr.labels.some(label => label.name === 'hotfix')
+            );
+
+            if (hotfixPrs.length > 0) {
+              const pr = hotfixPrs[0];
               core.notice(`⚠️ Development deployment blocked - hotfix in progress: ${pr.html_url}`);
 
               // Post comment to the commit
