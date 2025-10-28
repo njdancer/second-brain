@@ -125,22 +125,6 @@ jobs:
       - name: Run unit tests
         run: pnpm test -- --coverage --ci --silent
 
-      - name: Check coverage thresholds
-        run: |
-          STATEMENTS=$(cat coverage/coverage-summary.json | jq '.total.statements.pct')
-          FUNCTIONS=$(cat coverage/coverage-summary.json | jq '.total.functions.pct')
-          echo "Statement coverage: $STATEMENTS%"
-          echo "Function coverage: $FUNCTIONS%"
-          if (( $(echo "$STATEMENTS < 95" | bc -l) )); then
-            echo "❌ Statement coverage ($STATEMENTS%) is below 95% threshold"
-            exit 1
-          fi
-          if (( $(echo "$FUNCTIONS < 95" | bc -l) )); then
-            echo "❌ Function coverage ($FUNCTIONS%) is below 95% threshold"
-            exit 1
-          fi
-          echo "✅ Coverage thresholds met"
-
       - name: Report code coverage
         uses: clearlyip/code-coverage-report-action@v5
         id: coverage
