@@ -448,8 +448,8 @@ Please:
       const content = await storage.getObject(path);
 
       if (content === null) {
-        const error = new Error(`Resource not found: ${uri}`);
-        (error as any).code = -32002;
+        const error: Error & { code?: number } = new Error(`Resource not found: ${uri}`);
+        error.code = -32002;
         throw error;
       }
 
@@ -481,7 +481,7 @@ Please:
     }
   });
 
-  server.setRequestHandler(ListResourceTemplatesRequestSchema, async () => {
+  server.setRequestHandler(ListResourceTemplatesRequestSchema, () => {
     return {
       resourceTemplates: [
         {

@@ -8,11 +8,6 @@ import { RateLimiter } from '../../src/rate-limiting';
 import { Logger } from '../../src/logger';
 import { MockR2Bucket } from '../mocks/r2';
 import { MockKVNamespace } from '../mocks/kv';
-import {
-  ListResourcesRequestSchema,
-  ReadResourceRequestSchema,
-  ListResourceTemplatesRequestSchema,
-} from '@modelcontextprotocol/sdk/types.js';
 
 describe('MCP Resource Handlers', () => {
   let storage: StorageService;
@@ -156,7 +151,7 @@ describe('MCP Resource Handlers', () => {
           params: {
             uri: 'file:///nonexistent.md',
           },
-        })
+        }),
       ).rejects.toThrow('Resource not found');
     });
 
@@ -169,7 +164,7 @@ describe('MCP Resource Handlers', () => {
           params: {
             uri: 'https://example.com/file.md',
           },
-        })
+        }),
       ).rejects.toThrow('Unsupported URI scheme');
     });
 

@@ -532,7 +532,7 @@ describe('MCP Full Flow E2E (Real MCP Client)', () => {
       // Now list resources to verify it appears
       const resources = await mcpClient.listResources();
       const testResource = resources.resources.find(
-        (r: any) => r.uri === 'file:///test-resource.md'
+        (r: any) => r.uri === 'file:///test-resource.md',
       );
       expect(testResource).toBeTruthy();
       expect(testResource?.name).toBe('test-resource.md');
@@ -545,7 +545,9 @@ describe('MCP Full Flow E2E (Real MCP Client)', () => {
 
       expect(resourceContent.contents).toHaveLength(1);
       expect(resourceContent.contents[0].uri).toBe('file:///test-resource.md');
-      expect(resourceContent.contents[0].text).toBe('# Test Resource\n\nThis is a test document for resources.');
+      expect(resourceContent.contents[0].text).toBe(
+        '# Test Resource\n\nThis is a test document for resources.',
+      );
       expect(resourceContent.contents[0].mimeType).toBe('text/markdown');
 
       console.log(`✅ Resource read successfully`);
