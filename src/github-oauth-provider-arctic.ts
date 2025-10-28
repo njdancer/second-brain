@@ -23,9 +23,19 @@ export class ArcticGitHubOAuthProvider implements GitHubOAuthProvider {
   async validateAuthorizationCode(code: string): Promise<GitHubTokens> {
     const tokens = await this.github.validateAuthorizationCode(code);
 
+    // GitHub OAuth apps don't return refresh tokens (only GitHub Apps do)
+    // Arctic throws if refresh_token field is missing, so we handle it gracefully
+    let refreshToken: string | undefined;
+    try {
+      refreshToken = tokens.refreshToken();
+    } catch {
+      // Refresh token not available (expected for GitHub OAuth apps)
+      refreshToken = undefined;
+    }
+
     return {
       accessToken: tokens.accessToken(),
-      refreshToken: tokens.refreshToken(),
+      refreshToken,
       expiresIn: tokens.accessTokenExpiresAt()
         ? Math.floor((tokens.accessTokenExpiresAt().getTime() - Date.now()) / 1000)
         : undefined,
