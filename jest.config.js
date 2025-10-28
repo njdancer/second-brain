@@ -12,6 +12,7 @@ module.exports = {
     '!src/oauth-ui-handler.ts', // Arctic integration - requires E2E OAuth flow
     '!src/mcp-api-handler.ts', // OAuthProvider integration - requires E2E OAuth flow
   ],
+  coverageReporters: ['text', 'clover', 'json-summary'], // Add clover for clearlyip action
   coverageThreshold: {
     global: {
       branches: 70, // OAuth + GitHub API integration add uncovered branches

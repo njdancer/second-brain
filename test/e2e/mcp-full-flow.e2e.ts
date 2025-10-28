@@ -144,11 +144,20 @@ describe('MCP Full Flow E2E (Real MCP Client)', () => {
           time: string;
           environment: string;
         };
+        bindings?: {
+          r2: boolean;
+          oauth_kv: boolean;
+          rate_limit_kv: boolean;
+          feature_flags_kv: boolean;
+          analytics: boolean;
+          mcp_sessions: boolean;
+        };
+        warnings?: string[];
       } = await response.json();
 
       expect(data).toEqual(
         expect.objectContaining({
-          status: 'ok',
+          status: expect.stringMatching(/^(ok|degraded)$/), // Allow degraded in test environment
           timestamp: expect.any(String),
           service: 'second-brain-mcp',
           version: expect.any(String),
@@ -157,8 +166,18 @@ describe('MCP Full Flow E2E (Real MCP Client)', () => {
             time: expect.any(String),
             environment: expect.any(String),
           }),
+          bindings: expect.any(Object),
         }),
       );
+
+      // Verify bindings object structure
+      expect(data.bindings).toBeDefined();
+      expect(typeof data.bindings?.r2).toBe('boolean');
+      expect(typeof data.bindings?.oauth_kv).toBe('boolean');
+      expect(typeof data.bindings?.rate_limit_kv).toBe('boolean');
+      expect(typeof data.bindings?.feature_flags_kv).toBe('boolean');
+      expect(typeof data.bindings?.analytics).toBe('boolean');
+      expect(typeof data.bindings?.mcp_sessions).toBe('boolean');
     });
   });
 

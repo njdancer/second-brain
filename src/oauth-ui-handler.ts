@@ -215,9 +215,75 @@ export async function githubOAuthHandler(
   }
 
   if (url.pathname === '/health') {
+    // Verify all critical bindings are accessible
+    const bindings = {
+      r2: false,
+      oauth_kv: false,
+      rate_limit_kv: false,
+      feature_flags_kv: false,
+      analytics: false,
+      mcp_sessions: false,
+    };
+
+    const warnings: string[] = [];
+
+    try {
+      // Check R2 bucket (list operation is lightweight)
+      await env.SECOND_BRAIN_BUCKET.list({ limit: 1 });
+      bindings.r2 = true;
+    } catch {
+      warnings.push('R2 bucket not accessible');
+    }
+
+    try {
+      // Check KV namespaces (get operation is lightweight)
+      await env.OAUTH_KV.get('__health_check__');
+      bindings.oauth_kv = true;
+    } catch {
+      warnings.push('OAUTH_KV not accessible');
+    }
+
+    try {
+      await env.RATE_LIMIT_KV.get('__health_check__');
+      bindings.rate_limit_kv = true;
+    } catch {
+      warnings.push('RATE_LIMIT_KV not accessible');
+    }
+
+    try {
+      await env.FEATURE_FLAGS_KV.get('__health_check__');
+      bindings.feature_flags_kv = true;
+    } catch {
+      warnings.push('FEATURE_FLAGS_KV not accessible');
+    }
+
+    try {
+      // Check Analytics Engine binding exists
+      if (env.ANALYTICS) {
+        bindings.analytics = true;
+      } else {
+        warnings.push('ANALYTICS binding not configured');
+      }
+    } catch {
+      warnings.push('ANALYTICS not accessible');
+    }
+
+    try {
+      // Check Durable Objects binding exists
+      if (env.MCP_SESSIONS) {
+        bindings.mcp_sessions = true;
+      } else {
+        warnings.push('MCP_SESSIONS binding not configured');
+      }
+    } catch {
+      warnings.push('MCP_SESSIONS not accessible');
+    }
+
+    const allBindingsHealthy = Object.values(bindings).every((b) => b);
+
     return new Response(
       JSON.stringify({
-        status: 'ok',
+        status: allBindingsHealthy ? 'ok' : 'degraded',
         timestamp: new Date().toISOString(),
         service: 'second-brain-mcp',
         version: getVersionString(),
@@ -232,6 +298,8 @@ export async function githubOAuthHandler(
               ? VERSION_INFO.environment
               : 'development',
         },
+        bindings,
+        warnings: warnings.length > 0 ? warnings : undefined,
       }),
       {
         status: 200,
