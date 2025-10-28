@@ -43,7 +43,11 @@ describe('ArcticGitHubOAuthProvider', () => {
 
       (GitHub as jest.Mock).mockImplementation(() => mockGitHubInstance);
 
-      const provider = new ArcticGitHubOAuthProvider('client_id', 'client_secret', 'http://localhost/callback');
+      const provider = new ArcticGitHubOAuthProvider(
+        'client_id',
+        'client_secret',
+        'http://localhost/callback',
+      );
 
       // Should not throw, should return undefined for both optional fields
       const tokens = await provider.validateAuthorizationCode('test_code');
@@ -75,7 +79,11 @@ describe('ArcticGitHubOAuthProvider', () => {
 
       (GitHub as jest.Mock).mockImplementation(() => mockGitHubInstance);
 
-      const provider = new ArcticGitHubOAuthProvider('client_id', 'client_secret', 'http://localhost/callback');
+      const provider = new ArcticGitHubOAuthProvider(
+        'client_id',
+        'client_secret',
+        'http://localhost/callback',
+      );
 
       const tokens = await provider.validateAuthorizationCode('test_code');
 
@@ -107,7 +115,11 @@ describe('ArcticGitHubOAuthProvider', () => {
 
       (GitHub as jest.Mock).mockImplementation(() => mockGitHubInstance);
 
-      const provider = new ArcticGitHubOAuthProvider('client_id', 'client_secret', 'http://localhost/callback');
+      const provider = new ArcticGitHubOAuthProvider(
+        'client_id',
+        'client_secret',
+        'http://localhost/callback',
+      );
 
       const tokens = await provider.validateAuthorizationCode('test_code');
 
@@ -122,17 +134,25 @@ describe('ArcticGitHubOAuthProvider', () => {
   describe('createAuthorizationURL', () => {
     it('should delegate to Arctic GitHub provider', () => {
       const mockGitHubInstance = {
-        createAuthorizationURL: jest.fn().mockReturnValue(new URL('https://github.com/login/oauth/authorize')),
+        createAuthorizationURL: jest
+          .fn()
+          .mockReturnValue(new URL('https://github.com/login/oauth/authorize')),
         validateAuthorizationCode: jest.fn(),
       };
 
       (GitHub as jest.Mock).mockImplementation(() => mockGitHubInstance);
 
-      const provider = new ArcticGitHubOAuthProvider('client_id', 'client_secret', 'http://localhost/callback');
+      const provider = new ArcticGitHubOAuthProvider(
+        'client_id',
+        'client_secret',
+        'http://localhost/callback',
+      );
 
       const url = provider.createAuthorizationURL('test_state', ['read:user']);
 
-      expect(mockGitHubInstance.createAuthorizationURL).toHaveBeenCalledWith('test_state', ['read:user']);
+      expect(mockGitHubInstance.createAuthorizationURL).toHaveBeenCalledWith('test_state', [
+        'read:user',
+      ]);
       expect(url.hostname).toBe('github.com');
     });
   });
@@ -155,7 +175,11 @@ describe('ArcticGitHubOAuthProvider', () => {
         json: async () => mockUserData,
       });
 
-      const provider = new ArcticGitHubOAuthProvider('client_id', 'client_secret', 'http://localhost/callback');
+      const provider = new ArcticGitHubOAuthProvider(
+        'client_id',
+        'client_secret',
+        'http://localhost/callback',
+      );
 
       const user = await provider.getUserInfo('mock_access_token');
 
@@ -175,7 +199,11 @@ describe('ArcticGitHubOAuthProvider', () => {
         status: 401,
       });
 
-      const provider = new ArcticGitHubOAuthProvider('client_id', 'client_secret', 'http://localhost/callback');
+      const provider = new ArcticGitHubOAuthProvider(
+        'client_id',
+        'client_secret',
+        'http://localhost/callback',
+      );
 
       await expect(provider.getUserInfo('invalid_token')).rejects.toThrow('GitHub API error: 401');
     });
