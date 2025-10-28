@@ -61,13 +61,18 @@ export class MockGitHubOAuthProvider implements GitHubOAuthProvider {
     // This is acceptable for testing since we're testing the MCP server,
     // not GitHub's OAuth implementation.
 
-    // IMPORTANT: GitHub OAuth apps do NOT return refresh tokens
-    // Only GitHub Apps (not OAuth apps) return refresh tokens
-    // This mock matches real GitHub OAuth app behavior
+    // IMPORTANT: Match EXACT GitHub OAuth app response
+    // GitHub OAuth apps return:
+    // - access_token (required)
+    // - token_type (optional)
+    // - scope (optional)
+    // GitHub OAuth apps do NOT return:
+    // - refresh_token (only GitHub Apps return this)
+    // - expires_in (GitHub access tokens don't expire)
     return Promise.resolve({
       accessToken: this.accessToken,
-      refreshToken: undefined, // GitHub OAuth apps don't return refresh tokens
-      expiresIn: 3600,
+      refreshToken: undefined, // Not returned by GitHub OAuth apps
+      expiresIn: undefined, // Not returned by GitHub OAuth apps (tokens don't expire)
     });
   }
 

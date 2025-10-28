@@ -20,14 +20,20 @@ describe('ArcticGitHubOAuthProvider', () => {
   });
 
   describe('validateAuthorizationCode', () => {
-    it('should handle missing refresh token gracefully (GitHub OAuth apps)', async () => {
-      // Mock tokens object that throws on refreshToken() - simulates GitHub OAuth app behavior
+    it('should handle GitHub OAuth app response (no refresh_token, no expires_in)', async () => {
+      // Mock tokens object that matches real GitHub OAuth app behavior:
+      // - Returns access_token
+      // - hasRefreshToken() returns false
+      // - accessTokenExpiresAt() throws (no expires_in field)
       const mockTokens = {
         accessToken: jest.fn().mockReturnValue('mock_access_token'),
+        hasRefreshToken: jest.fn().mockReturnValue(false),
         refreshToken: jest.fn().mockImplementation(() => {
           throw new Error("Missing or invalid 'refresh_token' field");
         }),
-        accessTokenExpiresAt: jest.fn().mockReturnValue(new Date(Date.now() + 3600000)),
+        accessTokenExpiresAt: jest.fn().mockImplementation(() => {
+          throw new Error("Missing or invalid 'expires_in' field");
+        }),
       };
 
       const mockGitHubInstance = {
@@ -39,22 +45,25 @@ describe('ArcticGitHubOAuthProvider', () => {
 
       const provider = new ArcticGitHubOAuthProvider('client_id', 'client_secret', 'http://localhost/callback');
 
-      // Should not throw, should return undefined for refreshToken
+      // Should not throw, should return undefined for both optional fields
       const tokens = await provider.validateAuthorizationCode('test_code');
 
       expect(tokens).toEqual({
         accessToken: 'mock_access_token',
-        refreshToken: undefined, // Should be undefined, not throw
-        expiresIn: expect.any(Number),
+        refreshToken: undefined, // Not returned by GitHub OAuth apps
+        expiresIn: undefined, // Not returned by GitHub OAuth apps
       });
 
       expect(mockGitHubInstance.validateAuthorizationCode).toHaveBeenCalledWith('test_code');
+      expect(mockTokens.hasRefreshToken).toHaveBeenCalled();
+      expect(mockTokens.refreshToken).not.toHaveBeenCalled(); // Should not call when hasRefreshToken is false
     });
 
-    it('should include refresh token when available (GitHub Apps)', async () => {
-      // Mock tokens that return refresh token - simulates GitHub App behavior
+    it('should include refresh token and expires_in when available (GitHub Apps)', async () => {
+      // Mock tokens that return refresh token and expiry - simulates GitHub App behavior
       const mockTokens = {
         accessToken: jest.fn().mockReturnValue('mock_access_token'),
+        hasRefreshToken: jest.fn().mockReturnValue(true),
         refreshToken: jest.fn().mockReturnValue('mock_refresh_token'),
         accessTokenExpiresAt: jest.fn().mockReturnValue(new Date(Date.now() + 3600000)),
       };
@@ -73,17 +82,22 @@ describe('ArcticGitHubOAuthProvider', () => {
       expect(tokens).toEqual({
         accessToken: 'mock_access_token',
         refreshToken: 'mock_refresh_token', // Should include when available
-        expiresIn: expect.any(Number),
+        expiresIn: expect.any(Number), // Should include when available
       });
+
+      expect(mockTokens.hasRefreshToken).toHaveBeenCalled();
+      expect(mockTokens.refreshToken).toHaveBeenCalled(); // Should call when hasRefreshToken is true
     });
 
-    it('should handle missing expiry time', async () => {
+    it('should handle refresh token without expiry', async () => {
+      // Edge case: GitHub App with refresh token but no expiry time
       const mockTokens = {
         accessToken: jest.fn().mockReturnValue('mock_access_token'),
-        refreshToken: jest.fn().mockImplementation(() => {
-          throw new Error("Missing or invalid 'refresh_token' field");
+        hasRefreshToken: jest.fn().mockReturnValue(true),
+        refreshToken: jest.fn().mockReturnValue('mock_refresh_token'),
+        accessTokenExpiresAt: jest.fn().mockImplementation(() => {
+          throw new Error("Missing or invalid 'expires_in' field");
         }),
-        accessTokenExpiresAt: jest.fn().mockReturnValue(null), // No expiry time
       };
 
       const mockGitHubInstance = {
@@ -99,7 +113,7 @@ describe('ArcticGitHubOAuthProvider', () => {
 
       expect(tokens).toEqual({
         accessToken: 'mock_access_token',
-        refreshToken: undefined,
+        refreshToken: 'mock_refresh_token',
         expiresIn: undefined, // Should be undefined when no expiry
       });
     });

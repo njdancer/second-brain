@@ -23,22 +23,31 @@ export class ArcticGitHubOAuthProvider implements GitHubOAuthProvider {
   async validateAuthorizationCode(code: string): Promise<GitHubTokens> {
     const tokens = await this.github.validateAuthorizationCode(code);
 
-    // GitHub OAuth apps don't return refresh tokens (only GitHub Apps do)
-    // Arctic throws if refresh_token field is missing, so we handle it gracefully
-    let refreshToken: string | undefined;
-    try {
-      refreshToken = tokens.refreshToken();
-    } catch {
-      // Refresh token not available (expected for GitHub OAuth apps)
-      refreshToken = undefined;
-    }
+    // GitHub OAuth apps return limited fields compared to GitHub Apps:
+    // - access_token (required)
+    // - token_type (optional)
+    // - scope (optional)
+    // GitHub OAuth apps do NOT return:
+    // - refresh_token (only GitHub Apps return this)
+    // - expires_in (GitHub access tokens don't expire)
+    //
+    // Arctic's methods throw when fields are missing, so we check/handle gracefully
 
     return {
       accessToken: tokens.accessToken(),
-      refreshToken,
-      expiresIn: tokens.accessTokenExpiresAt()
-        ? Math.floor((tokens.accessTokenExpiresAt().getTime() - Date.now()) / 1000)
-        : undefined,
+      // Use hasRefreshToken() to check before calling refreshToken()
+      refreshToken: tokens.hasRefreshToken() ? tokens.refreshToken() : undefined,
+      // GitHub OAuth apps don't return expires_in, so accessTokenExpiresAt() would throw
+      // Wrap in try-catch since there's no hasExpiresIn() method
+      expiresIn: (() => {
+        try {
+          const expiresAt = tokens.accessTokenExpiresAt();
+          return Math.floor((expiresAt.getTime() - Date.now()) / 1000);
+        } catch {
+          // No expiry time (expected for GitHub OAuth apps)
+          return undefined;
+        }
+      })(),
     };
   }
 
