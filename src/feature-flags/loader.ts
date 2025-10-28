@@ -12,7 +12,7 @@
 
 import type { Env } from '../index';
 import { FlagSchemas, type FlagValues, getSchemaDefaults } from './schemas';
-import { Logger } from '../logger';
+import type { Logger } from '../logger';
 
 /**
  * Create flag set key for KV storage
@@ -93,7 +93,7 @@ const mergeFlagValues = (
   if (kvFlags) {
     for (const [key, value] of Object.entries(kvFlags)) {
       if (key in merged) {
-        merged[key as keyof FlagValues] = value as FlagValues[keyof FlagValues];
+        merged[key as keyof FlagValues] = value;
       }
     }
   }

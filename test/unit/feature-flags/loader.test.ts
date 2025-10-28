@@ -214,6 +214,7 @@ describe('Feature Flag Loader', () => {
       expect(flags2.EXAMPLE_FEATURE).toBe(true); // Still true from cache
 
       // Verify KV was only called once
+      // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(mockKV.get).toHaveBeenCalledTimes(1);
     });
 

@@ -26,7 +26,7 @@ export type FlagSetAssignmentFn = (
  */
 export const assignByEnvironment: FlagSetAssignmentFn = (
   _request: Request,
-  env: Env,
+  _env: Env,
 ): string | null => {
   // Check if we're in development environment
   // Development workers typically have '-dev' suffix in their name
