@@ -9,6 +9,9 @@ import {
   CallToolRequestSchema,
   ListPromptsRequestSchema,
   GetPromptRequestSchema,
+  ListResourcesRequestSchema,
+  ReadResourceRequestSchema,
+  ListResourceTemplatesRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import type { StorageService } from './storage';
 import type { RateLimiter } from './rate-limiting';
@@ -39,6 +42,10 @@ export function createMCPServerInstance(
       capabilities: {
         tools: {},
         prompts: {},
+        resources: {
+          subscribe: false,
+          listChanged: false,
+        },
       },
       instructions: `Your personal knowledge management assistant using Building a Second Brain (BASB) methodology.
 
@@ -391,6 +398,102 @@ Please:
           content: {
             type: 'text',
             text: message,
+          },
+        },
+      ],
+    };
+  });
+
+  // Register resource handlers
+  server.setRequestHandler(ListResourcesRequestSchema, async () => {
+    try {
+      // List all objects from storage
+      const objects = await storage.listObjects();
+
+      // Convert storage objects to MCP resources
+      const resources = objects.map((obj) => ({
+        uri: `file:///${obj.key}`,
+        name: obj.key.split('/').pop() || obj.key,
+        title: obj.key,
+        description: `Document in ${obj.key.split('/').slice(0, -1).join('/')}`,
+        mimeType: obj.key.endsWith('.md') ? 'text/markdown' : 'text/plain',
+        annotations: {
+          audience: ['user'] as ('user' | 'assistant')[],
+          priority: 0.5,
+          lastModified: obj.modified.toISOString(),
+        },
+      }));
+
+      return {
+        resources,
+      };
+    } catch (error) {
+      console.error('List resources error:', error);
+      throw error;
+    }
+  });
+
+  server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+    try {
+      const { uri } = request.params;
+
+      // Extract path from file:/// URI
+      if (!uri.startsWith('file:///')) {
+        throw new Error(`Unsupported URI scheme: ${uri}`);
+      }
+
+      const path = uri.substring('file:///'.length);
+
+      // Read file from storage
+      const content = await storage.getObject(path);
+
+      if (content === null) {
+        const error: Error & { code?: number } = new Error(`Resource not found: ${uri}`);
+        error.code = -32002;
+        throw error;
+      }
+
+      // Get file metadata
+      const objects = await storage.listObjects();
+      const fileObj = objects.find((obj) => obj.key === path);
+
+      return {
+        contents: [
+          {
+            uri,
+            name: path.split('/').pop() || path,
+            title: path,
+            mimeType: path.endsWith('.md') ? 'text/markdown' : 'text/plain',
+            text: content,
+            annotations: fileObj
+              ? {
+                  audience: ['user'] as ('user' | 'assistant')[],
+                  priority: 0.5,
+                  lastModified: fileObj.modified.toISOString(),
+                }
+              : undefined,
+          },
+        ],
+      };
+    } catch (error) {
+      console.error('Read resource error:', error);
+      throw error;
+    }
+  });
+
+  server.setRequestHandler(ListResourceTemplatesRequestSchema, () => {
+    return {
+      resourceTemplates: [
+        {
+          uriTemplate: 'file:///{path}',
+          name: 'Second Brain Documents',
+          title: '🧠 Second Brain Documents',
+          description:
+            'Access any document in your second brain by path (e.g., projects/app/notes.md)',
+          mimeType: 'text/markdown',
+          annotations: {
+            audience: ['user'] as ('user' | 'assistant')[],
+            priority: 0.7,
           },
         },
       ],

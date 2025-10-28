@@ -297,7 +297,6 @@ describe('Monitoring System', () => {
       };
 
       const monitoringWithFailure = new MonitoringService(failingAnalytics as any);
-
       expect(() => monitoringWithFailure.recordBackupEvent(10, 2, 1500000)).not.toThrow();
     });
   });

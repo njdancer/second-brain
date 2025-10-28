@@ -2,9 +2,16 @@
 
 **Project:** MCP Server for Building a Second Brain (BASB)
 **Status:** 🎉 **PRODUCTION - Claude Integration Working!**
-**Last Updated:** 2025-10-22
+**Last Updated:** 2025-10-25
 
 **Recent Changes:**
+- ✅ Implemented MCP Resources (Phase 19.1)
+  - Exposed all second brain documents as MCP resources
+  - Added resources/list handler to list all files with metadata
+  - Added resources/read handler for file content access
+  - Added resource templates for dynamic file access
+  - Resources surfaced in Claude with file:/// URI scheme
+  - Full test coverage (11 tests passing)
 - ✅ Completed Phase 18.2: High Priority Features (all 4 tasks)
   - Automatic rollback on health check failure
   - Feature flags KV namespace infrastructure ready
@@ -37,6 +44,10 @@
   - `edit` - String replacement, move, rename, delete
   - `glob` - Pattern-based file search
   - `grep` - Regex content search
+- ✅ **Resources exposed and accessible:**
+  - All second brain documents surfaced as MCP resources
+  - Documents accessible via file:/// URIs
+  - Resource templates for dynamic file access
 - ✅ **Prompts detected in Claude** (assumed functional)
 - ✅ Session ID persistence working correctly
 - ✅ Tools menu appearing and tools executing successfully
