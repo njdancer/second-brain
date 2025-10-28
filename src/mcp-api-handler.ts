@@ -20,6 +20,22 @@ interface MCPProps {
 }
 
 /**
+ * ExecutionContext with OAuth props typed using the generic parameter
+ * OAuthProvider sets props after token validation
+ */
+type MCPExecutionContext = ExecutionContext<MCPProps>;
+
+/**
+ * MCP JSON-RPC request body
+ */
+interface MCPRequestBody {
+  jsonrpc: '2.0';
+  method: string;
+  id: string | number | null;
+  params?: Record<string, unknown>;
+}
+
+/**
  * Main MCP API handler
  * Called by OAuthProvider after validating the OAuth token
  * User information is available in ctx.props (injected by OAuthProvider)
@@ -27,7 +43,7 @@ interface MCPProps {
 export async function mcpApiHandler(
   request: Request,
   env: Env,
-  ctx: ExecutionContext
+  ctx: MCPExecutionContext,
 ): Promise<Response> {
   const requestId = generateRequestId();
   const logger = new Logger({ requestId });
@@ -45,11 +61,11 @@ export async function mcpApiHandler(
 
   try {
     // Get user ID from props (set by OAuthProvider after token validation)
-    const props = (ctx as any).props as MCPProps | undefined;
-    const userId = props?.userId;
+    const props = ctx.props;
 
-    if (!userId) {
-      logger.warn('Unauthorized MCP request - missing user ID');
+    // Type guard to ensure props is defined (should always be set by OAuthProvider)
+    if (!props || !props.userId) {
+      logger.warn('Unauthorized MCP request - missing user ID in props');
       return new Response(
         JSON.stringify({
           jsonrpc: '2.0',
@@ -62,9 +78,11 @@ export async function mcpApiHandler(
         {
           status: 403,
           headers: { 'Content-Type': 'application/json' },
-        }
+        },
       );
     }
+
+    const userId = props.userId;
 
     // Create child logger with user context
     const userLogger = logger.child({
@@ -74,7 +92,7 @@ export async function mcpApiHandler(
 
     // Parse JSON body only for POST requests
     // GET is used for SSE streaming, DELETE for session termination
-    let body: any = undefined;
+    let body: MCPRequestBody | undefined = undefined;
     if (request.method === 'POST') {
       body = await request.json();
     }
@@ -84,7 +102,12 @@ export async function mcpApiHandler(
     userLogger.info('MCP request authenticated', {
       httpMethod: request.method,
       method: body?.method,
-      requestId: body?.id,
+      requestId:
+        typeof body?.id === 'number'
+          ? body.id.toString()
+          : typeof body?.id === 'string'
+            ? body.id
+            : undefined,
       isInitialize,
     });
 
@@ -124,15 +147,16 @@ export async function mcpApiHandler(
             'Content-Type': 'application/json',
             'Retry-After': rateLimitResult.retryAfter?.toString() || '60',
           },
-        }
+        },
       );
     }
 
     // Extract or generate session ID
     // Check multiple possible locations where client might send it
-    let sessionId = request.headers.get('mcp-session-id') ||
-                    request.headers.get('x-mcp-session-id') ||
-                    request.headers.get('session-id');
+    let sessionId =
+      request.headers.get('mcp-session-id') ||
+      request.headers.get('x-mcp-session-id') ||
+      request.headers.get('session-id');
 
     userLogger.info('Session ID extraction', {
       foundInHeaders: !!sessionId,
@@ -176,7 +200,7 @@ export async function mcpApiHandler(
         {
           status: 400,
           headers: { 'Content-Type': 'application/json' },
-        }
+        },
       );
     }
 
@@ -240,7 +264,7 @@ export async function mcpApiHandler(
       {
         status: 500,
         headers: { 'Content-Type': 'application/json' },
-      }
+      },
     );
   }
 }
@@ -249,7 +273,8 @@ export async function mcpApiHandler(
  * Export the handler for OAuthProvider apiHandler configuration
  */
 export const MCPHandler = {
-  async fetch(request: Request, env: any, ctx: any): Promise<Response> {
-    return mcpApiHandler(request, env, ctx);
-  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async fetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
+    return mcpApiHandler(request, env as Env, ctx as MCPExecutionContext);
+  },
 };

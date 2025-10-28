@@ -10,7 +10,8 @@
  * This tests the COMPLETE flow with a legitimate MCP client.
  */
 
-import { spawn, ChildProcess } from 'child_process';
+import type { ChildProcess } from 'child_process';
+import { spawn } from 'child_process';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import crypto from 'crypto';
@@ -22,25 +23,29 @@ describe('MCP Full Flow E2E (Real MCP Client)', () => {
 
   // Shared test state across describe blocks
   let sharedAccessToken: string;
-  let sharedMcpClient: Client;
+  let _sharedMcpClient: Client;
 
   beforeAll(async () => {
     console.log('Starting Worker with wrangler dev...');
 
     // Start Worker in background with TEST_MODE enabled (via wrangler.test.toml)
-    workerProcess = spawn('pnpm', [
-      'wrangler',
-      'dev',
-      '--config',
-      'wrangler.test.toml',
-      '--port',
-      port.toString(),
-      '--log-level',
-      'info',
-    ], {
-      cwd: process.cwd(),
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
+    workerProcess = spawn(
+      'pnpm',
+      [
+        'wrangler',
+        'dev',
+        '--config',
+        'wrangler.test.toml',
+        '--port',
+        port.toString(),
+        '--log-level',
+        'info',
+      ],
+      {
+        cwd: process.cwd(),
+        stdio: ['ignore', 'pipe', 'pipe'],
+      },
+    );
 
     baseUrl = `http://127.0.0.1:${port}`;
 
@@ -100,7 +105,7 @@ describe('MCP Full Flow E2E (Real MCP Client)', () => {
     console.log(`✅ Worker started successfully at ${baseUrl}`);
 
     // Give it a moment to fully initialize
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise((resolve) => setTimeout(resolve, 2000));
   }, 60000);
 
   afterAll(async () => {
@@ -129,18 +134,50 @@ describe('MCP Full Flow E2E (Real MCP Client)', () => {
       const response = await fetch(`${baseUrl}/health`);
       expect(response.status).toBe(200);
 
-      const data = await response.json();
-      expect(data).toEqual(expect.objectContaining({
-        status: 'ok',
-        timestamp: expect.any(String),
-        service: 'second-brain-mcp',
-        version: expect.any(String),
-        build: expect.objectContaining({
-          commit: expect.any(String),
-          time: expect.any(String),
-          environment: expect.any(String),
+      const data: {
+        status: string;
+        timestamp: string;
+        service: string;
+        version: string;
+        build: {
+          commit: string;
+          time: string;
+          environment: string;
+        };
+        bindings?: {
+          r2: boolean;
+          oauth_kv: boolean;
+          rate_limit_kv: boolean;
+          feature_flags_kv: boolean;
+          analytics: boolean;
+          mcp_sessions: boolean;
+        };
+        warnings?: string[];
+      } = await response.json();
+
+      expect(data).toEqual(
+        expect.objectContaining({
+          status: expect.stringMatching(/^(ok|degraded)$/), // Allow degraded in test environment
+          timestamp: expect.any(String),
+          service: 'second-brain-mcp',
+          version: expect.any(String),
+          build: expect.objectContaining({
+            commit: expect.any(String),
+            time: expect.any(String),
+            environment: expect.any(String),
+          }),
+          bindings: expect.any(Object),
         }),
-      }));
+      );
+
+      // Verify bindings object structure
+      expect(data.bindings).toBeDefined();
+      expect(typeof data.bindings?.r2).toBe('boolean');
+      expect(typeof data.bindings?.oauth_kv).toBe('boolean');
+      expect(typeof data.bindings?.rate_limit_kv).toBe('boolean');
+      expect(typeof data.bindings?.feature_flags_kv).toBe('boolean');
+      expect(typeof data.bindings?.analytics).toBe('boolean');
+      expect(typeof data.bindings?.mcp_sessions).toBe('boolean');
     });
   });
 
@@ -160,7 +197,8 @@ describe('MCP Full Flow E2E (Real MCP Client)', () => {
       });
 
       expect(response.status).toBe(201); // Created
-      const data: any = await response.json();
+      const data: { client_id: string; client_secret?: string; redirect_uris?: string[] } =
+        await response.json();
       expect(data).toHaveProperty('client_id');
       expect(typeof data.client_id).toBe('string');
 
@@ -178,14 +216,11 @@ describe('MCP Full Flow E2E (Real MCP Client)', () => {
           token_endpoint_auth_method: 'none',
         }),
       });
-      const { client_id } = (await registerResponse.json()) as any;
+      const { client_id }: { client_id: string } = await registerResponse.json();
 
       // Generate PKCE parameters
       codeVerifier = crypto.randomBytes(32).toString('base64url');
-      codeChallenge = crypto
-        .createHash('sha256')
-        .update(codeVerifier)
-        .digest('base64url');
+      codeChallenge = crypto.createHash('sha256').update(codeVerifier).digest('base64url');
 
       const state = crypto.randomBytes(32).toString('base64url');
       const authorizeUrl = new URL(`${baseUrl}/authorize`);
@@ -218,14 +253,11 @@ describe('MCP Full Flow E2E (Real MCP Client)', () => {
           token_endpoint_auth_method: 'none',
         }),
       });
-      const { client_id } = (await registerResponse.json()) as any;
+      const { client_id }: { client_id: string } = await registerResponse.json();
 
       // Generate PKCE
       const verifier = crypto.randomBytes(32).toString('base64url');
-      const challenge = crypto
-        .createHash('sha256')
-        .update(verifier)
-        .digest('base64url');
+      const challenge = crypto.createHash('sha256').update(verifier).digest('base64url');
 
       const state = crypto.randomBytes(32).toString('base64url');
 
@@ -292,7 +324,8 @@ describe('MCP Full Flow E2E (Real MCP Client)', () => {
       });
 
       expect(tokenResponse.status).toBe(200);
-      const tokenData: any = await tokenResponse.json();
+      const tokenData: { access_token: string; token_type: string; expires_in?: number } =
+        await tokenResponse.json();
       expect(tokenData).toHaveProperty('access_token');
       expect(tokenData.token_type.toLowerCase()).toBe('bearer');
 
@@ -337,14 +370,11 @@ describe('MCP Full Flow E2E (Real MCP Client)', () => {
           token_endpoint_auth_method: 'none',
         }),
       });
-      const { client_id } = (await registerResponse.json()) as any;
+      const { client_id }: { client_id: string } = await registerResponse.json();
 
       // Generate PKCE
       const verifier = crypto.randomBytes(32).toString('base64url');
-      const challenge = crypto
-        .createHash('sha256')
-        .update(verifier)
-        .digest('base64url');
+      const challenge = crypto.createHash('sha256').update(verifier).digest('base64url');
 
       const state = crypto.randomBytes(32).toString('base64url');
 
@@ -392,7 +422,7 @@ describe('MCP Full Flow E2E (Real MCP Client)', () => {
         }),
       });
 
-      const tokenData: any = await tokenResponse.json();
+      const tokenData: { access_token: string; token_type: string } = await tokenResponse.json();
       accessToken = tokenData.access_token;
       sharedAccessToken = accessToken; // Store in shared variable
 
@@ -401,26 +431,26 @@ describe('MCP Full Flow E2E (Real MCP Client)', () => {
 
     test('should initialize MCP session with real SDK client', async () => {
       // Create MCP client with real SDK
-      const transport = new StreamableHTTPClientTransport(
-        new URL(`${baseUrl}/mcp`),
-        {
-          requestInit: {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
+      const transport = new StreamableHTTPClientTransport(new URL(`${baseUrl}/mcp`), {
+        requestInit: {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
           },
-        }
-      );
-
-      mcpClient = new Client({
-        name: 'test-client',
-        version: '1.0.0',
-      }, {
-        capabilities: {},
+        },
       });
 
+      mcpClient = new Client(
+        {
+          name: 'test-client',
+          version: '1.0.0',
+        },
+        {
+          capabilities: {},
+        },
+      );
+
       await mcpClient.connect(transport);
-      sharedMcpClient = mcpClient; // Store in shared variable
+      _sharedMcpClient = mcpClient; // Store in shared variable
 
       console.log(`✅ MCP client connected`);
 
@@ -437,7 +467,7 @@ describe('MCP Full Flow E2E (Real MCP Client)', () => {
 
       expect(tools.tools).toHaveLength(5);
 
-      const toolNames = tools.tools.map(t => t.name);
+      const toolNames = tools.tools.map((t) => t.name);
       expect(toolNames).toContain('read');
       expect(toolNames).toContain('write');
       expect(toolNames).toContain('edit');
@@ -452,7 +482,7 @@ describe('MCP Full Flow E2E (Real MCP Client)', () => {
 
       expect(prompts.prompts).toHaveLength(3);
 
-      const promptNames = prompts.prompts.map(p => p.name);
+      const promptNames = prompts.prompts.map((p) => p.name);
       expect(promptNames).toContain('capture-note');
       expect(promptNames).toContain('weekly-review');
       expect(promptNames).toContain('research-summary');
@@ -526,7 +556,7 @@ describe('MCP Full Flow E2E (Real MCP Client)', () => {
 
       // Server should reject with error response, not crash
       expect(response.status).toBeLessThan(500); // Not a server error
-      const result = await response.json();
+      const result: { error?: unknown; result?: { isError?: boolean } } = await response.json();
       expect(result.error || result.result?.isError).toBeTruthy();
 
       console.log('✅ Invalid tool parameters handled gracefully');

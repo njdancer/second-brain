@@ -21,10 +21,7 @@ export interface EditResult {
 /**
  * Edit file (string replacement, move, rename, or delete)
  */
-export async function editTool(
-  params: EditParams,
-  storage: StorageService
-): Promise<EditResult> {
+export async function editTool(params: EditParams, storage: StorageService): Promise<EditResult> {
   try {
     // Validate path
     if (!params.path || params.path.trim() === '') {

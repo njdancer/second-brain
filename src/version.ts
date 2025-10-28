@@ -5,7 +5,12 @@
  * In development, they show placeholder values.
  */
 
-export const VERSION_INFO = {
+export const VERSION_INFO: {
+  version: string;
+  commit: string;
+  buildTime: string;
+  environment: string;
+} = {
   /** Version tag (e.g., "25.1.0") */
   version: '__VERSION__',
 
@@ -17,7 +22,7 @@ export const VERSION_INFO = {
 
   /** Environment (development or production) */
   environment: '__ENVIRONMENT__',
-} as const;
+};
 
 /**
  * Get formatted version string for display

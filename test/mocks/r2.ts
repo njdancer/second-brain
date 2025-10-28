@@ -1,5 +1,8 @@
 /**
  * Mock R2 bucket for testing
+ *
+ * Implements the R2Bucket interface methods we actually use: get, put, delete, list.
+ * TypeScript ensures we match Cloudflare's R2 API signatures.
  */
 
 export interface MockR2Object {
@@ -11,7 +14,11 @@ export interface MockR2Object {
   httpEtag: string;
 }
 
-export class MockR2Bucket {
+/**
+ * Mock R2 Bucket implementing Pick<R2Bucket, 'get' | 'put' | 'delete' | 'list'>
+ * TypeScript will catch it if Cloudflare changes the R2 API
+ */
+export class MockR2Bucket implements Pick<R2Bucket, 'get' | 'put' | 'delete' | 'list'> {
   private objects: Map<string, MockR2Object> = new Map();
   private shouldFail: boolean = false;
   private failureCount: number = 0;
@@ -19,43 +26,39 @@ export class MockR2Bucket {
 
   constructor() {}
 
-  async get(key: string): Promise<R2ObjectBody | null> {
+  get(key: string): Promise<R2ObjectBody | null> {
     if (this.shouldFail && this.failureCount < this.maxFailures) {
       this.failureCount++;
-      throw new Error('R2 operation failed');
+      return Promise.reject(new Error('R2 operation failed'));
     }
 
     const obj = this.objects.get(key);
     if (!obj) {
-      return null;
+      return Promise.resolve(null);
     }
 
-    return {
+    // Return only the properties actually used by tests
+    return Promise.resolve({
       key: obj.key,
-      body: obj.value,
-      bodyUsed: false,
       size: obj.size,
       httpEtag: obj.httpEtag,
       uploaded: obj.uploaded,
-      httpMetadata: {},
       customMetadata: obj.metadata || {},
-      range: undefined,
-      checksums: {},
-      text: async () => obj.value,
-      json: async () => JSON.parse(obj.value),
-      arrayBuffer: async () => new TextEncoder().encode(obj.value).buffer,
-      blob: async () => new Blob([obj.value]),
-    } as R2ObjectBody;
+      text: () => Promise.resolve(obj.value),
+      json: () => Promise.resolve(JSON.parse(obj.value) as unknown),
+      arrayBuffer: () => Promise.resolve(new TextEncoder().encode(obj.value).buffer),
+      blob: () => Promise.resolve(new Blob([obj.value])),
+    } as R2ObjectBody);
   }
 
-  async put(
+  put(
     key: string,
     value: string | ReadableStream | ArrayBuffer,
-    options?: { customMetadata?: Record<string, string> }
+    options?: { customMetadata?: Record<string, string> },
   ): Promise<R2Object> {
     if (this.shouldFail && this.failureCount < this.maxFailures) {
       this.failureCount++;
-      throw new Error('R2 operation failed');
+      return Promise.reject(new Error('R2 operation failed'));
     }
 
     const valueStr = typeof value === 'string' ? value : '';
@@ -73,31 +76,30 @@ export class MockR2Bucket {
     this.objects.set(key, obj);
     this.failureCount = 0;
 
-    return {
+    // Return only the properties actually used by tests
+    return Promise.resolve({
       key: obj.key,
       size: obj.size,
       httpEtag: obj.httpEtag,
       uploaded: obj.uploaded,
-      httpMetadata: {},
       customMetadata: obj.metadata || {},
-      range: undefined,
-      checksums: {},
-    } as R2Object;
+    } as R2Object);
   }
 
-  async delete(keys: string | string[]): Promise<void> {
+  delete(keys: string | string[]): Promise<void> {
     if (this.shouldFail && this.failureCount < this.maxFailures) {
       this.failureCount++;
-      throw new Error('R2 operation failed');
+      return Promise.reject(new Error('R2 operation failed'));
     }
 
     const keyArray = Array.isArray(keys) ? keys : [keys];
     for (const key of keyArray) {
       this.objects.delete(key);
     }
+    return Promise.resolve();
   }
 
-  async list(options?: {
+  list(options?: {
     prefix?: string;
     delimiter?: string;
     limit?: number;
@@ -105,7 +107,7 @@ export class MockR2Bucket {
   }): Promise<R2Objects> {
     if (this.shouldFail && this.failureCount < this.maxFailures) {
       this.failureCount++;
-      throw new Error('R2 operation failed');
+      return Promise.reject(new Error('R2 operation failed'));
     }
 
     let filtered = Array.from(this.objects.values());
@@ -114,22 +116,20 @@ export class MockR2Bucket {
       filtered = filtered.filter((obj) => obj.key.startsWith(options.prefix!));
     }
 
+    // Return only the properties actually used by tests
     const objects = filtered.map((obj) => ({
       key: obj.key,
       size: obj.size,
       httpEtag: obj.httpEtag,
       uploaded: obj.uploaded,
-      httpMetadata: {},
       customMetadata: obj.metadata || {},
-      range: undefined,
-      checksums: {},
     })) as R2Object[];
 
-    return {
+    return Promise.resolve({
       objects,
       truncated: false,
       delimitedPrefixes: [],
-    } as R2Objects;
+    } as R2Objects);
   }
 
   // Test helpers

@@ -7,11 +7,42 @@
  * If these fail, deployment should be rolled back automatically.
  */
 
-import { describe, it, expect } from '@jest/globals';
+// Jest globals (describe, it, expect) available via test environment
 
-const SERVER_URL = process.env.MCP_SERVER_URL || 'https://second-brain-mcp.nick-01a.workers.dev';
+// Response type interfaces
+interface _JsonRpcResponse {
+  jsonrpc: string;
+  id: number;
+  result?: {
+    protocolVersion: string;
+    serverInfo: {
+      name: string;
+      version?: string;
+    };
+    capabilities?: Record<string, unknown>;
+    instructions?: string;
+    [key: string]: unknown;
+  };
+  error?: {
+    code: number;
+    message: string;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
+interface _OAuthCallbackResponse {
+  success: boolean;
+  access_token: string;
+  token_type: string;
+  scope: string;
+  userId: string;
+  login: string;
+}
 
 describe('E2E: Post-Deployment Smoke Tests', () => {
+  const SERVER_URL = process.env.MCP_SERVER_URL || 'https://second-brain-mcp.nick-01a.workers.dev';
+
   it('server responds to HTTP requests', async () => {
     const response = await fetch(`${SERVER_URL}/mcp`, {
       method: 'POST',
@@ -48,7 +79,9 @@ describe('E2E: Post-Deployment Smoke Tests', () => {
       }),
     });
 
-    const data = await response.json() as any;
+    const data: {
+      result: { protocolVersion: string; serverInfo: { name: string }; instructions: string };
+    } = await response.json();
 
     expect(data.result).toBeDefined();
     expect(data.result.protocolVersion).toBe('2024-11-05');
@@ -89,7 +122,8 @@ describe('E2E: Post-Deployment Smoke Tests', () => {
       }),
     });
 
-    const data = await response.json() as any;
+    const data: { jsonrpc: string; id: number; result?: unknown; error?: unknown } =
+      await response.json();
 
     // Valid JSON-RPC response structure
     expect(data.jsonrpc).toBe('2.0');
@@ -112,6 +146,8 @@ describe('E2E: Post-Deployment Smoke Tests', () => {
 });
 
 describe('E2E: Critical Path Smoke Tests', () => {
+  const SERVER_URL = process.env.MCP_SERVER_URL || 'https://second-brain-mcp.nick-01a.workers.dev';
+
   /**
    * This test would have caught BOTH bugs in production
    */
@@ -141,7 +177,8 @@ describe('E2E: Critical Path Smoke Tests', () => {
     // (Would need real token, but document the requirement)
     const tokenValidationRequirement = {
       requirement: 'Server MUST validate tokens via GitHub API',
-      implementation: 'fetch("https://api.github.com/user", { headers: { Authorization: Bearer ${token} } })',
+      implementation:
+        'fetch("https://api.github.com/user", { headers: { Authorization: Bearer ${token} } })',
       bugWas: 'return null; // ← BUG 2: Never called GitHub!',
       impact: 'All token validation failed',
     };

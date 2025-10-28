@@ -3,33 +3,34 @@
  */
 
 import { writeTool } from '../../../src/tools/write';
-import { StorageService, QuotaStatus } from '../../../src/storage';
+import type { QuotaStatus } from '../../../src/storage';
 
 // Mock storage service
 class MockStorageService {
   private files: Map<string, string> = new Map();
   private quotaExceeded = false;
 
-  async putObject(path: string, content: string): Promise<void> {
+  putObject(path: string, content: string): Promise<void> {
     this.files.set(path, content);
+    return Promise.resolve();
   }
 
-  async getObject(path: string): Promise<string | null> {
+  getObject(path: string): Promise<string | null> {
     if (this.files.has(path)) {
-      return this.files.get(path)!;
+      return Promise.resolve(this.files.get(path)!);
     }
-    return null;
+    return Promise.resolve(null);
   }
 
-  async checkStorageQuota(userId: string): Promise<QuotaStatus> {
-    return {
+  checkStorageQuota(_userId: string): Promise<QuotaStatus> {
+    return Promise.resolve({
       withinQuota: !this.quotaExceeded,
       totalBytes: 1000,
       totalFiles: 10,
       maxBytes: 10 * 1024 * 1024 * 1024, // 10GB
       maxFiles: 10000,
       maxFileSize: 10 * 1024 * 1024, // 10MB
-    };
+    });
   }
 
   setQuotaExceeded(exceeded: boolean): void {
@@ -51,11 +52,7 @@ describe('Write Tool', () => {
   describe('create new file', () => {
     it('should create new file', async () => {
       const content = 'Test file content';
-      const result = await writeTool(
-        { path: 'test.md', content },
-        storage as any,
-        'user123'
-      );
+      const result = await writeTool({ path: 'test.md', content }, storage as any, 'user123');
 
       expect(result.isError).toBe(false);
       expect(result.content).toContain('Successfully wrote');
@@ -67,7 +64,7 @@ describe('Write Tool', () => {
       const result = await writeTool(
         { path: 'projects/myproject/notes.md', content },
         storage as any,
-        'user123'
+        'user123',
       );
 
       expect(result.isError).toBe(false);
@@ -76,22 +73,14 @@ describe('Write Tool', () => {
 
     it('should handle unicode content', async () => {
       const content = '日本語 🎉 Émojis';
-      const result = await writeTool(
-        { path: 'unicode.md', content },
-        storage as any,
-        'user123'
-      );
+      const result = await writeTool({ path: 'unicode.md', content }, storage as any, 'user123');
 
       expect(result.isError).toBe(false);
       expect(storage.getFile('unicode.md')).toBe(content);
     });
 
     it('should create empty file', async () => {
-      const result = await writeTool(
-        { path: 'empty.md', content: '' },
-        storage as any,
-        'user123'
-      );
+      const result = await writeTool({ path: 'empty.md', content: '' }, storage as any, 'user123');
 
       expect(result.isError).toBe(false);
       expect(storage.getFile('empty.md')).toBe('');
@@ -100,16 +89,12 @@ describe('Write Tool', () => {
 
   describe('overwrite existing file', () => {
     it('should overwrite existing file', async () => {
-      await writeTool(
-        { path: 'test.md', content: 'Original content' },
-        storage as any,
-        'user123'
-      );
+      await writeTool({ path: 'test.md', content: 'Original content' }, storage as any, 'user123');
 
       const result = await writeTool(
         { path: 'test.md', content: 'New content' },
         storage as any,
-        'user123'
+        'user123',
       );
 
       expect(result.isError).toBe(false);
@@ -117,17 +102,13 @@ describe('Write Tool', () => {
     });
 
     it('should handle overwriting with larger content', async () => {
-      await writeTool(
-        { path: 'test.md', content: 'Small' },
-        storage as any,
-        'user123'
-      );
+      await writeTool({ path: 'test.md', content: 'Small' }, storage as any, 'user123');
 
       const newContent = 'A'.repeat(1000);
       const result = await writeTool(
         { path: 'test.md', content: newContent },
         storage as any,
-        'user123'
+        'user123',
       );
 
       expect(result.isError).toBe(false);
@@ -141,7 +122,7 @@ describe('Write Tool', () => {
       const result = await writeTool(
         { path: 'large.md', content: largeContent },
         storage as any,
-        'user123'
+        'user123',
       );
 
       expect(result.isError).toBe(true);
@@ -151,11 +132,7 @@ describe('Write Tool', () => {
 
     it('should accept file at 1MB limit', async () => {
       const content = 'A'.repeat(1024 * 1024); // Exactly 1MB
-      const result = await writeTool(
-        { path: 'maxsize.md', content },
-        storage as any,
-        'user123'
-      );
+      const result = await writeTool({ path: 'maxsize.md', content }, storage as any, 'user123');
 
       expect(result.isError).toBe(false);
     });
@@ -165,11 +142,7 @@ describe('Write Tool', () => {
       const encoder = new TextEncoder();
       const bytes = encoder.encode(content);
 
-      const result = await writeTool(
-        { path: 'unicode.md', content },
-        storage as any,
-        'user123'
-      );
+      const result = await writeTool({ path: 'unicode.md', content }, storage as any, 'user123');
 
       if (bytes.length > 1024 * 1024) {
         expect(result.isError).toBe(true);
@@ -181,11 +154,7 @@ describe('Write Tool', () => {
 
   describe('path validation', () => {
     it('should reject empty path', async () => {
-      const result = await writeTool(
-        { path: '', content: 'test' },
-        storage as any,
-        'user123'
-      );
+      const result = await writeTool({ path: '', content: 'test' }, storage as any, 'user123');
 
       expect(result.isError).toBe(true);
       expect(result.content).toContain('path');
@@ -195,7 +164,7 @@ describe('Write Tool', () => {
       const result = await writeTool(
         { path: null as any, content: 'test' },
         storage as any,
-        'user123'
+        'user123',
       );
 
       expect(result.isError).toBe(true);
@@ -205,7 +174,7 @@ describe('Write Tool', () => {
       const result = await writeTool(
         { path: '../../../etc/passwd', content: 'test' },
         storage as any,
-        'user123'
+        'user123',
       );
 
       expect(result.isError).toBe(true);
@@ -216,7 +185,7 @@ describe('Write Tool', () => {
       const result = await writeTool(
         { path: 'projects/app/design/notes.md', content: 'test' },
         storage as any,
-        'user123'
+        'user123',
       );
 
       expect(result.isError).toBe(false);
@@ -230,7 +199,7 @@ describe('Write Tool', () => {
       const result = await writeTool(
         { path: 'test.md', content: 'test' },
         storage as any,
-        'user123'
+        'user123',
       );
 
       expect(result.isError).toBe(true);
@@ -243,7 +212,7 @@ describe('Write Tool', () => {
       const result = await writeTool(
         { path: 'test.md', content: 'test' },
         storage as any,
-        'user123'
+        'user123',
       );
 
       expect(result.isError).toBe(false);
@@ -253,25 +222,25 @@ describe('Write Tool', () => {
   describe('error handling', () => {
     it('should handle storage errors gracefully', async () => {
       const errorStorage = {
-        async putObject(): Promise<void> {
-          throw new Error('Storage failure');
+        putObject(): Promise<void> {
+          return Promise.reject(new Error('Storage failure'));
         },
-        async checkStorageQuota(): Promise<QuotaStatus> {
-          return {
+        checkStorageQuota(): Promise<QuotaStatus> {
+          return Promise.resolve({
             withinQuota: true,
             totalBytes: 0,
             totalFiles: 0,
             maxBytes: 10 * 1024 * 1024 * 1024,
             maxFiles: 10000,
             maxFileSize: 10 * 1024 * 1024,
-          };
+          });
         },
       };
 
       const result = await writeTool(
         { path: 'test.md', content: 'test' },
         errorStorage as any,
-        'user123'
+        'user123',
       );
 
       expect(result.isError).toBe(true);
@@ -282,7 +251,7 @@ describe('Write Tool', () => {
       const result = await writeTool(
         { path: 'test.md', content: null as any },
         storage as any,
-        'user123'
+        'user123',
       );
 
       expect(result.isError).toBe(true);

@@ -142,11 +142,30 @@ jobs:
     needs: [type-check, unit-tests, e2e-tests, lint]
     environment:
       name: production
-      url: https://second-brain-mcp.nick-01a.workers.dev
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Extract configuration
+        id: config
+        run: |
+          # Read Node.js version from .mise.toml
+          NODE_VERSION=$(grep -E '^node = "([0-9]+)"' .mise.toml | sed -E 's/node = "([0-9]+)"/\1/')
+          echo "node_version=$NODE_VERSION" >> $GITHUB_OUTPUT
+
+          # Read worker name from wrangler.toml
+          WORKER_NAME=$(grep -E '^name = "([^"]+)"' wrangler.toml | head -1 | sed -E 's/name = "([^"]+)"/\1/')
+          echo "worker_name=$WORKER_NAME" >> $GITHUB_OUTPUT
+
+          # Build deployment URL
+          DEPLOYMENT_URL="https://${WORKER_NAME}.${{ vars.CLOUDFLARE_SUBDOMAIN }}.workers.dev"
+          echo "deployment_url=$DEPLOYMENT_URL" >> $GITHUB_OUTPUT
+
+          echo "✅ Configuration extracted:"
+          echo "  Node.js version: $NODE_VERSION"
+          echo "  Worker name: $WORKER_NAME"
+          echo "  Deployment URL: $DEPLOYMENT_URL"
 
       - name: Determine next version from git tags
         id: version
@@ -198,7 +217,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: ${{ steps.config.outputs.node_version }}
 
       - name: Enable Corepack
         run: corepack enable
@@ -240,6 +259,32 @@ jobs:
           echo "  Build Time: $BUILD_TIME"
           echo "  Environment: production"
 
+      - name: Create GitHub deployment
+        id: deployment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const deployment = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.sha,
+              environment: 'production',
+              description: 'Production deployment v${{ steps.version.outputs.VERSION }}',
+              auto_merge: false,
+              required_contexts: [],
+            });
+
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: deployment.data.id,
+              state: 'in_progress',
+              description: 'Deploying to Cloudflare Workers',
+              environment_url: '${{ steps.config.outputs.deployment_url }}',
+            });
+
+            return deployment.data.id;
+
       - name: Deploy to Cloudflare Workers (Production)
         id: deploy
         run: pnpm run deploy
@@ -255,11 +300,13 @@ jobs:
       - name: Health check with retries
         id: health_check
         run: |
+          HEALTH_URL="${{ steps.config.outputs.deployment_url }}/health"
+          echo "Checking health endpoint: $HEALTH_URL"
           echo "Checking health endpoint (3 attempts with 10s delays)..."
 
           for attempt in 1 2 3; do
             echo "Attempt $attempt/3..."
-            RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://second-brain-mcp.nick-01a.workers.dev/health || echo "000")
+            RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL" || echo "000")
 
             if [ "$RESPONSE" == "200" ]; then
               echo "✅ Health check passed (HTTP $RESPONSE)"
@@ -279,6 +326,20 @@ jobs:
           echo "HEALTH_STATUS=failure" >> $GITHUB_OUTPUT
           exit 1
 
+      - name: Update deployment status (success)
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: ${{ steps.deployment.outputs.result }},
+              state: 'success',
+              description: 'Deployment successful - v${{ steps.version.outputs.VERSION }}',
+              environment_url: '${{ steps.config.outputs.deployment_url }}',
+            });
+
       - name: Automatic rollback on health check failure
         if: failure() && steps.health_check.conclusion == 'failure' && steps.current_deployment.outputs.CURRENT_VERSION != ''
         run: |
@@ -297,6 +358,20 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Update deployment status (failure)
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: ${{ steps.deployment.outputs.result }},
+              state: 'failure',
+              description: 'Deployment failed - ${{ steps.health_check.conclusion == 'failure' && 'health check failed' || 'deployment error' }}',
+              environment_url: '${{ steps.config.outputs.deployment_url }}',
+            });
 
       - name: Create git tag after successful deployment
         if: success()
@@ -329,7 +404,7 @@ jobs:
 
           ### Deployment
           - Environment: Production
-          - Worker URL: https://second-brain-mcp.nick-01a.workers.dev
+          - Worker URL: ${{ steps.config.outputs.deployment_url }}
           - Commit: ${{ github.sha }}"
 
       - name: Create deployment summary
@@ -345,7 +420,7 @@ jobs:
             echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
             echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
             echo "**Deployed at:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
-            echo "**URL:** https://second-brain-mcp.nick-01a.workers.dev" >> $GITHUB_STEP_SUMMARY
+            echo "**URL:** ${{ steps.config.outputs.deployment_url }}" >> $GITHUB_STEP_SUMMARY
             echo "**Git Tag:** v${VERSION}" >> $GITHUB_STEP_SUMMARY
           else
             echo "### ❌ Deployment Failed (Production)" >> $GITHUB_STEP_SUMMARY

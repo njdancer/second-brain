@@ -5,11 +5,11 @@
  * Direct Fetch API handler (no Hono)
  */
 
-import type { OAuthHelpers } from '@cloudflare/workers-oauth-provider';
+import type { OAuthHelpers, AuthRequest } from '@cloudflare/workers-oauth-provider';
 import { MonitoringService } from './monitoring';
 import { Logger, generateRequestId } from './logger';
 import type { Env } from './index';
-import type { GitHubOAuthProvider, GitHubUser } from './github-oauth-provider';
+import type { GitHubOAuthProvider } from './github-oauth-provider';
 import { VERSION_INFO, getVersionString } from './version';
 
 /**
@@ -18,6 +18,7 @@ import { VERSION_INFO, getVersionString } from './version';
 interface OAuthEnv extends Env {
   OAUTH_PROVIDER: OAuthHelpers;
   GITHUB_OAUTH?: GitHubOAuthProvider; // Optional injected provider for tests
+  TEST_MODE?: string; // Optional test mode flag
 }
 
 /**
@@ -29,7 +30,7 @@ async function createGitHubProvider(env: OAuthEnv, request: Request): Promise<Gi
   const url = new URL(request.url);
 
   // Use mock provider in test mode (for E2E tests)
-  if ((env as any).TEST_MODE === 'true') {
+  if (env.TEST_MODE === 'true') {
     const { MockGitHubOAuthProvider } = await import('../test/mocks/github-oauth-provider-mock');
     return new MockGitHubOAuthProvider({
       baseUrl: url.origin,
@@ -43,7 +44,7 @@ async function createGitHubProvider(env: OAuthEnv, request: Request): Promise<Gi
   return new ArcticGitHubOAuthProvider(
     env.GITHUB_CLIENT_ID,
     env.GITHUB_CLIENT_SECRET,
-    `${url.origin}/callback`
+    `${url.origin}/callback`,
   );
 }
 
@@ -72,7 +73,7 @@ async function handleAuthorize(request: Request, env: OAuthEnv, logger: Logger):
     }
 
     // Get GitHub OAuth provider (injected for tests, or create from env)
-    const github = env.GITHUB_OAUTH || await createGitHubProvider(env, request);
+    const github = env.GITHUB_OAUTH || (await createGitHubProvider(env, request));
 
     // Generate state with MCP OAuth request encoded in it
     const state = btoa(JSON.stringify(oauthReqInfo));
@@ -113,11 +114,11 @@ async function handleCallback(request: Request, env: OAuthEnv, logger: Logger): 
     }
 
     // Decode the original MCP OAuth request from state
-    const oauthReqInfo = JSON.parse(atob(state));
+    const oauthReqInfo = JSON.parse(atob(state)) as AuthRequest;
     logger.debug('Retrieved MCP auth request from state');
 
     // Get GitHub OAuth provider (injected for tests, or create from env)
-    const github = env.GITHUB_OAUTH || await createGitHubProvider(env, request);
+    const github = env.GITHUB_OAUTH || (await createGitHubProvider(env, request));
 
     // Validate callback and exchange code for tokens
     const tokens = await github.validateAuthorizationCode(code);
@@ -128,7 +129,7 @@ async function handleCallback(request: Request, env: OAuthEnv, logger: Logger): 
     const githubUser = await github.getUserInfo(tokens.accessToken);
     const userLogger = logger.child({
       userId: githubUser.id.toString(),
-      githubLogin: githubUser.login
+      githubLogin: githubUser.login,
     });
 
     userLogger.info('GitHub user authenticated');
@@ -151,7 +152,11 @@ async function handleCallback(request: Request, env: OAuthEnv, logger: Logger): 
     const { redirectTo } = await env.OAUTH_PROVIDER.completeAuthorization({
       request: oauthReqInfo,
       userId: githubUser.id.toString(),
-      scope: oauthReqInfo.scope,
+      scope: Array.isArray(oauthReqInfo.scope)
+        ? oauthReqInfo.scope
+        : typeof oauthReqInfo.scope === 'string'
+          ? [oauthReqInfo.scope]
+          : [],
       metadata: {
         githubLogin: githubUser.login,
         githubName: githubUser.name || githubUser.login,
@@ -180,7 +185,10 @@ async function handleCallback(request: Request, env: OAuthEnv, logger: Logger): 
     const monitoring = new MonitoringService(env.ANALYTICS);
     await monitoring.recordOAuthEvent(undefined, 'failure');
 
-    return new Response(`Failed to complete OAuth flow: ${error instanceof Error ? error.message : 'Unknown error'}`, { status: 500 });
+    return new Response(
+      `Failed to complete OAuth flow: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      { status: 500 },
+    );
   }
 }
 
@@ -191,7 +199,7 @@ async function handleCallback(request: Request, env: OAuthEnv, logger: Logger): 
 export async function githubOAuthHandler(
   request: Request,
   env: OAuthEnv,
-  ctx: ExecutionContext
+  _ctx: ExecutionContext,
 ): Promise<Response> {
   const url = new URL(request.url);
   const requestId = generateRequestId();
@@ -207,20 +215,97 @@ export async function githubOAuthHandler(
   }
 
   if (url.pathname === '/health') {
-    return new Response(JSON.stringify({
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-      service: 'second-brain-mcp',
-      version: getVersionString(),
-      build: {
-        commit: VERSION_INFO.commit !== '__COMMIT_SHA__' ? VERSION_INFO.commit : 'dev',
-        time: VERSION_INFO.buildTime !== '__BUILD_TIME__' ? VERSION_INFO.buildTime : new Date().toISOString(),
-        environment: VERSION_INFO.environment !== '__ENVIRONMENT__' ? VERSION_INFO.environment : 'development'
+    // Verify all critical bindings are accessible
+    const bindings = {
+      r2: false,
+      oauth_kv: false,
+      rate_limit_kv: false,
+      feature_flags_kv: false,
+      analytics: false,
+      mcp_sessions: false,
+    };
+
+    const warnings: string[] = [];
+
+    try {
+      // Check R2 bucket (list operation is lightweight)
+      await env.SECOND_BRAIN_BUCKET.list({ limit: 1 });
+      bindings.r2 = true;
+    } catch {
+      warnings.push('R2 bucket not accessible');
+    }
+
+    try {
+      // Check KV namespaces (get operation is lightweight)
+      await env.OAUTH_KV.get('__health_check__');
+      bindings.oauth_kv = true;
+    } catch {
+      warnings.push('OAUTH_KV not accessible');
+    }
+
+    try {
+      await env.RATE_LIMIT_KV.get('__health_check__');
+      bindings.rate_limit_kv = true;
+    } catch {
+      warnings.push('RATE_LIMIT_KV not accessible');
+    }
+
+    try {
+      await env.FEATURE_FLAGS_KV.get('__health_check__');
+      bindings.feature_flags_kv = true;
+    } catch {
+      warnings.push('FEATURE_FLAGS_KV not accessible');
+    }
+
+    try {
+      // Check Analytics Engine binding exists
+      if (env.ANALYTICS) {
+        bindings.analytics = true;
+      } else {
+        warnings.push('ANALYTICS binding not configured');
       }
-    }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    } catch {
+      warnings.push('ANALYTICS not accessible');
+    }
+
+    try {
+      // Check Durable Objects binding exists
+      if (env.MCP_SESSIONS) {
+        bindings.mcp_sessions = true;
+      } else {
+        warnings.push('MCP_SESSIONS binding not configured');
+      }
+    } catch {
+      warnings.push('MCP_SESSIONS not accessible');
+    }
+
+    const allBindingsHealthy = Object.values(bindings).every((b) => b);
+
+    return new Response(
+      JSON.stringify({
+        status: allBindingsHealthy ? 'ok' : 'degraded',
+        timestamp: new Date().toISOString(),
+        service: 'second-brain-mcp',
+        version: getVersionString(),
+        build: {
+          commit: VERSION_INFO.commit !== '__COMMIT_SHA__' ? VERSION_INFO.commit : 'dev',
+          time:
+            VERSION_INFO.buildTime !== '__BUILD_TIME__'
+              ? VERSION_INFO.buildTime
+              : new Date().toISOString(),
+          environment:
+            VERSION_INFO.environment !== '__ENVIRONMENT__'
+              ? VERSION_INFO.environment
+              : 'development',
+        },
+        bindings,
+        warnings: warnings.length > 0 ? warnings : undefined,
+      }),
+      {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      },
+    );
   }
 
   logger.warn('Unknown OAuth route', { pathname: url.pathname });
@@ -231,7 +316,8 @@ export async function githubOAuthHandler(
  * Export the handler for OAuthProvider defaultHandler configuration
  */
 export const GitHubHandler = {
-  async fetch(request: Request, env: any, ctx: any): Promise<Response> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async fetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
     return githubOAuthHandler(request, env as OAuthEnv, ctx);
-  }
+  },
 };

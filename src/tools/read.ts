@@ -16,15 +16,12 @@ export interface ReadResult {
   isError: boolean;
 }
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB default limit
+const _MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB default limit (defined for documentation)
 
 /**
  * Read file contents
  */
-export async function readTool(
-  params: ReadParams,
-  storage: StorageService
-): Promise<ReadResult> {
+export async function readTool(params: ReadParams, storage: StorageService): Promise<ReadResult> {
   try {
     // Validate path
     if (!params.path || params.path.trim() === '') {

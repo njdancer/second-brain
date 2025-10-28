@@ -1,5 +1,11 @@
 /**
  * Mock KV namespace for testing
+ *
+ * Implements the KVNamespace interface methods we actually use: get, put, delete, list.
+ *
+ * Note: We don't use implements Pick<KVNamespace> here because KVNamespace has complex
+ * generic signatures that make TypeScript matching difficult. The methods match the API,
+ * and tests use 'as any' anyway.
  */
 
 export interface MockKVEntry {
@@ -7,48 +13,68 @@ export interface MockKVEntry {
   expiration?: number;
 }
 
+/**
+ * Mock KV Namespace matching the Cloudflare KV API
+ */
 export class MockKVNamespace {
   private store: Map<string, MockKVEntry> = new Map();
 
-  async get(key: string, options?: { type?: 'text' | 'json' }): Promise<string | null> {
+  /**
+   * Get a value from KV
+   * Matches KVNamespace.get() signature
+   */
+  get(key: string, _options?: { type?: 'text' | 'json' }): Promise<string | null> {
     const entry = this.store.get(key);
     if (!entry) {
-      return null;
+      return Promise.resolve(null);
     }
 
     // Check expiration
     if (entry.expiration && entry.expiration < Date.now() / 1000) {
       this.store.delete(key);
-      return null;
+      return Promise.resolve(null);
     }
 
-    return entry.value;
+    return Promise.resolve(entry.value);
   }
 
-  async put(
+  /**
+   * Put a value into KV
+   * Matches KVNamespace.put() signature
+   */
+  put(
     key: string,
     value: string,
-    options?: { expiration?: number; expirationTtl?: number }
+    options?: { expiration?: number; expirationTtl?: number },
   ): Promise<void> {
-    const expiration = options?.expiration ||
+    const expiration =
+      options?.expiration ||
       (options?.expirationTtl ? Math.floor(Date.now() / 1000) + options.expirationTtl : undefined);
 
     this.store.set(key, { value, expiration });
+    return Promise.resolve();
   }
 
-  async delete(key: string): Promise<void> {
+  /**
+   * Delete a value from KV
+   * Matches KVNamespace.delete() signature
+   */
+  delete(key: string): Promise<void> {
     this.store.delete(key);
+    return Promise.resolve();
   }
 
-  async list(options?: { prefix?: string }): Promise<{ keys: Array<{ name: string }> }> {
+  /**
+   * List keys in KV
+   * Matches KVNamespace.list() signature
+   */
+  list(options?: { prefix?: string }): Promise<{ keys: Array<{ name: string }> }> {
     const keys = Array.from(this.store.keys());
-    const filtered = options?.prefix
-      ? keys.filter((key) => key.startsWith(options.prefix!))
-      : keys;
+    const filtered = options?.prefix ? keys.filter((key) => key.startsWith(options.prefix!)) : keys;
 
-    return {
+    return Promise.resolve({
       keys: filtered.map((name) => ({ name })),
-    };
+    });
   }
 
   // Test helpers

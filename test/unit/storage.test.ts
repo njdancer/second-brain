@@ -2,7 +2,7 @@
  * Unit tests for storage abstraction
  */
 
-import { StorageService, StorageObject, QuotaStatus } from '../../src/storage';
+import { StorageService } from '../../src/storage';
 import { MockR2Bucket } from '../mocks/r2';
 
 describe('StorageService', () => {
@@ -65,8 +65,9 @@ describe('StorageService', () => {
       });
 
       const obj = await mockBucket.get('test/file.txt');
-      expect(obj!.customMetadata.contentType).toBe('text/plain');
-      expect(obj!.customMetadata.userId).toBe('user123');
+      expect(obj).not.toBeNull();
+      expect(obj?.customMetadata?.contentType).toBe('text/plain');
+      expect(obj?.customMetadata?.userId).toBe('user123');
     });
 
     it('should reject invalid paths with ..', async () => {
@@ -75,13 +76,13 @@ describe('StorageService', () => {
 
     it('should reject paths with null bytes', async () => {
       await expect(storage.putObject('test\x00file.txt', 'content')).rejects.toThrow(
-        'Invalid path'
+        'Invalid path',
       );
     });
 
     it('should reject paths with control characters', async () => {
       await expect(storage.putObject('test\x01file.txt', 'content')).rejects.toThrow(
-        'Invalid path'
+        'Invalid path',
       );
     });
 
@@ -89,7 +90,7 @@ describe('StorageService', () => {
       const largeContent = 'x'.repeat(11 * 1024 * 1024); // 11 MB
 
       await expect(storage.putObject('large.txt', largeContent)).rejects.toThrow(
-        'File size exceeds limit'
+        'File size exceeds limit',
       );
     });
 

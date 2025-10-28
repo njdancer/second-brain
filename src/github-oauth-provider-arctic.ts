@@ -4,11 +4,7 @@
  */
 
 import { GitHub } from 'arctic';
-import type {
-  GitHubOAuthProvider,
-  GitHubTokens,
-  GitHubUser,
-} from './github-oauth-provider';
+import type { GitHubOAuthProvider, GitHubTokens, GitHubUser } from './github-oauth-provider';
 
 /**
  * Production GitHub OAuth provider using Arctic library
@@ -49,6 +45,7 @@ export class ArcticGitHubOAuthProvider implements GitHubOAuthProvider {
       throw new Error(`GitHub API error: ${userResponse.status}`);
     }
 
-    return (await userResponse.json()) as GitHubUser;
+    const data: unknown = await userResponse.json();
+    return data as GitHubUser;
   }
 }

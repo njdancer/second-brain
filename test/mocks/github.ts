@@ -33,17 +33,17 @@ export class MockGitHubOAuth {
     this.codesToUsers.set(code, userId);
   }
 
-  async exchangeCodeForToken(code: string): Promise<{
+  exchangeCodeForToken(code: string): Promise<{
     access_token: string;
     token_type: string;
     scope: string;
   }> {
     if (this.shouldFail) {
-      throw new Error('OAuth exchange failed');
+      return Promise.reject(new Error('OAuth exchange failed'));
     }
 
     if (code === 'invalid_code') {
-      throw new Error('Invalid authorization code');
+      return Promise.reject(new Error('Invalid authorization code'));
     }
 
     // Check if code is mapped to a specific user
@@ -55,44 +55,44 @@ export class MockGitHubOAuth {
 
     this.tokens.set(token, { userId, expiresAt });
 
-    return {
+    return Promise.resolve({
       access_token: token,
       token_type: 'bearer',
       scope: 'read:user',
-    };
+    });
   }
 
-  async getUserInfo(token: string): Promise<MockGitHubUser | null> {
+  getUserInfo(token: string): Promise<MockGitHubUser | null> {
     if (this.shouldFail) {
-      throw new Error('Failed to fetch user info');
+      return Promise.reject(new Error('Failed to fetch user info'));
     }
 
     const tokenData = this.tokens.get(token);
     if (!tokenData) {
-      return null;
+      return Promise.resolve(null);
     }
 
     // Check expiration
     if (tokenData.expiresAt < Date.now()) {
       this.tokens.delete(token);
-      return null;
+      return Promise.resolve(null);
     }
 
-    return this.users.get(tokenData.userId.toString()) || null;
+    return Promise.resolve(this.users.get(tokenData.userId.toString()) || null);
   }
 
-  async validateToken(token: string): Promise<boolean> {
+  validateToken(token: string): Promise<boolean> {
     const tokenData = this.tokens.get(token);
     if (!tokenData) {
-      return false;
+      return Promise.resolve(false);
     }
 
     if (tokenData.expiresAt < Date.now()) {
       this.tokens.delete(token);
-      return false;
+      return Promise.resolve(false);
     }
 
-    return true;
+    return Promise.resolve(true);
   }
 
   // Test helpers

@@ -1,5 +1,27 @@
 import { Logger, generateRequestId, type LogContext } from '../../src/logger';
 
+interface LogOutput {
+  level?: string;
+  message?: string;
+  requestId?: string;
+  userId?: string;
+  tool?: string;
+  error?: string;
+  foo?: string;
+  timestamp?: string;
+  stack?: string;
+  duration?: number;
+  metadata?: unknown;
+  array?: unknown;
+  customProp?: string;
+  [key: string]: unknown;
+}
+
+// Helper to get first call argument from mock
+function getFirstCallArg(spy: jest.SpyInstance): string {
+  return spy.mock.calls[0]?.[0] as string;
+}
+
 describe('Logger', () => {
   let consoleLogSpy: jest.SpyInstance;
   let consoleDebugSpy: jest.SpyInstance;
@@ -7,10 +29,10 @@ describe('Logger', () => {
   let consoleErrorSpy: jest.SpyInstance;
 
   beforeEach(() => {
-    consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
-    consoleDebugSpy = jest.spyOn(console, 'debug').mockImplementation(() => {});
-    consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => undefined);
+    consoleDebugSpy = jest.spyOn(console, 'debug').mockImplementation(() => undefined);
+    consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
   });
 
   afterEach(() => {
@@ -25,16 +47,14 @@ describe('Logger', () => {
       const logger = new Logger();
       logger.info('test');
 
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        expect.stringContaining('"message":"test"')
-      );
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('"message":"test"'));
     });
 
     it('should create logger with initial context', () => {
       const logger = new Logger({ requestId: 'req-123', userId: 'user-456' });
       logger.info('test');
 
-      const logOutput = JSON.parse(consoleLogSpy.mock.calls[0][0]);
+      const logOutput = JSON.parse(getFirstCallArg(consoleLogSpy)) as LogOutput;
       expect(logOutput.requestId).toBe('req-123');
       expect(logOutput.userId).toBe('user-456');
     });
@@ -47,7 +67,7 @@ describe('Logger', () => {
 
       child.info('test');
 
-      const logOutput = JSON.parse(consoleLogSpy.mock.calls[0][0]);
+      const logOutput = JSON.parse(getFirstCallArg(consoleLogSpy)) as LogOutput;
       expect(logOutput.requestId).toBe('req-123');
       expect(logOutput.userId).toBe('user-456');
     });
@@ -58,7 +78,7 @@ describe('Logger', () => {
 
       child.info('test');
 
-      const logOutput = JSON.parse(consoleLogSpy.mock.calls[0][0]);
+      const logOutput = JSON.parse(getFirstCallArg(consoleLogSpy)) as LogOutput;
       expect(logOutput.requestId).toBe('req-123');
       expect(logOutput.userId).toBe('user-new');
     });
@@ -70,7 +90,7 @@ describe('Logger', () => {
 
       child2.info('test');
 
-      const logOutput = JSON.parse(consoleLogSpy.mock.calls[0][0]);
+      const logOutput = JSON.parse(getFirstCallArg(consoleLogSpy)) as LogOutput;
       expect(logOutput.requestId).toBe('req-123');
       expect(logOutput.userId).toBe('user-456');
       expect(logOutput.tool).toBe('read');
@@ -87,7 +107,7 @@ describe('Logger', () => {
     it('should log DEBUG level', () => {
       logger.debug('debug message', { foo: 'bar' });
 
-      const logOutput = JSON.parse(consoleDebugSpy.mock.calls[0][0]);
+      const logOutput = JSON.parse(getFirstCallArg(consoleDebugSpy)) as LogOutput;
       expect(logOutput.level).toBe('DEBUG');
       expect(logOutput.message).toBe('debug message');
       expect(logOutput.foo).toBe('bar');
@@ -96,7 +116,7 @@ describe('Logger', () => {
     it('should log INFO level', () => {
       logger.info('info message', { foo: 'bar' });
 
-      const logOutput = JSON.parse(consoleLogSpy.mock.calls[0][0]);
+      const logOutput = JSON.parse(getFirstCallArg(consoleLogSpy)) as LogOutput;
       expect(logOutput.level).toBe('INFO');
       expect(logOutput.message).toBe('info message');
       expect(logOutput.foo).toBe('bar');
@@ -105,7 +125,7 @@ describe('Logger', () => {
     it('should log WARN level', () => {
       logger.warn('warn message', { foo: 'bar' });
 
-      const logOutput = JSON.parse(consoleWarnSpy.mock.calls[0][0]);
+      const logOutput = JSON.parse(getFirstCallArg(consoleWarnSpy)) as LogOutput;
       expect(logOutput.level).toBe('WARN');
       expect(logOutput.message).toBe('warn message');
       expect(logOutput.foo).toBe('bar');
@@ -115,7 +135,7 @@ describe('Logger', () => {
       const error = new Error('Test error');
       logger.error('error message', error, { foo: 'bar' });
 
-      const logOutput = JSON.parse(consoleErrorSpy.mock.calls[0][0]);
+      const logOutput = JSON.parse(getFirstCallArg(consoleErrorSpy)) as LogOutput;
       expect(logOutput.level).toBe('ERROR');
       expect(logOutput.message).toBe('error message');
       expect(logOutput.error).toBe('Test error');
@@ -126,7 +146,7 @@ describe('Logger', () => {
     it('should log ERROR level without error object', () => {
       logger.error('error message', undefined, { foo: 'bar' });
 
-      const logOutput = JSON.parse(consoleErrorSpy.mock.calls[0][0]);
+      const logOutput = JSON.parse(getFirstCallArg(consoleErrorSpy)) as LogOutput;
       expect(logOutput.level).toBe('ERROR');
       expect(logOutput.message).toBe('error message');
       expect(logOutput.foo).toBe('bar');
@@ -139,7 +159,7 @@ describe('Logger', () => {
       logger.info('test message', { userId: 'user-456' });
 
       expect(() => {
-        JSON.parse(consoleLogSpy.mock.calls[0][0]);
+        JSON.parse(getFirstCallArg(consoleLogSpy)) as LogOutput;
       }).not.toThrow();
     });
 
@@ -147,9 +167,12 @@ describe('Logger', () => {
       const logger = new Logger();
       logger.info('test');
 
-      const logOutput = JSON.parse(consoleLogSpy.mock.calls[0][0]);
+      const logOutput = JSON.parse(getFirstCallArg(consoleLogSpy)) as LogOutput;
       expect(logOutput.timestamp).toBeDefined();
-      expect(() => new Date(logOutput.timestamp)).not.toThrow();
+      expect(logOutput.timestamp).toBeDefined();
+      if (logOutput.timestamp) {
+        expect(() => new Date(logOutput.timestamp as string)).not.toThrow();
+      }
       expect(logOutput.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
     });
 
@@ -157,7 +180,7 @@ describe('Logger', () => {
       const logger = new Logger({ requestId: 'req-123' });
       logger.info('test message', { userId: 'user-456', duration: 123 });
 
-      const logOutput = JSON.parse(consoleLogSpy.mock.calls[0][0]);
+      const logOutput = JSON.parse(getFirstCallArg(consoleLogSpy)) as LogOutput;
       expect(logOutput).toMatchObject({
         timestamp: expect.any(String),
         level: 'INFO',
@@ -182,7 +205,7 @@ describe('Logger', () => {
 
       logger.info('complex test', complexData);
 
-      const logOutput = JSON.parse(consoleLogSpy.mock.calls[0][0]);
+      const logOutput = JSON.parse(getFirstCallArg(consoleLogSpy)) as LogOutput;
       expect(logOutput.metadata).toEqual({ nested: { value: 'test' } });
       expect(logOutput.array).toEqual([1, 2, 3]);
     });
@@ -193,7 +216,7 @@ describe('Logger', () => {
       const logger = new Logger({ requestId: 'req-123', userId: 'user-456' });
       logger.info('test', { tool: 'read', duration: 100 });
 
-      const logOutput = JSON.parse(consoleLogSpy.mock.calls[0][0]);
+      const logOutput = JSON.parse(getFirstCallArg(consoleLogSpy)) as LogOutput;
       expect(logOutput.requestId).toBe('req-123');
       expect(logOutput.userId).toBe('user-456');
       expect(logOutput.tool).toBe('read');
@@ -204,7 +227,7 @@ describe('Logger', () => {
       const logger = new Logger({ requestId: 'req-old', userId: 'user-456' });
       logger.info('test', { requestId: 'req-new' });
 
-      const logOutput = JSON.parse(consoleLogSpy.mock.calls[0][0]);
+      const logOutput = JSON.parse(getFirstCallArg(consoleLogSpy)) as LogOutput;
       expect(logOutput.requestId).toBe('req-new');
     });
   });
@@ -215,7 +238,7 @@ describe('Logger', () => {
       const error = new Error('Something went wrong');
       logger.error('Operation failed', error);
 
-      const logOutput = JSON.parse(consoleErrorSpy.mock.calls[0][0]);
+      const logOutput = JSON.parse(getFirstCallArg(consoleErrorSpy)) as LogOutput;
       expect(logOutput.error).toBe('Something went wrong');
       expect(logOutput.stack).toBeDefined();
       expect(logOutput.stack).toContain('Error: Something went wrong');
@@ -223,12 +246,15 @@ describe('Logger', () => {
 
     it('should preserve custom error properties', () => {
       const logger = new Logger();
-      const error = new Error('Custom error') as any;
+      interface CustomError extends Error {
+        code: string;
+      }
+      const error = new Error('Custom error') as CustomError;
       error.code = 'ERR_CUSTOM';
 
       logger.error('Operation failed', error, { customProp: 'value' });
 
-      const logOutput = JSON.parse(consoleErrorSpy.mock.calls[0][0]);
+      const logOutput = JSON.parse(getFirstCallArg(consoleErrorSpy)) as LogOutput;
       expect(logOutput.error).toBe('Custom error');
       expect(logOutput.customProp).toBe('value');
     });
@@ -238,7 +264,9 @@ describe('Logger', () => {
 describe('generateRequestId', () => {
   it('should generate a valid UUID', () => {
     const requestId = generateRequestId();
-    expect(requestId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+    expect(requestId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    );
   });
 
   it('should generate unique IDs', () => {
@@ -258,7 +286,7 @@ describe('generateRequestId', () => {
     const spy = jest.spyOn(console, 'log').mockImplementation(() => {});
     logger.info('test');
 
-    const logOutput = JSON.parse(spy.mock.calls[0][0]);
+    const logOutput = JSON.parse(getFirstCallArg(spy)) as LogOutput;
     expect(logOutput.requestId).toBe(requestId);
 
     spy.mockRestore();

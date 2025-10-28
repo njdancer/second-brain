@@ -24,4 +24,5 @@ global.console = {
 };
 
 // Make original console available for tests that explicitly need it
-(global as any).__originalConsole = originalConsole;
+(global as typeof globalThis & { __originalConsole: typeof originalConsole }).__originalConsole =
+  originalConsole;
