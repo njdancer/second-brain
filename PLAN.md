@@ -2,9 +2,17 @@
 
 **Project:** MCP Server for Building a Second Brain (BASB)
 **Status:** 🎉 **PRODUCTION - Claude Integration Working!**
-**Last Updated:** 2025-10-25
+**Last Updated:** 2025-10-29
 
 **Recent Changes:**
+- ✅ Fixed production deployment version calculation (Issue #24)
+  - Added `fetch-depth: 0` and `fetch-tags: true` to checkout step (line 141-143)
+  - Fixed tag pattern from `v${YEAR}.*` to `v${YEAR}.*.*` (line 182)
+  - Changed first version from `${YEAR}.1.0` to `${YEAR}.0.0` (line 186)
+  - **Impact:** Both release AND hotfix deployments use shared version calculation logic
+  - **Note:** v25.1.0 already deployed, so next year (v26.0.0) will start at 0
+  - Created: `deploy-production.yml.v3-all-fixes` (awaiting manual move to `.github/workflows/`)
+
 - ✅ Implemented MCP Resources (Phase 19.1)
   - Exposed all second brain documents as MCP resources
   - Added resources/list handler to list all files with metadata
