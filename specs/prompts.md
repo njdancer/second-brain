@@ -180,7 +180,7 @@ The MCP server MUST expose these prompts through the standard MCP prompt listing
 
 **Server Name:** `second-brain`
 
-**Server Version:** The server MUST provide runtime version information derived from git tags and commit history. Version information is accessed differently in development (queried from local git repository) and production (embedded as static values during build). The version string SHOULD combine git tag and commit hash (e.g., `25.1.0 (abc123d)` for production, `25.1.0-dev (abc123d-dirty)` for development). See [Deployment](./deployment.md) for runtime version access requirements.
+**Server Version:** The server MUST provide runtime version information derived from git tags and commit history. Version information is accessed differently in development (queried from local git repository) and production (embedded as static values during build). The version string SHOULD combine git tag and commit hash (e.g., `25.0.0 (abc123d)` for production, `25.0.0-dev (abc123d-dirty)` for development). See [Deployment](./deployment.md) for runtime version access requirements.
 
 **Server Description:** Multi-paragraph description visible to Claude explaining BASB methodology, PARA structure, and guidance for file organization (see bootstrap.md for full text).
 

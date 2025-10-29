@@ -200,10 +200,11 @@ it('should backup file to S3', async () => {
 **CRITICAL: ALWAYS deploy via GitHub Actions. NEVER use `pnpm deploy` directly.**
 
 **Version Management:**
-- Versions exist ONLY in git tags (format: YEAR.RELEASE.HOTFIX, e.g., v25.1.0)
+- Versions exist ONLY in git tags (format: YEAR.RELEASE.HOTFIX, e.g., v25.0.0)
 - NO version stored in package.json, PLAN.md, or anywhere in the repo
 - Deployment workflow auto-determines next version from git tags
 - Tags are created AFTER successful deployment, not before
+- RELEASE starts at 0 for the first release of the year
 
 **Deployment Flow:**
 
@@ -223,8 +224,8 @@ it('should backup file to S3', async () => {
 
    # 3. Click "Run workflow"
    #    - Select deployment type: "release" or "hotfix"
-   #    - Release: increments RELEASE number (e.g., 25.1.0 → 25.2.0)
-   #    - Hotfix: increments HOTFIX number (e.g., 25.1.0 → 25.1.1)
+   #    - Release: increments RELEASE number (e.g., 25.0.0 → 25.1.0)
+   #    - Hotfix: increments HOTFIX number (e.g., 25.0.0 → 25.0.1)
 
    # 4. Workflow will:
    #    - Auto-determine next version from git tags

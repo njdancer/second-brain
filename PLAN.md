@@ -2,9 +2,14 @@
 
 **Project:** MCP Server for Building a Second Brain (BASB)
 **Status:** 🎉 **PRODUCTION - Claude Integration Working!**
-**Last Updated:** 2025-10-25
+**Last Updated:** 2025-10-29
 
 **Recent Changes:**
+- ✅ Fixed version numbering to start at 25.0.0 (Issue #24)
+  - Updated specs to clarify first release should be YEAR.0.0
+  - Fixed workflow to use 25.0.0 instead of 25.1.0 for first release
+  - Updated all version examples in specs (deployment.md, release.md, prompts.md)
+  - Note: 25.1.0 already deployed, fix applies to future years
 - ✅ Implemented MCP Resources (Phase 19.1)
   - Exposed all second brain documents as MCP resources
   - Added resources/list handler to list all files with metadata

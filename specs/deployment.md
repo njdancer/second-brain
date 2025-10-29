@@ -174,7 +174,7 @@ The system MUST provide runtime access to version information for observability,
 During local development, the system MUST support querying version information from the local git repository:
 
 **Version components:**
-- **Latest tag** - Most recent git tag (e.g., `v25.1.0`) to identify base version
+- **Latest tag** - Most recent git tag (e.g., `v25.0.0`) to identify base version
 - **Commit hash** - Current commit SHA (short or full form) for precise build identification
 - **Dirty status** - Boolean indicating if working directory has uncommitted changes
 
@@ -185,7 +185,7 @@ During local development, the system MUST support querying version information f
 During production deployment, the system MUST embed static version information that was current at build time:
 
 **Version components:**
-- **Git tag** - The git tag at deployment time (e.g., `v25.1.0`)
+- **Git tag** - The git tag at deployment time (e.g., `v25.0.0`)
 - **Commit hash** - The exact commit SHA deployed to production
 - **Build timestamp** - ISO 8601 timestamp of when the build was created
 
@@ -200,7 +200,7 @@ During production deployment, the system MUST embed static version information t
 
 The MCP server initialization MUST include version information in the server metadata provided to MCP clients. This allows Claude and other MCP clients to identify which server version they're communicating with for debugging and compatibility purposes.
 
-The version string format SHOULD combine git tag and commit hash (e.g., `25.1.0 (abc123d)` for production, `25.1.0-dev (abc123d-dirty)` for development).
+The version string format SHOULD combine git tag and commit hash (e.g., `25.0.0 (abc123d)` for production, `25.0.0-dev (abc123d-dirty)` for development).
 
 See [Prompts](./prompts.md) for MCP server metadata requirements.
 

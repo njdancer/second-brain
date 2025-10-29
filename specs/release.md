@@ -212,7 +212,7 @@ The system MUST track which commit is currently deployed to production to suppor
 
 **Implementation approach:** The hotfix workflow SHOULD include a step that queries the GitHub API to retrieve the current production commit SHA before creating the hotfix branch. This ensures hotfixes branch from production reality, not `main`'s potentially unreleased features.
 
-**Alternative approach:** Git tags (e.g., `production-25.1.0`) could mark production deployments, but tags are less flexible than the Deployments API and don't provide deployment status or rollback history. Tags MAY be used as supplementary markers but SHOULD NOT be the primary tracking mechanism.
+**Alternative approach:** Git tags (e.g., `production-25.0.0`) could mark production deployments, but tags are less flexible than the Deployments API and don't provide deployment status or rollback history. Tags MAY be used as supplementary markers but SHOULD NOT be the primary tracking mechanism.
 
 ## Continuous Integration Pipeline
 
@@ -308,10 +308,10 @@ The project uses a simplified YEAR.RELEASE.HOTFIX versioning scheme for tracking
 
 Version number format:
 - **YEAR:** Last two digits of the year (e.g., `25` for 2025)
-- **RELEASE:** Sequential release number within the year, incremented for each production deployment (e.g., `1`, `2`, `3`...)
+- **RELEASE:** Sequential release number within the year, starting at 0 for the first release, incremented for each subsequent production deployment (e.g., `0`, `1`, `2`...)
 - **HOTFIX:** Sequential hotfix number for emergency patches to a specific release (e.g., `0` for initial release, `1` for first hotfix)
 
-Examples: `v25.1.0` (first release of 2025), `v25.1.1` (hotfix to first release), `v25.2.0` (second release of 2025)
+Examples: `v25.0.0` (first release of 2025), `v25.0.1` (hotfix to first release), `v25.1.0` (second release of 2025), `v25.2.0` (third release of 2025)
 
 Version management:
 - Git tags are the ONLY source of version information
@@ -457,7 +457,7 @@ This level of automation is currently overkill for the project scope. Git commit
 
 ### Release Markers
 
-When production deployments occur, the deployment workflow SHOULD automatically create git tags for historical reference (e.g., `v25.1.0`).
+When production deployments occur, the deployment workflow SHOULD automatically create git tags for historical reference (e.g., `v25.0.0`).
 
 These tags serve documentation purposes and MUST NOT trigger deployment automation (deployments trigger tags, not the reverse). Tags are the authoritative record of what version was deployed and when.
 
