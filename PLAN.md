@@ -1,10 +1,16 @@
 # Implementation Plan
 
 **Project:** MCP Server for Building a Second Brain (BASB)
-**Status:** 🎉 **PRODUCTION - Claude Integration Working!**
-**Last Updated:** 2025-10-25
+**Status:** ⚠️ **PRODUCTION - CI/CD PIPELINE BROKEN**
+**Last Updated:** 2025-10-29
 
 **Recent Changes:**
+- ⚠️ **CRITICAL BUG FOUND:** Production deployment workflow has two bugs preventing tag creation
+  - Bug #1: Missing tag fetching in checkout step (line 141)
+  - Bug #2: Incorrect tag pattern matching (line 182) - uses `v25.*` instead of `v25.*.*`
+  - Impact: Version calculation fails, tags cannot be created after deployment
+  - Status: Fixed workflow created at `deploy-production.yml.fixed` for review
+  - Action Required: Manual workflow file replacement (GitHub App cannot modify .github/workflows/)
 - ✅ Implemented MCP Resources (Phase 19.1)
   - Exposed all second brain documents as MCP resources
   - Added resources/list handler to list all files with metadata
@@ -84,6 +90,61 @@
 2. **Can't refactor with confidence** - No tests defining correct behavior
 3. **Testing boundary is wrong** - We're testing GitHub OAuth when we shouldn't care
 4. **False confidence** - Tests pass but server was broken for weeks
+
+---
+
+## 🔴 URGENT: Production Deployment Workflow Broken (Issue #24)
+
+**Discovery Date:** 2025-10-29
+**Impact:** CRITICAL - Production deployments succeed but tags fail to be created
+**Status:** Fixed workflow created, awaiting manual replacement
+
+### Root Cause
+
+Two bugs in `.github/workflows/deploy-production.yml` prevent correct version calculation and tag creation:
+
+**Bug #1: Missing Tag Fetching (Line 141)**
+- Checkout action doesn't fetch tags: missing `fetch-depth: 0` and `fetch-tags: true`
+- Version calculation at line 182 finds zero tags
+- Always creates `25.1.0` as "first release of the year"
+
+**Bug #2: Incorrect Tag Pattern (Line 182)**
+- Pattern `"v${YEAR}.*"` only matches tags with one char after dot
+- Example: matches `v25.1` but NOT `v25.1.0`
+- Should be `"v${YEAR}.*.*"` for YEAR.RELEASE.HOTFIX format
+
+### Impact
+
+- Deployment succeeds, but tag creation at line 375 fails
+- Repository has no version history in git tags
+- Each deployment attempts to create same version number
+- GitHub Releases cannot be created without tags
+
+### Fix Applied
+
+Created `deploy-production.yml.fixed` with fixes:
+1. Added `fetch-depth: 0` and `fetch-tags: true` to checkout
+2. Changed pattern from `"v${YEAR}.*"` to `"v${YEAR}.*.*"`
+3. Added debug logging to show found tags
+4. Added success confirmation for tag push
+
+### Action Required
+
+**Manual workflow file replacement needed:**
+```bash
+mv deploy-production.yml.fixed .github/workflows/deploy-production.yml
+git add .github/workflows/deploy-production.yml PLAN.md
+git commit -m "fix: correct production deployment version calculation and tag creation
+
+- Add fetch-depth: 0 and fetch-tags: true to checkout step
+- Fix tag pattern from v${YEAR}.* to v${YEAR}.*.*
+- Add debug logging and success confirmations
+
+Fixes #24"
+git push origin main
+```
+
+Note: GitHub App cannot modify `.github/workflows/` files directly due to permissions.
 
 ---
 
