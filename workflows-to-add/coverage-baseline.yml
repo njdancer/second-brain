@@ -1,0 +1,58 @@
+name: Coverage Baseline
+
+# This workflow generates the baseline coverage report from main branch
+# that is used by PRs to compare coverage changes.
+#
+# It runs on every push to main and uploads the coverage report as an artifact.
+# The clearlyip/code-coverage-report-action in test.yml will automatically
+# download this baseline when running on PRs.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # Allow manual trigger to regenerate baseline
+
+jobs:
+  generate-baseline:
+    name: Generate Coverage Baseline
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install pnpm
+        run: corepack prepare pnpm@9.0.0 --activate
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run tests with coverage
+        run: pnpm test -- --coverage --ci --silent
+
+      - name: Upload coverage baseline
+        uses: clearlyip/code-coverage-report-action@v5
+        with:
+          filename: 'coverage/clover.xml'
+          badge: true
+          only_list_changed_files: false # Generate full baseline
