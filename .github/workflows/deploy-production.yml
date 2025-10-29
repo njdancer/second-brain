@@ -139,6 +139,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch all history including tags
+          fetch-tags: true # Explicitly fetch all tags
 
       - name: Extract configuration
         id: config
@@ -178,16 +181,25 @@ jobs:
 
           echo "DEPLOYMENT_TYPE=$DEPLOYMENT_TYPE" >> $GITHUB_OUTPUT
 
-          # Get all tags for current year
-          TAGS=$(git tag --list "v${YEAR}.*" | sort -V)
+          # Get all tags for current year (pattern must match YEAR.RELEASE.HOTFIX format)
+          TAGS=$(git tag -l "v${YEAR}.*.*" | sort -V)
+
+          echo "🔍 Found existing tags for year ${YEAR}:"
+          if [ -z "$TAGS" ]; then
+            echo "  (none)"
+          else
+            echo "$TAGS" | sed 's/^/  /'
+          fi
 
           if [ -z "$TAGS" ]; then
-            # First release of the year
-            VERSION="${YEAR}.1.0"
+            # First release of the year starts at YEAR.0.0
+            VERSION="${YEAR}.0.0"
+            echo "📝 No existing tags found - starting at v${VERSION}"
           else
             # Parse latest tag
             LATEST_TAG=$(echo "$TAGS" | tail -1)
             LATEST_VERSION=${LATEST_TAG#v}
+            echo "📝 Latest tag: $LATEST_TAG"
 
             # Split version into components
             IFS='.' read -r TAG_YEAR RELEASE HOTFIX <<< "$LATEST_VERSION"
@@ -196,16 +208,18 @@ jobs:
               # Increment RELEASE, reset HOTFIX
               RELEASE=$((RELEASE + 1))
               HOTFIX=0
+              echo "📝 Incrementing RELEASE: ${TAG_YEAR}.${RELEASE}.${HOTFIX}"
             else
               # Increment HOTFIX
               HOTFIX=$((HOTFIX + 1))
+              echo "📝 Incrementing HOTFIX: ${TAG_YEAR}.${RELEASE}.${HOTFIX}"
             fi
 
             VERSION="${YEAR}.${RELEASE}.${HOTFIX}"
           fi
 
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-          echo "Deploying version: v$VERSION (type: $DEPLOYMENT_TYPE)"
+          echo "✅ Deploying version: v$VERSION (type: $DEPLOYMENT_TYPE)"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -374,6 +388,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag -a "v${VERSION}" -m "Release v${VERSION} - Production Deployment"
           git push origin "v${VERSION}"
+          echo "✅ Successfully created and pushed tag v${VERSION}"
 
       - name: Create GitHub Release
         if: success()
