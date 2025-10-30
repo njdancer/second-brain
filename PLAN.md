@@ -519,6 +519,15 @@ The goal is automated E2E tests that run in CI/CD and prove the server works.
 
 ---
 
+## Recent Changes
+
+### Smart Placement Enabled (2025-10-19)
+- ✅ Enabled Cloudflare Smart Placement in `wrangler.toml`
+- Automatically places Workers closer to R2 storage for reduced latency
+- No code changes required, configuration-only change
+
+---
+
 ## Parking Lot (Lower Priority)
 
 ### Durable Object Alarm Cleanup (Bug)
