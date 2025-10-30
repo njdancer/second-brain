@@ -8,6 +8,7 @@ Central registry of all technical specification documents for the Second Brain M
 
 - [Architecture](./architecture.md) - System design, component interactions, and technical decisions
 - [Security](./security.md) - OAuth architecture, authentication flows, and security requirements
+- [D1 Database](./d1-database.md) - Persistent metadata storage, file summaries, and audit logging schema
 
 ## MCP Interface
 
@@ -15,6 +16,8 @@ Central registry of all technical specification documents for the Second Brain M
 - [Prompts](./prompts.md) - Pre-defined BASB workflow prompts and templates
 - [Bootstrap](./bootstrap.md) - Initial file structure and server description requirements
 - [Methodology](./methodology.md) - Building a Second Brain (BASB) principles and guidance requirements
+- [AGENTS.md](./agents-md.md) - User-editable agent instructions and methodology customization
+- [Repository Map](./repo-map.md) - Auto-generated file structure and AI summaries for context injection
 
 ## Operations
 
