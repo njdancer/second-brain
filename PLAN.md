@@ -5,6 +5,14 @@
 **Last Updated:** 2025-10-29
 
 **Recent Changes:**
+- ✅ Proposed combined deployment workflow (2025-10-30)
+  - Created combined dev→prod pipeline in `.github/workflows-proposed/`
+  - Deploys to dev (preprod) → health check → auto-promote to prod
+  - Defaults to hotfix versioning for incremental changes
+  - Includes commented-out manual approval step for future use
+  - Maintains hotfix mode detection and automatic rollback
+  - Ready for review and testing before replacing separate workflows
+
 - ✅ Fixed production deployment version calculation (Issue #24)
   - Added `fetch-depth: 0` and `fetch-tags: true` to checkout step (line 141-143)
   - Fixed tag pattern from `v${YEAR}.*` to `v${YEAR}.*.*` (line 182)
